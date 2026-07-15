@@ -119,7 +119,6 @@ const RegisterCustomer = () => {
       // Remove confirmPassword before sending to API
       const { confirmPassword, ...submitData } = formData
       const result = await registerMutation(submitData).unwrap()
-      console.log({result: result.user})
       
       if (result.user) {
         dispatch(setUser({ user: result.user, providerProfile: null }))
