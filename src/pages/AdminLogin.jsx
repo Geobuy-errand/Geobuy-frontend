@@ -4,9 +4,9 @@ import { useDispatch } from 'react-redux'
 import { useLoginMutation } from '../redux/services/authApi'
 import { setUser } from '../redux/slices/authSlice'
 import { toast } from 'react-hot-toast'
-import { FaEnvelope, FaLock, FaShieldAlt } from 'react-icons/fa'
+import { FaEnvelope, FaLock, FaShieldAlt, FaArrowLeft } from 'react-icons/fa'
 
-const Login = () => {
+const AdminLogin = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -15,7 +15,7 @@ const Login = () => {
   const navigate = useNavigate()
   const location = useLocation()
 
-  const from = location.state?.from?.pathname || '/'
+  const from = location.state?.from?.pathname || '/admin/dashboard'
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -25,20 +25,16 @@ const Login = () => {
       const result = await loginMutation({ email, password }).unwrap()
       
       if (result.user) {
-        dispatch(setUser({ user: result.user, providerProfile: null }))
-        toast.success('Login successful!')
-        
-        // Redirect based on role
-        const role = result.user.role
-        if (role === 'customer') {
-          navigate('/customer/dashboard')
-        } else if (role === 'provider') {
-          navigate('/provider/dashboard')
-        } else if (role === 'admin') {
-          navigate('/admin/dashboard')
-        } else {
-          navigate('/')
+        // Check if user is admin
+        if (result.user.role !== 'admin') {
+          toast.error('Access denied. Admin privileges required.')
+          setIsLoading(false)
+          return
         }
+
+        dispatch(setUser({ user: result.user, providerProfile: null }))
+        toast.success('Admin login successful!')
+        navigate('/admin/dashboard')
       }
     } catch (error) {
       toast.error(error.data?.message || 'Login failed. Please check your credentials.')
@@ -51,15 +47,22 @@ const Login = () => {
     <div className="min-h-[80vh] flex items-center justify-center py-12">
       <div className="w-full max-w-md">
         <div className="card">
+          {/* Admin Badge */}
+          <div className="flex justify-center mb-4">
+            <div className="bg-primary/10 p-3 rounded-full">
+              <FaShieldAlt className="text-3xl text-primary" />
+            </div>
+          </div>
+
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-text">Welcome Back</h1>
-            <p className="text-text-light mt-2">Sign in to your account</p>
+            <h1 className="text-3xl font-bold text-text">Admin Login</h1>
+            <p className="text-text-light mt-2">Access the admin dashboard</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-text-light mb-1">
-                Email Address
+                Admin Email
               </label>
               <div className="relative">
                 <FaEnvelope className="absolute left-3 top-1/2 -translate-y-1/2 text-text-lighter" />
@@ -68,7 +71,7 @@ const Login = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="input-field pl-10"
-                  placeholder="you@example.com"
+                  placeholder="admin@geobuy.com"
                   required
                 />
               </div>
@@ -76,7 +79,7 @@ const Login = () => {
 
             <div>
               <label className="block text-sm font-medium text-text-light mb-1">
-                Password
+                Admin Password
               </label>
               <div className="relative">
                 <FaLock className="absolute left-3 top-1/2 -translate-y-1/2 text-text-lighter" />
@@ -96,53 +99,28 @@ const Login = () => {
               disabled={isLoading}
               className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? 'Signing in...' : 'Sign In'}
+              {isLoading ? 'Signing in...' : 'Sign In as Admin'}
             </button>
-          </form>
 
-          <div className="mt-6 text-center">
-            <p className="text-sm text-text-light">
-              Don't have an account?{' '}
-              <Link to="/register/customer" className="text-primary hover:underline font-medium">
-                Sign up
-              </Link>
-            </p>
-            
-            <div className="mt-4 flex justify-center space-x-4">
-              <Link to="/register/customer" className="text-sm text-text-light hover:text-primary transition-colors">
-                Register as Customer
-              </Link>
-              <span className="text-text-lighter">|</span>
-              <Link to="/register/provider" className="text-sm text-text-light hover:text-primary transition-colors">
-                Register as Provider
+            <div className="mt-4 text-center">
+              <Link to="/login" className="text-text-light hover:text-primary transition-colors text-sm flex items-center justify-center space-x-2">
+                <FaArrowLeft className="text-xs" />
+                <span>Back to User Login</span>
               </Link>
             </div>
 
-            {/* Admin Login Link */}
-            <div className="mt-6 pt-4 border-t border-gray-200">
-              <Link 
-                to="/admin-login" 
-                className="text-sm text-text-light hover:text-primary transition-colors flex items-center justify-center space-x-2"
-              >
-                <FaShieldAlt className="text-xs" />
-                <span>Admin Login</span>
-              </Link>
-            </div>
-
-            {/* Demo Credentials */}
-            <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-              <p className="text-xs text-text-lighter">
-                <strong>Demo Credentials:</strong><br />
-                Customer: customer1@example.com / Customer123!<br />
-                Provider: provider1@example.com / Provider123!<br />
-                Admin: admin@geobuy.com / Admin123!
+            <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-xs text-yellow-700 text-center">
+                <strong>Demo Admin Credentials:</strong><br />
+                Email: admin@geobuy.com<br />
+                Password: Admin123!
               </p>
             </div>
-          </div>
+          </form>
         </div>
       </div>
     </div>
   )
 }
 
-export default Login
+export default AdminLogin

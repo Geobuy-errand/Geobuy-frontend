@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { FaHeadset, FaEnvelope, FaPhone, FaClock, FaComment, FaUser, FaPaperPlane } from 'react-icons/fa'
+import { FaHeadset, FaEnvelope, FaPhone, FaClock, FaComment, FaUser, FaPaperPlane, FaCheck } from 'react-icons/fa'
 
 const AdminSupport = () => {
   const [tickets, setTickets] = useState([

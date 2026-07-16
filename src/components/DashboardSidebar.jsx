@@ -1,5 +1,5 @@
 import React from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import {
   FaHome,
@@ -21,10 +21,12 @@ import {
   FaShieldAlt,
   FaClipboardList,
   FaTachometerAlt,
+  FaTimes,
 } from 'react-icons/fa'
 
 const DashboardSidebar = ({ open, onClose }) => {
   const { user } = useSelector((state) => state.auth)
+  const navigate = useNavigate()
 
   const getNavItems = () => {
     if (user?.role === 'customer') {
@@ -79,12 +81,19 @@ const DashboardSidebar = ({ open, onClose }) => {
 
   const navItems = getNavItems()
 
+  const handleNavigation = (to, e) => {
+    e.preventDefault()
+    navigate(to)
+    onClose()
+  }
+
   return (
     <>
-      {/* Mobile overlay */}
+      {/* Mobile overlay - with lighter darkening */}
       {open && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          className="fixed inset-0 z-40 md:hidden"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.2)' }}
           onClick={onClose}
         />
       )}
@@ -92,26 +101,34 @@ const DashboardSidebar = ({ open, onClose }) => {
       {/* Sidebar */}
       <aside
         className={`
-          fixed top-0 left-0 h-full w-64 bg-white shadow-large z-50 transform transition-transform duration-300
+          fixed top-0 left-0 h-full w-64 bg-white shadow-large z-50
+          transition-transform duration-300 ease-in-out
           ${open ? 'translate-x-0' : '-translate-x-full'}
-          md:translate-x-0 md:static md:z-auto
+          md:translate-x-0 md:static md:top-auto
         `}
       >
         <div className="flex flex-col h-full">
-          {/* Sidebar header
-          <div className="p-4 border-b border-gray-100">
+          {/* Sidebar header with close button */}
+          <div className="p-4 border-b border-gray-100 flex-shrink-0 flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <span className="text-xl font-bold text-primary">GEOBUY</span>
               <span className="text-xs text-text-light">Errands</span>
             </div>
-            <p className="text-xs text-text-light mt-1">
-              {user?.role === 'customer' && 'Customer Dashboard'}
-              {user?.role === 'provider' && 'Provider Dashboard'}
-              {user?.role === 'admin' && 'Admin Dashboard'}
-            </p>
-          </div> */}
+            <button
+              onClick={onClose}
+              className="md:hidden text-text-light hover:text-primary transition-colors"
+            >
+              <FaTimes size={20} />
+            </button>
+          </div>
 
-          {/* Navigation */}
+          <div className="p-4 border-b border-gray-100 flex-shrink-0">
+            <p className="text-xs text-text-light capitalize">
+              {user?.role || 'User'} Dashboard
+            </p>
+          </div>
+
+          {/* Navigation - Scrollable */}
           <nav className="flex-1 overflow-y-auto p-4">
             <ul className="space-y-1">
               {navItems.map((item) => (
@@ -126,7 +143,9 @@ const DashboardSidebar = ({ open, onClose }) => {
                       }
                     `}
                     onClick={() => {
-                      if (window.innerWidth < 768) onClose()
+                      if (window.innerWidth < 768) {
+                        onClose()
+                      }
                     }}
                   >
                     <item.icon size={18} />
@@ -138,9 +157,9 @@ const DashboardSidebar = ({ open, onClose }) => {
           </nav>
 
           {/* Sidebar footer */}
-          <div className="p-4 border-t border-gray-100">
+          <div className="p-4 border-t border-gray-100 flex-shrink-0">
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                 <span className="text-primary font-semibold text-sm">
                   {user?.fullName?.charAt(0) || 'U'}
                 </span>

@@ -61,6 +61,7 @@ import AdminSettings from './pages/admin/AdminSettings'
 import AdminVerificationQueue from './pages/admin/AdminVerificationQueue'
 
 import ProtectedRoute from './components/routes/ProtectedRoute'
+import AdminLogin from './pages/AdminLogin'
 
 function App() {
   return (
@@ -89,6 +90,7 @@ function App() {
           <Route path="faq" element={<FAQ />} />
           <Route path="contact" element={<Contact />} />
           <Route path="login" element={<Login />} />
+          <Route path="admin/login" element={<AdminLogin />} />
           <Route path="register/customer" element={<RegisterCustomer />} />
           <Route path="register/provider" element={<RegisterProvider />} />
           <Route path="privacy" element={<PrivacyPolicy />} />
