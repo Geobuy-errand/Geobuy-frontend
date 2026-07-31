@@ -4,7 +4,7 @@ import DashboardNavbar from '../DashboardNavbar'
 import DashboardSidebar from '../DashboardSidebar'
 
 const DashboardLayout = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">

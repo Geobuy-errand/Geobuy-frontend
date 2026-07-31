@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useDispatch } from 'react-redux'
-import { useLoginMutation } from '../redux/services/authApi'
+import { useAdminLoginMutation } from '../redux/services/authApi'
 import { setUser } from '../redux/slices/authSlice'
 import { toast } from 'react-hot-toast'
 import { FaEnvelope, FaLock, FaShieldAlt, FaArrowLeft } from 'react-icons/fa'
@@ -10,7 +10,7 @@ const AdminLogin = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [loginMutation] = useLoginMutation()
+  const [loginMutation] = useAdminLoginMutation()
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const location = useLocation()

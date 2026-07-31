@@ -18,6 +18,8 @@ import RegisterProvider from './pages/RegisterProvider'
 import PrivacyPolicy from './pages/PrivacyPolicy'
 import Terms from './pages/Terms'
 import NotFound from './pages/NotFound'
+import BookErrand from './pages/customer/BookErrand'
+import FindServices from './pages/customer/FindServices'
 
 // Customer Dashboard
 import CustomerDashboard from './pages/customer/CustomerDashboard'
@@ -31,6 +33,9 @@ import CustomerSettings from './pages/customer/Settings'
 import CustomerPayments from './pages/customer/CustomerPayments'
 import CustomerReviews from './pages/customer/CustomerReviews'
 import CustomerHelp from './pages/customer/CustomerHelp'
+import QuoteComparison from './pages/customer/QuoteComparison'
+import ServiceRequestDetail from './pages/customer/ServiceRequestDetail'
+import ErrandTracking from './pages/customer/ErrandTracking'
 
 // Provider Dashboard
 import ProviderDashboard from './pages/provider/ProviderDashboard'
@@ -95,6 +100,8 @@ function App() {
           <Route path="register/provider" element={<RegisterProvider />} />
           <Route path="privacy" element={<PrivacyPolicy />} />
           <Route path="terms" element={<Terms />} />
+          <Route path="book-errand" element={<BookErrand />} />
+          <Route path="find-services" element={<FindServices />} />
         </Route>
 
         {/* Customer Routes */}
@@ -115,6 +122,9 @@ function App() {
           <Route path="payments" element={<CustomerPayments />} />
           <Route path="reviews" element={<CustomerReviews />} />
           <Route path="help" element={<CustomerHelp />} />
+          <Route path="errand/:id" element={<ErrandTracking />} />
+          <Route path="service-request/:id" element={<ServiceRequestDetail />} />
+          <Route path="quote-comparison/:id" element={<QuoteComparison />} />
         </Route>
 
         {/* Provider Routes */}

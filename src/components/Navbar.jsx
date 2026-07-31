@@ -1,10 +1,10 @@
 import React, { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useSelector, useDispatch } from 'react-redux'
 import { useLogoutMutation } from '../redux/services/authApi'
 import { logout } from '../redux/slices/authSlice'
 import { toast } from 'react-hot-toast'
-import { FaBars, FaTimes, FaUser, FaUserCircle } from 'react-icons/fa'
+import { FaBars, FaTimes, FaUserCircle, FaShieldAlt, FaRunning, FaHandsHelping } from 'react-icons/fa'
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false)
@@ -13,6 +13,7 @@ const Navbar = () => {
   const [logoutMutation] = useLogoutMutation()
   const dispatch = useDispatch()
   const navigate = useNavigate()
+  const location = useLocation()
 
   const handleLogout = async () => {
     try {
@@ -33,6 +34,10 @@ const Navbar = () => {
     return '/login'
   }
 
+  const isActiveTab = (path) => {
+    return location.pathname.startsWith(path)
+  }
+
   return (
     <nav className="bg-white shadow-soft sticky top-0 z-50">
       <div className="container-custom">
@@ -44,18 +49,29 @@ const Navbar = () => {
 
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center space-x-6">
-            <Link to="/services" className="text-text-light hover:text-primary transition-colors">
-              Services
-            </Link>
-            <Link to="/pricing" className="text-text-light hover:text-primary transition-colors">
-              Pricing
-            </Link>
-            <Link to="/become-provider" className="text-text-light hover:text-primary transition-colors">
-              Become a Provider
-            </Link>
-            <Link to="/about" className="text-text-light hover:text-primary transition-colors">
-              About
-            </Link>
+            {/* Navigation Tabs */}
+            <div className="flex items-center space-x-1 bg-gray-50 rounded-xl p-1">
+              <Link
+                to="/book-errand"
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center space-x-2
+                  ${isActiveTab('/book-errand') 
+                    ? 'bg-primary text-white shadow-soft' 
+                    : 'text-text-light hover:bg-gray-100 hover:text-primary'}`}
+              >
+                <FaRunning />
+                <span>Book Errand</span>
+              </Link>
+              <Link
+                to="/find-services"
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center space-x-2
+                  ${isActiveTab('/find-services') 
+                    ? 'bg-primary text-white shadow-soft' 
+                    : 'text-text-light hover:bg-gray-100 hover:text-primary'}`}
+              >
+                <FaHandsHelping />
+                <span>Find Services</span>
+              </Link>
+            </div>
 
             {isAuthenticated ? (
               <div className="relative">
@@ -65,6 +81,11 @@ const Navbar = () => {
                 >
                   <FaUserCircle className="text-2xl" />
                   <span>{user?.fullName?.split(' ')[0]}</span>
+                  {user?.role === 'admin' && (
+                    <span className="text-xs bg-primary text-white px-2 py-0.5 rounded-full">
+                      Admin
+                    </span>
+                  )}
                 </button>
 
                 {isDropdownOpen && (
@@ -105,6 +126,9 @@ const Navbar = () => {
               </div>
             ) : (
               <div className="flex items-center space-x-3">
+                <Link to="/become-provider" className="text-text-light hover:text-primary transition-colors text-sm">
+                  Become a Provider
+                </Link>
                 <Link to="/login" className="text-text-light hover:text-primary transition-colors">
                   Login
                 </Link>
@@ -128,18 +152,31 @@ const Navbar = () => {
         {isOpen && (
           <div className="md:hidden py-4 border-t border-gray-100">
             <div className="flex flex-col space-y-3">
-              <Link to="/services" className="text-text-light hover:text-primary transition-colors">
-                Services
+              {/* Mobile Tabs */}
+              <Link
+                to="/book-errand"
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center space-x-2
+                  ${isActiveTab('/book-errand') 
+                    ? 'bg-primary text-white' 
+                    : 'text-text-light hover:bg-gray-100'}`}
+                onClick={() => setIsOpen(false)}
+              >
+                <FaRunning />
+                <span>Book Errand</span>
               </Link>
-              <Link to="/pricing" className="text-text-light hover:text-primary transition-colors">
-                Pricing
+              <Link
+                to="/find-services"
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center space-x-2
+                  ${isActiveTab('/find-services') 
+                    ? 'bg-primary text-white' 
+                    : 'text-text-light hover:bg-gray-100'}`}
+                onClick={() => setIsOpen(false)}
+              >
+                <FaHandsHelping />
+                <span>Find Services</span>
               </Link>
-              <Link to="/become-provider" className="text-text-light hover:text-primary transition-colors">
-                Become a Provider
-              </Link>
-              <Link to="/about" className="text-text-light hover:text-primary transition-colors">
-                About
-              </Link>
+
+              <hr className="border-gray-100" />
 
               {isAuthenticated ? (
                 <>
@@ -147,7 +184,10 @@ const Navbar = () => {
                     Dashboard
                   </Link>
                   <button
-                    onClick={handleLogout}
+                    onClick={() => {
+                      setIsOpen(false)
+                      handleLogout()
+                    }}
                     className="text-red-600 hover:text-red-700 transition-colors text-left"
                   >
                     Logout
@@ -155,6 +195,9 @@ const Navbar = () => {
                 </>
               ) : (
                 <div className="flex flex-col space-y-2 pt-2">
+                  <Link to="/become-provider" className="text-text-light hover:text-primary transition-colors">
+                    Become a Provider
+                  </Link>
                   <Link to="/login" className="text-text-light hover:text-primary transition-colors">
                     Login
                   </Link>

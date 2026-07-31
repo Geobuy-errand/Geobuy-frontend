@@ -41,6 +41,45 @@ export const serviceApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['Service'],
     }),
+    getServiceCategories: builder.query({
+      query: () => '/services/categories',
+      providesTags: ['Service'],
+    }),
+    getServiceProviders: builder.query({
+      query: (params) => `/services/providers?${new URLSearchParams(params)}`,
+      providesTags: ['Service'],
+    }),
+    createServiceRequest: builder.mutation({
+      query: (data) => ({
+        url: '/services/request',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: ['Service'],
+    }),
+    getServiceRequestById: builder.query({
+      query: (id) => `/services/request/${id}`,
+      providesTags: ['Service'],
+    }),
+    submitQuote: builder.mutation({
+      query: (data) => ({
+        url: '/services/quote',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: ['Service'],
+    }),
+    getQuotes: builder.query({
+      query: (requestId) => `/services/request/${requestId}/quotes`,
+      providesTags: ['Service'],
+    }),
+    selectQuote: builder.mutation({
+      query: (id) => ({
+        url: `/services/quote/${id}/select`,
+        method: 'PUT',
+      }),
+      invalidatesTags: ['Service'],
+    }),
   }),
   overrideExisting: true,
 })
@@ -53,4 +92,12 @@ export const {
   useCreateServiceMutation,
   useUpdateServiceMutation,
   useDeleteServiceMutation,
+  useGetServiceCategoriesQuery,
+  useGetServiceProvidersQuery,
+  useCreateServiceRequestMutation,
+  useGetServiceRequestByIdQuery,
+  useSubmitQuoteMutation,
+  useGetQuotesQuery,
+  useSelectQuoteMutation,
+
 } = serviceApi
