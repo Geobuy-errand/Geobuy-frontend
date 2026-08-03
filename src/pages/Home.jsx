@@ -1,6 +1,6 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { FaClock, FaShieldAlt, FaUserCheck, FaRocket, FaShoppingBag, FaBox, FaFileAlt, FaHeart } from 'react-icons/fa'
+import { FaClock, FaShieldAlt, FaUserCheck, FaRocket, FaShoppingBag, FaBox, FaFileAlt, FaHeart, FaRunning, FaHandsHelping } from 'react-icons/fa'
 
 const Home = () => {
   const features = [
@@ -49,6 +49,27 @@ const Home = () => {
     },
   ]
 
+  const exploreOptions = [
+    {
+      icon: FaRunning,
+      title: 'Book an Errand',
+      description: 'Get your errands done quickly by trusted local providers. Shopping, deliveries, pickups and more.',
+      link: '/book-errand',
+      color: 'bg-blue-50 border-blue-200',
+      iconColor: 'text-blue-600',
+      hoverColor: 'hover:border-blue-300',
+    },
+    {
+      icon: FaHandsHelping,
+      title: 'Find Local Services',
+      description: 'Connect with trusted local professionals for care, trades, personal services and more.',
+      link: '/find-services',
+      color: 'bg-purple-50 border-purple-200',
+      iconColor: 'text-purple-600',
+      hoverColor: 'hover:border-purple-300',
+    },
+  ]
+
   return (
     <div>
       {/* Hero Section */}
@@ -68,16 +89,50 @@ const Home = () => {
               <Link to="/register/customer" className="btn-primary">
                 Get Started
               </Link>
-              <Link to="/services" className="btn-outline">
-                Explore Services
+              <Link to="/book-errand" className="btn-outline">
+                Book an Errand
+              </Link>
+              <Link to="/find-services" className="btn-secondary">
+                Find Services
               </Link>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Services Preview Section */}
+      {/* Explore Options Section */}
       <section className="py-16 bg-gray-50">
+        <div className="container-custom">
+          <h2 className="section-title text-center">How Can We Help You?</h2>
+          <p className="section-subtitle text-center max-w-2xl mx-auto mb-12">
+            Choose the service that fits your needs. From quick errands to professional services.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+            {exploreOptions.map((option, index) => (
+              <Link
+                key={index}
+                to={option.link}
+                className={`card p-8 border-2 ${option.color} ${option.hoverColor} transition-all duration-300 hover:shadow-large group`}
+              >
+                <div className="flex flex-col items-center text-center">
+                  <div className={`w-16 h-16 rounded-full ${option.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}>
+                    <option.icon className={`text-3xl ${option.iconColor}`} />
+                  </div>
+                  <h3 className="text-xl font-bold text-text mb-2">{option.title}</h3>
+                  <p className="text-text-light text-sm leading-relaxed">{option.description}</p>
+                  <span className="mt-4 text-primary font-medium flex items-center space-x-1 group-hover:space-x-2 transition-all duration-300">
+                    <span>Learn More</span>
+                    <span className="inline-block transition-transform duration-300 group-hover:translate-x-1">→</span>
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Services Preview Section */}
+      <section className="py-16">
         <div className="container-custom">
           <h2 className="section-title text-center">What We Offer</h2>
           <p className="section-subtitle text-center max-w-2xl mx-auto mb-12">
@@ -94,11 +149,17 @@ const Home = () => {
               </div>
             ))}
           </div>
+          <div className="text-center mt-8">
+            <Link to="/services" className="text-primary hover:underline font-medium inline-flex items-center space-x-1">
+              <span>View all services</span>
+              <span className="inline-block">→</span>
+            </Link>
+          </div>
         </div>
       </section>
 
       {/* Why Choose GEOBUY Section */}
-      <section className="py-20">
+      <section className="py-20 bg-gray-50">
         <div className="container-custom">
           <h2 className="section-title text-center">Simple, reliable errands—right where you are</h2>
           <p className="section-subtitle text-center max-w-2xl mx-auto mb-12">
@@ -131,7 +192,7 @@ const Home = () => {
             <Link to="/register/customer" className="bg-white text-primary px-8 py-3 rounded-xl font-medium hover:bg-gray-100 transition-colors">
               I Need Help
             </Link>
-            <Link to="/become-provider" className="bg-amber-600 text-white px-8 py-3 rounded-xl font-medium hover:bg-secondary-dark transition-colors">
+            <Link to="/become-provider" className="bg-amber-600 text-white px-8 py-3 rounded-xl font-medium hover:bg-amber-700 transition-colors">
               I Want to Help
             </Link>
           </div>
