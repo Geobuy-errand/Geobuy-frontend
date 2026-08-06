@@ -1,13 +1,13 @@
-import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useDispatch, useSelector } from 'react-redux'
-import { useCreateErrandMutation } from '../../redux/services/errandApi'
-import { toast } from 'react-hot-toast'
-import { 
-  FaMapMarkerAlt, 
-  FaCalendar, 
-  FaClock, 
-  FaDollarSign, 
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { useCreateErrandMutation } from "../../redux/services/errandApi";
+import { toast } from "react-hot-toast";
+import {
+  FaMapMarkerAlt,
+  FaCalendar,
+  FaClock,
+  FaDollarSign,
   FaInfoCircle,
   FaBox,
   FaFileAlt,
@@ -17,35 +17,39 @@ import {
   FaShoppingBag,
   FaArrowRight,
   FaCalculator,
-  FaCheck
-} from 'react-icons/fa'
+  FaCheck,
+} from "react-icons/fa";
+
+const BASE_FEE = 3.5;
+const DISTANCE_FEE_PER_MILE = 1.6;
+const SUBSCRIPTION_DISCOUNT = 20;
 
 const BookErrand = () => {
-  const navigate = useNavigate()
-  const dispatch = useDispatch()
-  const { user } = useSelector((state) => state.auth)
-  const [createErrand, { isLoading }] = useCreateErrandMutation()
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { user } = useSelector((state) => state.auth);
+  const [createErrand, { isLoading }] = useCreateErrandMutation();
 
-  const [step, setStep] = useState(1)
+  const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
-    serviceType: '',
+    serviceType: "",
     pickup: {
-      address: '',
-      street: '',
-      town: '',
-      postcode: '',
-      instructions: '',
+      address: "",
+      street: "",
+      town: "",
+      postcode: "",
+      instructions: "",
     },
     dropoff: {
-      address: '',
-      street: '',
-      town: '',
-      postcode: '',
-      instructions: '',
+      address: "",
+      street: "",
+      town: "",
+      postcode: "",
+      instructions: "",
     },
-    taskDetails: '',
-    preferredDate: '',
-    preferredTime: '',
+    taskDetails: "",
+    preferredDate: "",
+    preferredTime: "",
     requiresLiveTracking: false,
     estimatedPrice: {
       baseFee: 0,
@@ -56,43 +60,68 @@ const BookErrand = () => {
       platformFee: 0,
       providerAmount: 0,
     },
-  })
+  });
 
-  const [hasDropoff, setHasDropoff] = useState(false)
-  const [distance, setDistance] = useState(0)
+  const [hasDropoff, setHasDropoff] = useState(false);
+  const [distance, setDistance] = useState(0);
 
   const serviceTypes = [
-    { id: 'parcel_delivery', label: 'Parcel Delivery', icon: FaBox, basePrice: 8 },
-    { id: 'document_delivery', label: 'Document Delivery', icon: FaFileAlt, basePrice: 10 },
-    { id: 'prescription_pickup', label: 'Prescription Pickup', icon: FaPills, basePrice: 12 },
-    { id: 'dry_cleaning_pickup', label: 'Dry Cleaning Pickup', icon: FaTshirt, basePrice: 8 },
-    { id: 'queue_waiting', label: 'Queue Waiting Service', icon: FaUsers, basePrice: 15 },
-    { id: 'shopping', label: 'Shopping', icon: FaShoppingBag, basePrice: 10 },
-    { id: 'custom', label: 'Custom Errand', icon: FaInfoCircle, basePrice: 0 },
-  ]
+    {
+      id: "parcel_delivery",
+      label: "Parcel Delivery",
+      icon: FaBox,
+      basePrice: 8,
+    },
+    {
+      id: "document_delivery",
+      label: "Document Delivery",
+      icon: FaFileAlt,
+      basePrice: 10,
+    },
+    {
+      id: "prescription_pickup",
+      label: "Prescription Pickup",
+      icon: FaPills,
+      basePrice: 12,
+    },
+    {
+      id: "dry_cleaning_pickup",
+      label: "Dry Cleaning Pickup",
+      icon: FaTshirt,
+      basePrice: 8,
+    },
+    {
+      id: "queue_waiting",
+      label: "Queue Waiting Service",
+      icon: FaUsers,
+      basePrice: 15,
+    },
+    { id: "shopping", label: "Shopping", icon: FaShoppingBag, basePrice: 10 },
+    { id: "custom", label: "Custom Errand", icon: FaInfoCircle, basePrice: 0 },
+  ];
 
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target
-    if (name.includes('.')) {
-      const [parent, child] = name.split('.')
-      setFormData(prev => ({
+    const { name, value, type, checked } = e.target;
+    if (name.includes(".")) {
+      const [parent, child] = name.split(".");
+      setFormData((prev) => ({
         ...prev,
         [parent]: {
           ...prev[parent],
           [child]: value,
         },
-      }))
+      }));
     } else {
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
-        [name]: type === 'checkbox' ? checked : value,
-      }))
+        [name]: type === "checkbox" ? checked : value,
+      }));
     }
-  }
+  };
 
   const handleServiceSelect = (serviceId) => {
-    const service = serviceTypes.find(s => s.id === serviceId)
-    setFormData(prev => ({
+    const service = serviceTypes.find((s) => s.id === serviceId);
+    setFormData((prev) => ({
       ...prev,
       serviceType: serviceId,
       estimatedPrice: {
@@ -104,51 +133,70 @@ const BookErrand = () => {
         platformFee: Math.round((service?.basePrice || 0) * 0.1 * 100) / 100,
         providerAmount: Math.round((service?.basePrice || 0) * 0.9 * 100) / 100,
       },
-    }))
-    setStep(2)
-  }
+    }));
+    setStep(2);
+  };
 
   const calculatePrice = () => {
-    // Simulate distance calculation (in real app, use Google Maps API)
-    const baseFee = formData.estimatedPrice.baseFee || 0
-    const distanceFee = distance * 0.5 // £0.50 per km
-    const total = baseFee + distanceFee
-    
-    setFormData(prev => ({
+    // In production, use Google Maps API to get actual distance
+    // For demo, generate a random distance between 1-20 miles
+    const distance = Math.round((Math.random() * 19 + 1) * 100) / 100;
+    setDistance(distance);
+
+    // Calculate pricing
+    const subtotal = distance * DISTANCE_FEE_PER_MILE + BASE_FEE;
+
+    // Check if user is subscribed (from Redux store)
+    const isSubscribed = user?.subscription?.isSubscribed || false;
+    let discountPercentage = 0;
+    let discountAmount = 0;
+    let total = subtotal;
+
+    if (isSubscribed) {
+      discountPercentage = SUBSCRIPTION_DISCOUNT;
+      discountAmount =
+        Math.round(subtotal * (SUBSCRIPTION_DISCOUNT / 100) * 100) / 100;
+      total = Math.round((subtotal - discountAmount) * 100) / 100;
+    }
+
+    setFormData((prev) => ({
       ...prev,
       estimatedPrice: {
-        ...prev.estimatedPrice,
-        distanceFee: Math.round(distanceFee * 100) / 100,
+        baseFee: BASE_FEE,
+        distanceFee: Math.round(distance * DISTANCE_FEE_PER_MILE * 100) / 100,
+        subtotal: Math.round(subtotal * 100) / 100,
+        discountPercentage,
+        discountAmount,
         total: Math.round(total * 100) / 100,
       },
       priceBreakdown: {
-        platformFee: Math.round(total * 0.1 * 100) / 100,
-        providerAmount: Math.round(total * 0.9 * 100) / 100,
+        platformFee: Math.round((total - discountAmount) * 0.1 * 100) / 100,
+        providerAmount: Math.round((total - discountAmount) * 0.9 * 100) / 100,
       },
-    }))
-  }
+    }));
+  };
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    
+    e.preventDefault();
+
     // Validate required fields
     if (!formData.pickup.address) {
-      toast.error('Please enter pickup address')
-      return
+      toast.error("Please enter pickup address");
+      return;
     }
     if (!formData.preferredDate || !formData.preferredTime) {
-      toast.error('Please select date and time')
-      return
+      toast.error("Please select date and time");
+      return;
     }
 
     try {
-      const result = await createErrand(formData).unwrap()
-      toast.success('Errand created successfully!')
-      navigate(`/customer/errand/${result.errand._id}`)
+      const result = await createErrand(formData).unwrap();
+      toast.success("Errand created successfully!");
+      navigate(`/customer/errand/${result.errand._id}`);
     } catch (error) {
-      toast.error(error.data?.message || 'Failed to create errand')
+      toast.error(error.data?.message || "Failed to create errand");
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -166,13 +214,22 @@ const BookErrand = () => {
           <div className="flex items-center mb-8">
             {[1, 2, 3, 4].map((num) => (
               <React.Fragment key={num}>
-                <div className={`flex items-center justify-center w-10 h-10 rounded-full font-semibold text-sm
-                  ${step >= num ? 'bg-primary text-white' : 'bg-gray-200 text-gray-500'}`}
+                <div
+                  className={`flex items-center justify-center w-10 h-10 rounded-full font-semibold text-sm
+                  ${
+                    step >= num
+                      ? "bg-primary text-white"
+                      : "bg-gray-200 text-gray-500"
+                  }`}
                 >
                   {num}
                 </div>
                 {num < 4 && (
-                  <div className={`flex-1 h-1 mx-2 ${step > num ? 'bg-primary' : 'bg-gray-200'}`} />
+                  <div
+                    className={`flex-1 h-1 mx-2 ${
+                      step > num ? "bg-primary" : "bg-gray-200"
+                    }`}
+                  />
                 )}
               </React.Fragment>
             ))}
@@ -181,7 +238,9 @@ const BookErrand = () => {
           {/* Step 1: Select Service */}
           {step === 1 && (
             <div className="card">
-              <h2 className="text-xl font-semibold text-text mb-4">What do you need help with?</h2>
+              <h2 className="text-xl font-semibold text-text mb-4">
+                What do you need help with?
+              </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {serviceTypes.map((service) => (
                   <button
@@ -194,7 +253,9 @@ const BookErrand = () => {
                         <service.icon className="text-primary" />
                       </div>
                       <div>
-                        <h3 className="font-medium text-text">{service.label}</h3>
+                        <h3 className="font-medium text-text">
+                          {service.label}
+                        </h3>
                         <p className="text-sm text-text-light">
                           From £{service.basePrice.toFixed(2)}
                         </p>
@@ -209,7 +270,9 @@ const BookErrand = () => {
           {/* Step 2: Location & Details */}
           {step === 2 && (
             <div className="card">
-              <h2 className="text-xl font-semibold text-text mb-4">Where and when?</h2>
+              <h2 className="text-xl font-semibold text-text mb-4">
+                Where and when?
+              </h2>
               <form className="space-y-4">
                 {/* Pickup Location */}
                 <div>
@@ -239,7 +302,9 @@ const BookErrand = () => {
                       onChange={(e) => setHasDropoff(e.target.checked)}
                       className="w-5 h-5 text-primary rounded border-gray-300 focus:ring-primary"
                     />
-                    <span className="text-sm text-text-light">Add dropoff location</span>
+                    <span className="text-sm text-text-light">
+                      Add dropoff location
+                    </span>
                   </label>
                 </div>
 
@@ -275,7 +340,7 @@ const BookErrand = () => {
                         value={formData.preferredDate}
                         onChange={handleChange}
                         className="input-field pl-10"
-                        min={new Date().toISOString().split('T')[0]}
+                        min={new Date().toISOString().split("T")[0]}
                         required
                       />
                     </div>
@@ -327,8 +392,8 @@ const BookErrand = () => {
                   <button
                     type="button"
                     onClick={() => {
-                      calculatePrice()
-                      setStep(3)
+                      calculatePrice();
+                      setStep(3);
                     }}
                     className="btn-primary flex items-center space-x-2"
                   >
@@ -343,54 +408,106 @@ const BookErrand = () => {
           {/* Step 3: Price Estimate */}
           {step === 3 && (
             <div className="card">
-              <h2 className="text-xl font-semibold text-text mb-4">Price Estimate</h2>
-              
+              <h2 className="text-xl font-semibold text-text mb-4">
+                Price Estimate
+              </h2>
+
               <div className="space-y-4">
+                {/* Distance Info */}
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-text-light">Distance</span>
+                    <span className="font-medium">{distance} miles</span>
+                  </div>
+                </div>
+
+                {/* Price Breakdown */}
                 <div className="bg-gray-50 rounded-xl p-4">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-text-light">Base Fee</span>
-                    <span className="font-medium">£{formData.estimatedPrice.baseFee.toFixed(2)}</span>
+                    <span className="font-medium">£{BASE_FEE.toFixed(2)}</span>
                   </div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-text-light">Distance Fee</span>
-                    <span className="font-medium">£{formData.estimatedPrice.distanceFee.toFixed(2)}</span>
+                    <span className="text-text-light">
+                      Distance Fee ({distance} miles × £
+                      {DISTANCE_FEE_PER_MILE.toFixed(2)})
+                    </span>
+                    <span className="font-medium">
+                      £{formData.estimatedPrice.distanceFee.toFixed(2)}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between pt-2 border-t border-gray-200">
-                    <span className="font-semibold text-text">Total</span>
-                    <span className="text-xl font-bold text-primary">£{formData.estimatedPrice.total.toFixed(2)}</span>
+                    <span className="font-medium text-text">Subtotal</span>
+                    <span className="font-semibold text-text">
+                      £{formData.estimatedPrice.subtotal.toFixed(2)}
+                    </span>
                   </div>
                 </div>
 
+                {/* Subscription Discount */}
+                {formData.estimatedPrice.discountPercentage > 0 && (
+                  <div className="bg-green-50 rounded-xl p-4 border border-green-200">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="font-medium text-green-700">
+                          🎉 Subscription Discount
+                        </span>
+                        <p className="text-xs text-green-600">
+                          20% off total charges
+                        </p>
+                      </div>
+                      <span className="font-bold text-green-700">
+                        -£{formData.estimatedPrice.discountAmount.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Total */}
                 <div className="bg-primary/5 rounded-xl p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-lg font-semibold text-text">
+                      Total
+                    </span>
+                    <span className="text-2xl font-bold text-primary">
+                      £{formData.estimatedPrice.total.toFixed(2)}
+                    </span>
+                  </div>
+                  {formData.estimatedPrice.discountPercentage > 0 && (
+                    <p className="text-xs text-text-lighter mt-1">
+                      * You saved £
+                      {formData.estimatedPrice.discountAmount.toFixed(2)} with
+                      your subscription
+                    </p>
+                  )}
+                </div>
+
+                <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
                   <h4 className="font-semibold text-text mb-2 flex items-center">
-                    <FaInfoCircle className="mr-2 text-primary" />
+                    <FaInfoCircle className="mr-2 text-blue-600" />
                     Price Breakdown
                   </h4>
-                  <div className="space-y-2 text-sm">
+                  <div className="space-y-1 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-text-light">Platform Fee (10%)</span>
-                      <span className="font-medium">£{formData.priceBreakdown.platformFee.toFixed(2)}</span>
+                      <span className="text-text-light">
+                        GEOBUY Platform Fee (10%)
+                      </span>
+                      <span className="font-medium">
+                        £{formData.priceBreakdown.platformFee.toFixed(2)}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-text-light">Provider Amount</span>
-                      <span className="font-medium text-primary">£{formData.priceBreakdown.providerAmount.toFixed(2)}</span>
+                      <span className="font-medium text-primary">
+                        £{formData.priceBreakdown.providerAmount.toFixed(2)}
+                      </span>
                     </div>
                     <p className="text-xs text-text-lighter mt-2">
-                      * You pay the platform fee now. Provider amount is paid directly to the provider.
+                      * Platform fee is charged by GEOBUY. Provider amount goes
+                      directly to the provider.
                     </p>
                   </div>
                 </div>
-
-                <label className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    name="requiresLiveTracking"
-                    checked={formData.requiresLiveTracking}
-                    onChange={handleChange}
-                    className="w-5 h-5 text-primary rounded border-gray-300 focus:ring-primary"
-                  />
-                  <span className="text-sm text-text-light">Enable live tracking</span>
-                </label>
 
                 <div className="flex justify-between pt-4 border-t border-gray-100">
                   <button
@@ -416,8 +533,10 @@ const BookErrand = () => {
           {/* Step 4: Confirm & Book */}
           {step === 4 && (
             <div className="card">
-              <h2 className="text-xl font-semibold text-text mb-4">Confirm Booking</h2>
-              
+              <h2 className="text-xl font-semibold text-text mb-4">
+                Confirm Booking
+              </h2>
+
               <div className="space-y-4">
                 <div className="bg-green-50 rounded-xl p-4 border border-green-200">
                   <div className="flex items-center space-x-2 text-green-700">
@@ -425,7 +544,8 @@ const BookErrand = () => {
                     <span className="font-medium">Almost there!</span>
                   </div>
                   <p className="text-sm text-green-600 mt-1">
-                    Your errand will be sent to nearby providers. You'll be notified when someone accepts.
+                    Your errand will be sent to nearby providers. You'll be
+                    notified when someone accepts.
                   </p>
                 </div>
 
@@ -433,28 +553,36 @@ const BookErrand = () => {
                   <div className="flex justify-between">
                     <span className="text-text-light">Service</span>
                     <span className="font-medium capitalize">
-                      {serviceTypes.find(s => s.id === formData.serviceType)?.label || formData.serviceType}
+                      {serviceTypes.find((s) => s.id === formData.serviceType)
+                        ?.label || formData.serviceType}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-text-light">Pickup</span>
-                    <span className="font-medium text-sm text-right">{formData.pickup.address}</span>
+                    <span className="font-medium text-sm text-right">
+                      {formData.pickup.address}
+                    </span>
                   </div>
                   {hasDropoff && (
                     <div className="flex justify-between">
                       <span className="text-text-light">Dropoff</span>
-                      <span className="font-medium text-sm text-right">{formData.dropoff.address}</span>
+                      <span className="font-medium text-sm text-right">
+                        {formData.dropoff.address}
+                      </span>
                     </div>
                   )}
                   <div className="flex justify-between">
                     <span className="text-text-light">Date & Time</span>
                     <span className="font-medium">
-                      {new Date(formData.preferredDate).toLocaleDateString()} at {formData.preferredTime}
+                      {new Date(formData.preferredDate).toLocaleDateString()} at{" "}
+                      {formData.preferredTime}
                     </span>
                   </div>
                   <div className="flex justify-between pt-2 border-t border-gray-200">
                     <span className="font-semibold text-text">Total</span>
-                    <span className="text-xl font-bold text-primary">£{formData.estimatedPrice.total.toFixed(2)}</span>
+                    <span className="text-xl font-bold text-primary">
+                      £{formData.estimatedPrice.total.toFixed(2)}
+                    </span>
                   </div>
                 </div>
 
@@ -463,7 +591,7 @@ const BookErrand = () => {
                   disabled={isLoading}
                   className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
                 >
-                  <span>{isLoading ? 'Booking...' : 'Confirm & Book'}</span>
+                  <span>{isLoading ? "Booking..." : "Confirm & Book"}</span>
                   <FaArrowRight />
                 </button>
               </div>
@@ -472,7 +600,7 @@ const BookErrand = () => {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default BookErrand
+export default BookErrand;

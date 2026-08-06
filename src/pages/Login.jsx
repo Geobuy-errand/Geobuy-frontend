@@ -119,7 +119,7 @@ const Login = () => {
             </div>
 
             {/* Admin Login Link */}
-            <div className="mt-6 pt-4 border-t border-gray-200">
+            {/* <div className="mt-6 pt-4 border-t border-gray-200">
               <Link 
                 to="/admin-login" 
                 className="text-sm text-text-light hover:text-primary transition-colors flex items-center justify-center space-x-2"
@@ -127,9 +127,9 @@ const Login = () => {
                 <FaShieldAlt className="text-xs" />
                 <span>Admin Login</span>
               </Link>
-            </div>
+            </div> */}
 
-            {/* Demo Credentials */}
+            {/* Demo Credentials
             <div className="mt-4 p-3 bg-gray-50 rounded-lg">
               <p className="text-xs text-text-lighter">
                 <strong>Demo Credentials:</strong><br />
@@ -137,7 +137,7 @@ const Login = () => {
                 Provider: provider1@example.com / Provider123!<br />
                 Admin: admin@geobuy.com / Admin123!
               </p>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>
