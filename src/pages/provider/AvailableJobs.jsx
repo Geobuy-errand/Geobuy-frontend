@@ -1,14 +1,39 @@
 import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { useGetAvailableJobsQuery, useAcceptBookingMutation } from '../../redux/services/bookingApi'
+import { useGetAvailableJobsQuery, useGetAvailableErrandsQuery, useAcceptBookingMutation } from '../../redux/services/bookingApi'
 import { toast } from 'react-hot-toast'
 import { FaMapMarkerAlt, FaDollarSign, FaClock, FaCheck, FaSearch } from 'react-icons/fa'
+import { useAcceptErrandMutation, useGetAvailableErrandsQuery } from '../../redux/services/errandApi'
+import { io } from 'socket.io-client'
 
 const AvailableJobs = () => {
-  const { data: jobs, isLoading } = useGetAvailableJobsQuery()
+  const [socket, setSocket] = useState(null)
+  const { data: jobs, isLoading, refetch } = useGetAvailableErrandsQuery()
+  const [acceptErrand] = useAcceptErrandMutation()
+
   const [acceptBooking, { isLoading: isAccepting }] = useAcceptBookingMutation()
   const [searchTerm, setSearchTerm] = useState('')
   const [filterService, setFilterService] = useState('all')
+
+  useEffect(() => {
+    const newSocket = io(import.meta.env.VITE_API_URL || 'http://localhost:5000', {
+      withCredentials: true,
+    })
+
+    newSocket.on('connect', () => {
+      console.log('✅ Socket connected')
+    })
+
+    newSocket.on('new-errand-available', (data) => {
+      toast.success(`📦 New errand available: ${data.serviceType} (${data.distance})`)
+      refetch()
+    })
+
+    setSocket(newSocket)
+
+    return () => {
+      newSocket.disconnect()
+    }
+  }, [])
 
   const handleAccept = async (jobId) => {
     try {
