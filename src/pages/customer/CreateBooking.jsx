@@ -20,7 +20,12 @@ import {
   FaRuler,
   FaSpinner,
   FaExclamationTriangle,
-  FaCheckCircle
+  FaCheckCircle,
+  FaWeightHanging,
+  FaClock as FaClockIcon,
+  FaBolt,
+  FaMapPin,
+  FaDollarSign,
 } from 'react-icons/fa'
 
 const CreateBooking = () => {
@@ -30,9 +35,21 @@ const CreateBooking = () => {
   const [createErrand, { isLoading }] = useCreateErrandMutation()
 
   // Pricing constants
-  const BASE_FEE = 3.50
-  const DISTANCE_FEE_PER_MILE = 1.60
+  const BASE_FEE = 3.99
   const SUBSCRIPTION_DISCOUNT = 20 // 20%
+  const HEAVY_ITEM_FEE = 2.99
+  const WAIT_TIME_FEE_PER_MIN = 0.30
+  const WAIT_TIME_FREE_MIN = 5
+  const PEAK_URGENT_FEE = 1.99
+  const EXTRA_STOP_FEE = 1.50
+
+  // Distance tier rates
+  const getDistanceRate = (miles) => {
+    if (miles <= 3) return 0.80
+    if (miles <= 10) return 0.70
+    if (miles <= 20) return 0.60
+    return 0.50
+  }
 
   const [formData, setFormData] = useState({
     serviceType: '',
@@ -56,6 +73,11 @@ const CreateBooking = () => {
     preferredDate: '',
     preferredTime: '',
     requiresLiveTracking: false,
+    // New pricing fields
+    isHeavyItem: false,
+    isPeakUrgent: false,
+    extraStopsCount: 0,
+    waitTimeMinutes: 0,
   })
 
   const [hasDropoff, setHasDropoff] = useState(false)
@@ -72,13 +94,21 @@ const CreateBooking = () => {
   const [priceEstimate, setPriceEstimate] = useState({
     baseFee: BASE_FEE,
     distanceFee: 0,
+    distanceRate: 0.80,
+    heavyItemFee: 0,
+    waitTimeFee: 0,
+    peakUrgentFee: 0,
+    extraStopsFee: 0,
     subtotal: 0,
     discountPercentage: 0,
     discountAmount: 0,
     total: 0,
+    platformFee: 0,
+    providerAmount: 0,
   })
   const [isSubscribed, setIsSubscribed] = useState(false)
   const [isDistanceCalculated, setIsDistanceCalculated] = useState(false)
+  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false)
 
   const serviceTypes = [
     { id: 'parcel_delivery', label: 'Parcel Delivery', icon: FaBox, description: 'Pick up and deliver parcels' },
@@ -97,44 +127,25 @@ const CreateBooking = () => {
     }
   }, [user])
 
-  // Log state changes for debugging
+  // Auto-calculate distance when addresses are selected
   useEffect(() => {
-    console.log('🔍 Addresses Valid:', addressesValid)
-    console.log('🔍 Distance:', distance)
-    console.log('🔍 Is Distance Calculated:', isDistanceCalculated)
-    console.log('🔍 Has Dropoff:', hasDropoff)
-    console.log('🔍 Pickup Address:', formData.pickup.address)
-    console.log('🔍 Dropoff Address:', formData.dropoff.address)
-  }, [addressesValid, distance, isDistanceCalculated, hasDropoff, formData.pickup.address, formData.dropoff.address])
-
-  // Auto-calculate distance when addresses are selected and valid
-  useEffect(() => {
-    console.log('🔄 Auto-calc effect triggered:', {
-      pickupValid: addressesValid.pickup,
-      dropoffValid: addressesValid.dropoff,
-      hasDropoff: hasDropoff,
-      pickupAddress: formData.pickup.address,
-      dropoffAddress: formData.dropoff.address,
-    })
-
     if (addressesValid.pickup && addressesValid.dropoff && hasDropoff && formData.pickup.address && formData.dropoff.address) {
-      console.log('✅ Both addresses valid, calculating distance...')
       const timer = setTimeout(() => {
         calculateRealDistance()
       }, 500)
-
       return () => clearTimeout(timer)
-    } else {
-      console.log('❌ Conditions not met for auto-calc')
     }
   }, [addressesValid.pickup, addressesValid.dropoff, hasDropoff, formData.pickup.address, formData.dropoff.address])
 
+  // Recalculate price when any pricing option changes
+  useEffect(() => {
+    if (distance > 0 && isDistanceCalculated) {
+      calculatePrice(distance)
+    }
+  }, [distance, isSubscribed, formData.isHeavyItem, formData.isPeakUrgent, formData.extraStopsCount, formData.waitTimeMinutes])
+
   const handleAddressSelect = (type, suggestion) => {
-    console.log('📍 Address selected:', type, suggestion)
-    
     const addressField = type === 'pickup' ? 'pickup' : 'dropoff'
-    
-    // Extract address components
     const addressParts = suggestion.displayName?.split(',') || []
     const street = addressParts[0]?.trim() || ''
     const town = addressParts[1]?.trim() || ''
@@ -155,25 +166,20 @@ const CreateBooking = () => {
       }
     }))
 
-    // Mark address as valid
     setAddressesValid(prev => ({
       ...prev,
       [type]: true,
     }))
 
-    // Reset distance when address changes
     setIsDistanceCalculated(false)
     setDistance(0)
     setDistanceText('')
     setDurationText('')
     setDistanceError(null)
 
-    // If both addresses are now valid, calculate distance
     if (type === 'pickup' && formData.dropoff.address) {
-      console.log('🔄 Pickup selected, dropoff exists, calculating...')
       setTimeout(() => calculateRealDistance(), 100)
     } else if (type === 'dropoff' && formData.pickup.address) {
-      console.log('🔄 Dropoff selected, pickup exists, calculating...')
       setTimeout(() => calculateRealDistance(), 100)
     }
   }
@@ -191,13 +197,11 @@ const CreateBooking = () => {
       }
     }))
 
-    // Reset validity when user types manually
     setAddressesValid(prev => ({
       ...prev,
       [type]: false,
     }))
     
-    // Reset distance
     setIsDistanceCalculated(false)
     setDistance(0)
     setDistanceText('')
@@ -219,46 +223,93 @@ const CreateBooking = () => {
       setPriceEstimate({
         baseFee: BASE_FEE,
         distanceFee: 0,
+        distanceRate: 0.80,
+        heavyItemFee: 0,
+        waitTimeFee: 0,
+        peakUrgentFee: 0,
+        extraStopsFee: 0,
         subtotal: 0,
         discountPercentage: 0,
         discountAmount: 0,
         total: 0,
+        platformFee: 0,
+        providerAmount: 0,
       })
       return
     }
     
-    // Calculate pricing
-    const distanceFee = distanceInMiles * DISTANCE_FEE_PER_MILE
-    const subtotal = distanceFee + BASE_FEE
+    // Get distance rate based on tier
+    const ratePerMile = getDistanceRate(distanceInMiles)
+    const distanceFee = Math.round((distanceInMiles * ratePerMile) * 100) / 100
     
+    // Calculate subtotal
+    let subtotal = BASE_FEE + distanceFee
+    
+    // Heavy item fee
+    let heavyItemFee = 0
+    if (formData.isHeavyItem) {
+      heavyItemFee = HEAVY_ITEM_FEE
+      subtotal += heavyItemFee
+    }
+    
+    // Wait time fee (first 5 minutes free)
+    let waitTimeFee = 0
+    if (formData.waitTimeMinutes > WAIT_TIME_FREE_MIN) {
+      const extraMinutes = formData.waitTimeMinutes - WAIT_TIME_FREE_MIN
+      waitTimeFee = Math.round((extraMinutes * WAIT_TIME_FEE_PER_MIN) * 100) / 100
+      subtotal += waitTimeFee
+    }
+    
+    // Peak/urgent fee
+    let peakUrgentFee = 0
+    if (formData.isPeakUrgent) {
+      peakUrgentFee = PEAK_URGENT_FEE
+      subtotal += peakUrgentFee
+    }
+    
+    // Extra stops fee
+    let extraStopsFee = 0
+    if (formData.extraStopsCount > 0) {
+      extraStopsFee = Math.round((formData.extraStopsCount * EXTRA_STOP_FEE) * 100) / 100
+      subtotal += extraStopsFee
+    }
+    
+    subtotal = Math.round(subtotal * 100) / 100
+    
+    // Apply subscription discount
     let discountPercentage = 0
     let discountAmount = 0
     let total = subtotal
-
+    
     if (isSubscribed) {
       discountPercentage = SUBSCRIPTION_DISCOUNT
-      discountAmount = Math.round(subtotal * (SUBSCRIPTION_DISCOUNT / 100) * 100) / 100
+      discountAmount = Math.round((subtotal * SUBSCRIPTION_DISCOUNT / 100) * 100) / 100
       total = Math.round((subtotal - discountAmount) * 100) / 100
     }
+    
+    // Revenue split
+    const platformFee = Math.round((total * 0.20) * 100) / 100 // 20%
+    const providerAmount = Math.round((total * 0.80) * 100) / 100 // 80%
 
     setPriceEstimate({
       baseFee: BASE_FEE,
-      distanceFee: Math.round(distanceFee * 100) / 100,
-      subtotal: Math.round(subtotal * 100) / 100,
-      discountPercentage,
-      discountAmount: Math.round(discountAmount * 100) / 100,
-      total: Math.round(total * 100) / 100,
+      distanceFee: distanceFee,
+      distanceRate: ratePerMile,
+      heavyItemFee: heavyItemFee,
+      waitTimeFee: waitTimeFee,
+      peakUrgentFee: peakUrgentFee,
+      extraStopsFee: extraStopsFee,
+      subtotal: subtotal,
+      discountPercentage: discountPercentage,
+      discountAmount: discountAmount,
+      total: total,
+      platformFee: platformFee,
+      providerAmount: providerAmount,
     })
   }
 
   const calculateRealDistance = async () => {
-    console.log('🚗 Calculating real distance...')
-    
     if (!formData.pickup.address || !formData.dropoff.address) {
-      console.log('❌ Missing addresses:', {
-        pickup: formData.pickup.address,
-        dropoff: formData.dropoff.address,
-      })
       return
     }
 
@@ -266,18 +317,11 @@ const CreateBooking = () => {
     setDistanceError(null)
 
     try {
-      console.log('📡 Calling getDistance with:', {
-        pickup: formData.pickup.address,
-        dropoff: formData.dropoff.address,
-      })
-      
       const result = await getDistance(
         formData.pickup.address,
         formData.dropoff.address,
         'DRIVING'
       )
-
-      console.log('✅ Distance result:', result)
 
       const distanceInMiles = result.distance.value
       setDistance(distanceInMiles)
@@ -288,13 +332,11 @@ const CreateBooking = () => {
       
       toast.success(`Distance: ${result.distance.text} (approx ${result.duration.text})`)
     } catch (error) {
-      console.error('❌ Distance calculation error:', error)
       setDistanceError(error.message || 'Could not calculate distance. Please check addresses.')
       setDistance(0)
       setDistanceText('')
       setDurationText('')
       setIsDistanceCalculated(false)
-      toast.error('Could not calculate distance. Please check both addresses are valid UK addresses.')
     } finally {
       setIsCalculating(false)
     }
@@ -309,9 +351,6 @@ const CreateBooking = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     
-    console.log('📝 Submitting form:', formData)
-    
-    // Validate required fields
     if (!formData.serviceType) {
       toast.error('Please select a service type')
       return
@@ -340,26 +379,17 @@ const CreateBooking = () => {
         distance: distance,
         distanceText: distanceText,
         duration: durationText,
-        estimatedPrice: {
-          baseFee: priceEstimate.baseFee,
-          distanceFee: priceEstimate.distanceFee,
-          subtotal: priceEstimate.subtotal,
-          discountPercentage: priceEstimate.discountPercentage,
-          discountAmount: priceEstimate.discountAmount,
-          total: priceEstimate.total,
-        },
         isSubscribed: isSubscribed,
       }).unwrap()
       
       toast.success('Errand created successfully!')
       navigate(`/customer/errand/${result.errand._id}`)
     } catch (error) {
-      console.error('❌ Create errand error:', error)
+      console.error('Create errand error:', error)
       toast.error(error.data?.message || 'Failed to create errand')
     }
   }
 
-  // Check if form is ready for submission
   const isFormReady = () => {
     return (
       !isLoading &&
@@ -418,7 +448,7 @@ const CreateBooking = () => {
           </div>
         </div>
 
-        {/* Pickup Location with Autocomplete */}
+        {/* Pickup Location */}
         <div className="card">
           <h2 className="text-lg font-semibold text-text mb-4">Pickup Location</h2>
           <div className="space-y-4">
@@ -463,7 +493,7 @@ const CreateBooking = () => {
           </div>
         </div>
 
-        {/* Dropoff Location with Autocomplete */}
+        {/* Dropoff Location */}
         <div className="card">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-text">Dropoff Location</h2>
@@ -472,7 +502,6 @@ const CreateBooking = () => {
               onClick={() => {
                 setHasDropoff(!hasDropoff)
                 if (!hasDropoff) {
-                  // Reset dropoff when removing
                   setFormData(prev => ({
                     ...prev,
                     dropoff: { ...prev.dropoff, address: '' }
@@ -532,7 +561,7 @@ const CreateBooking = () => {
           )}
         </div>
 
-        {/* Date & Time */}
+        {/* Schedule */}
         <div className="card">
           <h2 className="text-lg font-semibold text-text mb-4">Schedule</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -572,6 +601,84 @@ const CreateBooking = () => {
           </div>
         </div>
 
+        {/* Advanced Options */}
+        <div className="card">
+          <button
+            type="button"
+            onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
+            className="w-full flex items-center justify-between text-left"
+          >
+            <h2 className="text-lg font-semibold text-text">Additional Options</h2>
+            <span className="text-primary text-sm">
+              {showAdvancedOptions ? 'Hide' : 'Show'} options
+            </span>
+          </button>
+
+          {showAdvancedOptions && (
+            <div className="space-y-4 mt-4 pt-4 border-t border-gray-100">
+              {/* Heavy Item */}
+              <label className="flex items-center space-x-3">
+                <input
+                  type="checkbox"
+                  checked={formData.isHeavyItem}
+                  onChange={(e) => setFormData(prev => ({ ...prev, isHeavyItem: e.target.checked }))}
+                  className="w-5 h-5 text-primary rounded border-gray-300 focus:ring-primary"
+                />
+                <div>
+                  <span className="text-sm text-text-light">Heavy Item (over 5kg/large)</span>
+                  <p className="text-xs text-text-lighter">+£{HEAVY_ITEM_FEE.toFixed(2)}</p>
+                </div>
+              </label>
+
+              {/* Peak/Urgent */}
+              <label className="flex items-center space-x-3">
+                <input
+                  type="checkbox"
+                  checked={formData.isPeakUrgent}
+                  onChange={(e) => setFormData(prev => ({ ...prev, isPeakUrgent: e.target.checked }))}
+                  className="w-5 h-5 text-primary rounded border-gray-300 focus:ring-primary"
+                />
+                <div>
+                  <span className="text-sm text-text-light">Peak/Urgent (evenings/weekends/bad weather)</span>
+                  <p className="text-xs text-text-lighter">+£{PEAK_URGENT_FEE.toFixed(2)}</p>
+                </div>
+              </label>
+
+              {/* Extra Stops */}
+              <div>
+                <label className="flex items-center space-x-3">
+                  <span className="text-sm text-text-light">Extra Stops</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="10"
+                    value={formData.extraStopsCount}
+                    onChange={(e) => setFormData(prev => ({ ...prev, extraStopsCount: parseInt(e.target.value) || 0 }))}
+                    className="w-20 px-3 py-1 rounded-lg border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                  />
+                  <span className="text-xs text-text-lighter">× £{EXTRA_STOP_FEE.toFixed(2)} each</span>
+                </label>
+              </div>
+
+              {/* Wait Time */}
+              <div>
+                <label className="flex items-center space-x-3">
+                  <span className="text-sm text-text-light">Expected Wait Time</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="60"
+                    value={formData.waitTimeMinutes}
+                    onChange={(e) => setFormData(prev => ({ ...prev, waitTimeMinutes: parseInt(e.target.value) || 0 }))}
+                    className="w-20 px-3 py-1 rounded-lg border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                  />
+                  <span className="text-xs text-text-lighter">minutes (first 5 free, then £{WAIT_TIME_FEE_PER_MIN.toFixed(2)}/min)</span>
+                </label>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Price Estimate */}
         <div className="card">
           <h2 className="text-lg font-semibold text-text mb-4">Price Estimate</h2>
@@ -581,7 +688,6 @@ const CreateBooking = () => {
               <div className="text-center py-8">
                 <FaSpinner className="animate-spin text-primary text-3xl mx-auto mb-3" />
                 <p className="text-text-light">Calculating distance...</p>
-                <p className="text-xs text-text-lighter mt-1">Using OpenStreetMap routing</p>
               </div>
             ) : distanceError ? (
               <div className="bg-red-50 rounded-xl p-4 border border-red-200">
@@ -590,9 +696,6 @@ const CreateBooking = () => {
                   <div>
                     <p className="text-red-700 font-medium">Distance Calculation Failed</p>
                     <p className="text-red-600 text-sm">{distanceError}</p>
-                    <p className="text-xs text-red-500 mt-1">
-                      Tip: Please select addresses from the dropdown suggestions for best results.
-                    </p>
                   </div>
                 </div>
               </div>
@@ -605,14 +708,15 @@ const CreateBooking = () => {
                       <FaRuler className="text-primary" />
                       <span className="text-sm text-text-light">Distance</span>
                     </div>
-                    <span className="text-lg font-bold text-text">{distanceText || `${distance.toFixed(1)} miles`}</span>
+                    <span className="text-lg font-bold text-text">{distanceText}</span>
+                    <p className="text-xs text-text-lighter">Rate: £{priceEstimate.distanceRate.toFixed(2)}/mile</p>
                   </div>
                   <div className="bg-gray-50 rounded-xl p-3">
                     <div className="flex items-center space-x-2">
-                      <FaClock className="text-primary" />
+                      <FaClockIcon className="text-primary" />
                       <span className="text-sm text-text-light">Travel Time</span>
                     </div>
-                    <span className="text-lg font-bold text-text">{durationText || 'Calculating...'}</span>
+                    <span className="text-lg font-bold text-text">{durationText}</span>
                   </div>
                 </div>
 
@@ -623,9 +727,36 @@ const CreateBooking = () => {
                     <span className="font-medium">£{priceEstimate.baseFee.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-text-light">Distance Fee ({distance.toFixed(1)} × £{DISTANCE_FEE_PER_MILE.toFixed(2)})</span>
+                    <span className="text-text-light">Distance Fee ({distance.toFixed(1)} miles × £{priceEstimate.distanceRate.toFixed(2)})</span>
                     <span className="font-medium">£{priceEstimate.distanceFee.toFixed(2)}</span>
                   </div>
+                  
+                  {/* Additional Charges */}
+                  {formData.isHeavyItem && (
+                    <div className="flex justify-between text-orange-600">
+                      <span>Heavy Item Fee</span>
+                      <span>+£{priceEstimate.heavyItemFee.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {formData.waitTimeMinutes > 5 && (
+                    <div className="flex justify-between text-orange-600">
+                      <span>Wait Time ({formData.waitTimeMinutes - 5} extra mins)</span>
+                      <span>+£{priceEstimate.waitTimeFee.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {formData.isPeakUrgent && (
+                    <div className="flex justify-between text-orange-600">
+                      <span>Peak/Urgent Fee</span>
+                      <span>+£{priceEstimate.peakUrgentFee.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {formData.extraStopsCount > 0 && (
+                    <div className="flex justify-between text-orange-600">
+                      <span>Extra Stops ({formData.extraStopsCount})</span>
+                      <span>+£{priceEstimate.extraStopsFee.toFixed(2)}</span>
+                    </div>
+                  )}
+                  
                   <div className="flex justify-between pt-2 border-t border-gray-200">
                     <span className="font-medium text-text">Subtotal</span>
                     <span className="font-semibold text-text">£{priceEstimate.subtotal.toFixed(2)}</span>
@@ -638,7 +769,7 @@ const CreateBooking = () => {
                     <div className="flex items-center justify-between">
                       <div>
                         <span className="font-medium text-green-700">🎉 Subscription Discount</span>
-                        <p className="text-xs text-green-600">20% off total charges</p>
+                        <p className="text-xs text-green-600">20% off</p>
                       </div>
                       <span className="font-bold text-green-700">-£{priceEstimate.discountAmount.toFixed(2)}</span>
                     </div>
@@ -651,30 +782,23 @@ const CreateBooking = () => {
                     <span className="text-lg font-semibold text-text">Total</span>
                     <span className="text-2xl font-bold text-primary">£{priceEstimate.total.toFixed(2)}</span>
                   </div>
-                  {isSubscribed && (
-                    <p className="text-xs text-text-lighter mt-1">
-                      * You saved £{priceEstimate.discountAmount.toFixed(2)} with your subscription
-                    </p>
-                  )}
                 </div>
 
+                {/* Revenue Split */}
                 <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
                   <h4 className="font-semibold text-text mb-2 flex items-center">
-                    <FaInfoCircle className="mr-2 text-blue-600" />
-                    Price Breakdown
+                    <FaDollarSign className="mr-2 text-blue-600" />
+                    How It's Split
                   </h4>
                   <div className="space-y-1 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-text-light">GEOBUY Platform Fee (10%)</span>
-                      <span className="font-medium">£{(priceEstimate.total * 0.1).toFixed(2)}</span>
+                      <span className="text-text-light">GEOBUY Fee (20%)</span>
+                      <span className="font-medium text-blue-600">£{priceEstimate.platformFee.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-text-light">Provider Amount</span>
-                      <span className="font-medium text-primary">£{(priceEstimate.total * 0.9).toFixed(2)}</span>
+                      <span className="text-text-light">Provider Amount (80%)</span>
+                      <span className="font-medium text-primary">£{priceEstimate.providerAmount.toFixed(2)}</span>
                     </div>
-                    <p className="text-xs text-text-lighter mt-2">
-                      * Platform fee is charged by GEOBUY. Provider amount goes directly to the provider.
-                    </p>
                   </div>
                 </div>
               </>
@@ -684,15 +808,6 @@ const CreateBooking = () => {
                 <p className="text-xs text-text-lighter mt-2">
                   Distance will be calculated automatically when both addresses are selected
                 </p>
-                {addressesValid.pickup && !addressesValid.dropoff && (
-                  <p className="text-xs text-amber-600 mt-2">Waiting for dropoff address...</p>
-                )}
-                {!addressesValid.pickup && addressesValid.dropoff && (
-                  <p className="text-xs text-amber-600 mt-2">Waiting for pickup address...</p>
-                )}
-                {addressesValid.pickup && addressesValid.dropoff && !isDistanceCalculated && (
-                  <p className="text-xs text-amber-600 mt-2">Calculating distance... Please wait.</p>
-                )}
               </div>
             )}
           </div>
@@ -776,15 +891,6 @@ const CreateBooking = () => {
           <span>{isLoading ? 'Creating...' : 'Create Errand'}</span>
           <FaArrowRight />
         </button>
-
-        {/* Debug info - remove in production */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="text-xs text-text-lighter p-2 bg-gray-100 rounded">
-            <p>Debug: Distance={distance}, Calculated={String(isDistanceCalculated)}, Ready={String(isFormReady())}</p>
-            <p>Pickup: {addressesValid.pickup ? '✅' : '❌'} {formData.pickup.address?.substring(0, 30)}</p>
-            <p>Dropoff: {addressesValid.dropoff ? '✅' : '❌'} {formData.dropoff.address?.substring(0, 30)}</p>
-          </div>
-        )}
       </form>
     </div>
   )

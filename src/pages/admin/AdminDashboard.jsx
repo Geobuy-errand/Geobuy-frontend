@@ -1,11 +1,140 @@
-import React from 'react'
-import { Link } from 'react-router-dom'
+import React, { useState, useEffect, useRef } from 'react'
 import { useGetDashboardStatsQuery } from '../../redux/services/adminApi'
-import { FaUsers, FaBriefcase, FaClipboardList, FaMoneyBillWave, FaUserCheck, FaClock, FaArrowRight } from 'react-icons/fa'
+import { io } from 'socket.io-client'
+import { toast } from 'react-hot-toast'
+import { 
+  FaUsers, 
+  FaBriefcase, 
+  FaClipboardList, 
+  FaMoneyBillWave, 
+  FaUserCheck, 
+  FaClock,
+  FaBell,
+  FaDollarSign,
+  FaArrowRight,
+  FaCheckCircle,
+  FaSpinner,
+} from 'react-icons/fa'
 
 const AdminDashboard = () => {
-  const { data: stats, isLoading } = useGetDashboardStatsQuery()
+  const { data: stats, isLoading, refetch } = useGetDashboardStatsQuery()
+  const [socket, setSocket] = useState(null)
+  const [recentActivity, setRecentActivity] = useState([])
+  const [isConnected, setIsConnected] = useState(false)
+  const [pendingPayments, setPendingPayments] = useState([])
 
+  useEffect(() => {
+    // Connect to socket
+    const newSocket = io(import.meta.env.VITE_API_URL || 'http://localhost:5000', {
+      withCredentials: true,
+    })
+
+    newSocket.on('connect', () => {
+      console.log('✅ Admin socket connected')
+      setIsConnected(true)
+      newSocket.emit('admin-join')
+    })
+
+    // Listen for new errands
+    newSocket.on('new-errand-available', (data) => {
+      setRecentActivity(prev => [
+        { 
+          type: 'new_errand', 
+          message: `New errand #${data.errandId}`,
+          data: data,
+          timestamp: new Date(),
+        },
+        ...prev,
+      ])
+      toast.success(`📦 New errand available: ${data.serviceType}`)
+    })
+
+    // Listen for errand status updates
+    newSocket.on('errand-status-updated', (data) => {
+      setRecentActivity(prev => [
+        { 
+          type: 'status_update', 
+          message: `Errand #${data.errand.errandId} is now ${data.status}`,
+          data: data,
+          timestamp: new Date(),
+        },
+        ...prev,
+      ])
+      refetch()
+    })
+
+    // Listen for errand completions
+    newSocket.on('errand-completed', (data) => {
+      setRecentActivity(prev => [
+        { 
+          type: 'completed', 
+          message: `✅ Errand #${data.errandId} completed!`,
+          data: data,
+          timestamp: new Date(),
+        },
+        ...prev,
+      ])
+      toast.success(`✅ Errand ${data.errandId} completed!`)
+      refetch()
+    })
+
+    // Listen for payment confirmations
+    newSocket.on('payment-confirmed', (data) => {
+      setRecentActivity(prev => [
+        { 
+          type: 'payment', 
+          message: `💰 Payment of £${data.amount.toFixed(2)} confirmed`,
+          data: data,
+          timestamp: new Date(),
+        },
+        ...prev,
+      ])
+      setPendingPayments(prev => [...prev, data])
+      toast.success(`💰 New payment of £${data.amount.toFixed(2)}`)
+      refetch()
+    })
+
+    // Listen for funds released
+    newSocket.on('funds-released', (data) => {
+      setRecentActivity(prev => [
+        { 
+          type: 'payment_released', 
+          message: `💸 £${data.amount.toFixed(2)} released to provider`,
+          data: data,
+          timestamp: new Date(),
+        },
+        ...prev,
+      ])
+      toast.success(`💸 Funds released: £${data.amount.toFixed(2)}`)
+      refetch()
+    })
+
+    // Listen for new providers
+    newSocket.on('new-provider-registered', (data) => {
+      setRecentActivity(prev => [
+        { 
+          type: 'new_provider', 
+          message: `👤 New provider registered: ${data.name}`,
+          data: data,
+          timestamp: new Date(),
+        },
+        ...prev,
+      ])
+      toast.success(`👤 New provider: ${data.name}`)
+      refetch()
+    })
+
+    setSocket(newSocket)
+
+    return () => {
+      newSocket.disconnect()
+    }
+  }, [])
+
+  // Limit recent activity
+  const displayActivity = recentActivity.slice(0, 20)
+
+  // Get stats for dashboard
   const statCards = [
     {
       icon: FaUsers,
@@ -33,7 +162,7 @@ const AdminDashboard = () => {
     },
     {
       icon: FaMoneyBillWave,
-      label: 'Revenue',
+      label: 'Revenue (Today)',
       value: `£${stats?.totalRevenue?.toFixed(2) || '0.00'}`,
       color: 'text-primary',
       bg: 'bg-primary/10',
@@ -60,8 +189,18 @@ const AdminDashboard = () => {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-2xl md:text-3xl font-bold text-text">Admin Dashboard</h1>
-        <p className="text-text-light mt-1">Overview of your platform</p>
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-text">Admin Dashboard</h1>
+            <p className="text-text-light mt-1">Overview of your platform</p>
+          </div>
+          <div className="flex items-center space-x-2">
+            <span className={`text-sm ${isConnected ? 'text-green-600' : 'text-red-600'}`}>
+              {isConnected ? '🟢 Live' : '🔴 Disconnected'}
+            </span>
+            <FaBell className="text-text-light" />
+          </div>
+        </div>
       </div>
 
       {/* Stats */}
@@ -89,78 +228,78 @@ const AdminDashboard = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Bookings */}
-        <div className="card">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-text">Recent Bookings</h2>
-            <Link to="/admin/bookings" className="text-primary hover:underline text-sm flex items-center">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Recent Activity */}
+        <div className="lg:col-span-2 card">
+          <h2 className="text-lg font-semibold text-text mb-4">Live Activity Feed</h2>
+          <div className="space-y-3 max-h-[400px] overflow-y-auto">
+            {displayActivity.length === 0 ? (
+              <p className="text-text-light text-sm">No recent activity</p>
+            ) : (
+              displayActivity.map((activity, index) => (
+                <div key={index} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="flex-shrink-0 mt-0.5">
+                    {activity.type === 'new_errand' && <FaClipboardList className="text-blue-500" />}
+                    {activity.type === 'status_update' && <FaClock className="text-yellow-500" />}
+                    {activity.type === 'completed' && <FaCheckCircle className="text-green-500" />}
+                    {activity.type === 'payment' && <FaDollarSign className="text-green-500" />}
+                    {activity.type === 'payment_released' && <FaMoneyBillWave className="text-primary" />}
+                    {activity.type === 'new_provider' && <FaUserCheck className="text-purple-500" />}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm text-text">{activity.message}</p>
+                    <p className="text-xs text-text-lighter">
+                      {activity.timestamp.toLocaleTimeString()}
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Quick Actions & Stats */}
+        <div className="space-y-6">
+          {/* Pending Payments */}
+          <div className="card">
+            <h2 className="text-lg font-semibold text-text mb-4">Pending Payments</h2>
+            {pendingPayments.length === 0 ? (
+              <p className="text-text-light text-sm">No pending payments</p>
+            ) : (
+              <div className="space-y-2">
+                {pendingPayments.slice(0, 5).map((payment, index) => (
+                  <div key={index} className="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
+                    <span className="text-sm font-medium">£{payment.amount.toFixed(2)}</span>
+                    <span className="text-xs text-text-lighter">Waiting for release</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <Link to="/admin/payments" className="text-primary hover:underline text-sm mt-4 inline-block flex items-center">
               View all <FaArrowRight className="ml-1" />
             </Link>
           </div>
-          {isLoading ? (
-            <div className="space-y-3">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="skeleton h-16 rounded-xl"></div>
-              ))}
-            </div>
-          ) : stats?.recentBookings?.length === 0 ? (
-            <p className="text-text-light text-sm">No recent bookings</p>
-          ) : (
-            <div className="space-y-3">
-              {stats?.recentBookings?.slice(0, 5).map((booking) => (
-                <div key={booking._id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="font-medium text-text">{booking.serviceId?.name || booking.serviceType}</p>
-                    <p className="text-sm text-text-light">
-                      {booking.customerId?.fullName} → {booking.providerId?.fullName || 'Unassigned'}
-                    </p>
-                  </div>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium
-                    ${booking.status === 'completed' ? 'bg-green-100 text-green-700' :
-                      booking.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                      booking.status === 'cancelled' ? 'bg-red-100 text-red-700' :
-                      'bg-blue-100 text-blue-700'}`}
-                  >
-                    {booking.status}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
 
-        {/* User Growth */}
-        <div className="card">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-text">User Growth (Last 7 Days)</h2>
+          {/* System Stats */}
+          <div className="card">
+            <h2 className="text-lg font-semibold text-text mb-4">System Status</h2>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-text-light">Socket Connection</span>
+                <span className={isConnected ? 'text-green-600' : 'text-red-600'}>
+                  {isConnected ? 'Connected' : 'Disconnected'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-text-light">Active Sessions</span>
+                <span className="font-medium">{stats?.activeSessions || 0}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-text-light">Last Update</span>
+                <span className="text-text-light">{new Date().toLocaleTimeString()}</span>
+              </div>
+            </div>
           </div>
-          {isLoading ? (
-            <div className="space-y-3">
-              {[1, 2, 3, 4, 5, 6, 7].map((i) => (
-                <div key={i} className="skeleton h-8 rounded-xl"></div>
-              ))}
-            </div>
-          ) : stats?.userGrowth?.length === 0 ? (
-            <p className="text-text-light text-sm">No user growth data</p>
-          ) : (
-            <div className="space-y-2">
-              {stats?.userGrowth?.map((day) => (
-                <div key={day._id} className="flex items-center justify-between">
-                  <span className="text-sm text-text-light">{day._id}</span>
-                  <div className="flex-1 mx-4">
-                    <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-primary rounded-full"
-                        style={{ width: `${Math.min((day.count / 10) * 100, 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                  <span className="text-sm font-medium text-text">{day.count}</span>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       </div>
     </div>
