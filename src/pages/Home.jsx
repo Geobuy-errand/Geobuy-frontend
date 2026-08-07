@@ -54,7 +54,7 @@ const Home = () => {
       icon: FaRunning,
       title: 'Book an Errand',
       description: 'Get your errands done quickly by trusted local providers. Shopping, deliveries, pickups and more.',
-      link: '/book-errand',
+      link: '/customer/create-booking',
       color: 'bg-blue-50 border-blue-200',
       iconColor: 'text-blue-600',
       hoverColor: 'hover:border-blue-300',
@@ -89,7 +89,7 @@ const Home = () => {
               <Link to="/register/customer" className="btn-primary">
                 Get Started
               </Link>
-              <Link to="/book-errand" className="btn-outline">
+              <Link to="/customer/create-booking" className="btn-outline">
                 Book an Errand
               </Link>
               <Link to="/find-services" className="btn-secondary">

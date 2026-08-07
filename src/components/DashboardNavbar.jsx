@@ -1,29 +1,29 @@
-import React from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { useSelector, useDispatch } from 'react-redux'
-import { useLogoutMutation } from '../redux/services/authApi'
-import { logout } from '../redux/slices/authSlice'
-import { toast } from 'react-hot-toast'
-import { FaBars, FaBell, FaUserCircle, FaSignOutAlt } from 'react-icons/fa'
-import { useGetUnreadNotificationCountQuery } from '../redux/services/notificationApi'
+import React from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useSelector, useDispatch } from "react-redux";
+import { useLogoutMutation } from "../redux/services/authApi";
+import { logout } from "../redux/slices/authSlice";
+import { toast } from "react-hot-toast";
+import { FaBars, FaBell, FaUserCircle, FaSignOutAlt, FaComments } from "react-icons/fa";
+import { useGetUnreadNotificationCountQuery } from "../redux/services/notificationApi";
 
 const DashboardNavbar = ({ onMenuClick }) => {
-  const { user } = useSelector((state) => state.auth)
-  const [logoutMutation] = useLogoutMutation()
-  const dispatch = useDispatch()
-  const navigate = useNavigate()
-  const { data: unreadCount } = useGetUnreadNotificationCountQuery()
+  const { user } = useSelector((state) => state.auth);
+  const [logoutMutation] = useLogoutMutation();
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const { data: unreadCount } = useGetUnreadNotificationCountQuery();
 
   const handleLogout = async () => {
     try {
-      await logoutMutation().unwrap()
-      dispatch(logout())
-      toast.success('Logged out successfully')
-      navigate('/')
+      await logoutMutation().unwrap();
+      dispatch(logout());
+      toast.success("Logged out successfully");
+      navigate("/");
     } catch (error) {
-      toast.error('Logout failed')
+      toast.error("Logout failed");
     }
-  }
+  };
 
   return (
     <nav className="bg-white shadow-soft sticky top-0 z-40">
@@ -50,7 +50,19 @@ const DashboardNavbar = ({ onMenuClick }) => {
               <FaBell size={20} />
               {unreadCount?.count > 0 && (
                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                  {unreadCount.count > 9 ? '9+' : unreadCount.count}
+                  {unreadCount.count > 9 ? "9+" : unreadCount.count}
+                </span>
+              )}
+            </Link>
+            <Link
+              to={`/${user?.role}/chat-support`}
+              className="text-text-light hover:text-primary transition-colors relative"
+            >
+              <FaComments size={20} />
+              {/* Show unread badge */}
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                  {unreadCount > 9 ? "9+" : unreadCount}
                 </span>
               )}
             </Link>
@@ -72,7 +84,7 @@ const DashboardNavbar = ({ onMenuClick }) => {
         </div>
       </div>
     </nav>
-  )
-}
+  );
+};
 
-export default DashboardNavbar
+export default DashboardNavbar;

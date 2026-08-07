@@ -1,72 +1,73 @@
-import React from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { Toaster } from 'react-hot-toast'
-import Layout from './components/layout/Layout'
-import DashboardLayout from './components/layout/DashboardLayout'
+import React from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
+import Layout from "./components/layout/Layout";
+import DashboardLayout from "./components/layout/DashboardLayout";
 
 // Public Pages
-import Home from './pages/Home'
-import About from './pages/About'
-import Services from './pages/Services'
-import BecomeProvider from './pages/BecomeProvider'
-import Pricing from './pages/Pricing'
-import FAQ from './pages/FAQ'
-import Contact from './pages/Contact'
-import Login from './pages/Login'
-import RegisterCustomer from './pages/RegisterCustomer'
-import RegisterProvider from './pages/RegisterProvider'
-import PrivacyPolicy from './pages/PrivacyPolicy'
-import Terms from './pages/Terms'
-import NotFound from './pages/NotFound'
-import BookErrand from './pages/customer/BookErrand'
-import FindServices from './pages/customer/FindServices'
+import Home from "./pages/Home";
+import About from "./pages/About";
+import Services from "./pages/Services";
+import BecomeProvider from "./pages/BecomeProvider";
+import Pricing from "./pages/Pricing";
+import FAQ from "./pages/FAQ";
+import Contact from "./pages/Contact";
+import Login from "./pages/Login";
+import RegisterCustomer from "./pages/RegisterCustomer";
+import RegisterProvider from "./pages/RegisterProvider";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import Terms from "./pages/Terms";
+import NotFound from "./pages/NotFound";
+import BookErrand from "./pages/customer/BookErrand";
+import FindServices from "./pages/customer/FindServices";
 
 // Customer Dashboard
-import CustomerDashboard from './pages/customer/CustomerDashboard'
-import CreateBooking from './pages/customer/CreateBooking'
-import BookingHistory from './pages/customer/BookingHistory'
-import BookingDetails from './pages/customer/BookingDetails'
-import CustomerMessages from './pages/customer/CustomerMessages'
-import CustomerNotifications from './pages/customer/CustomerNotification'
-import CustomerProfile from './pages/customer/CustomerProfile'
-import CustomerSettings from './pages/customer/Settings'
-import CustomerPayments from './pages/customer/CustomerPayments'
-import CustomerReviews from './pages/customer/CustomerReviews'
-import CustomerHelp from './pages/customer/CustomerHelp'
-import QuoteComparison from './pages/customer/QuoteComparison'
-import ServiceRequestDetail from './pages/customer/ServiceRequestDetail'
-import ErrandTracking from './pages/customer/ErrandTracking'
+import CustomerDashboard from "./pages/customer/CustomerDashboard";
+import CreateBooking from "./pages/customer/CreateBooking";
+import BookingHistory from "./pages/customer/BookingHistory";
+import BookingDetails from "./pages/customer/BookingDetails";
+import CustomerMessages from "./pages/customer/CustomerMessages";
+import CustomerNotifications from "./pages/customer/CustomerNotification";
+import CustomerProfile from "./pages/customer/CustomerProfile";
+import CustomerSettings from "./pages/customer/Settings";
+import CustomerPayments from "./pages/customer/CustomerPayments";
+import CustomerReviews from "./pages/customer/CustomerReviews";
+import CustomerHelp from "./pages/customer/CustomerHelp";
+import QuoteComparison from "./pages/customer/QuoteComparison";
+import ServiceRequestDetail from "./pages/customer/ServiceRequestDetail";
+import ErrandTracking from "./pages/customer/ErrandTracking";
 
 // Provider Dashboard
-import ProviderDashboard from './pages/provider/ProviderDashboard'
-import AvailableJobs from './pages/provider/AvailableJobs'
-import AcceptedJobs from './pages/provider/AcceptedJobs'
-import JobDetails from './pages/provider/JobDetails'
-import ProviderMessages from './pages/provider/ProviderMessages'
-import ProviderNotifications from './pages/provider/ProviderNotification'
-import ProviderProfile from './pages/provider/ProviderProfile'
-import ProviderSettings from './pages/provider/ProviderSettings'
-import ProviderReviews from './pages/provider/ProviderReviews'
-import ProviderWallet from './pages/provider/ProviderWallet'
-import ProviderWithdrawals from './pages/provider/ProviderWallet'
-import ProviderAvailability from './pages/provider/ProviderAvailability'
-import ProviderVerification from './pages/provider/ProviderVerification'
+import ProviderDashboard from "./pages/provider/ProviderDashboard";
+import AvailableJobs from "./pages/provider/AvailableJobs";
+import AcceptedJobs from "./pages/provider/AcceptedJobs";
+import JobDetails from "./pages/provider/JobDetails";
+import ProviderMessages from "./pages/provider/ProviderMessages";
+import ProviderNotifications from "./pages/provider/ProviderNotification";
+import ProviderProfile from "./pages/provider/ProviderProfile";
+import ProviderSettings from "./pages/provider/ProviderSettings";
+import ProviderReviews from "./pages/provider/ProviderReviews";
+import ProviderWallet from "./pages/provider/ProviderWallet";
+import ProviderWithdrawals from "./pages/provider/ProviderWallet";
+import ProviderAvailability from "./pages/provider/ProviderAvailability";
+import ProviderVerification from "./pages/provider/ProviderVerification";
 
 // Admin Dashboard
-import AdminDashboard from './pages/admin/AdminDashboard'
-import AdminUsers from './pages/admin/AdminUsers'
-import AdminProviders from './pages/admin/AdminProviders'
-import AdminBookings from './pages/admin/AdminBookings'
-import AdminPayments from './pages/admin/AdminPayments'
-import AdminReviews from './pages/admin/AdminReviews'
-import AdminSupport from './pages/admin/AdminSupport'
-import AdminReports from './pages/admin/AdminReports'
-import AdminAnalytics from './pages/admin/AdminAnalytics'
-import AdminSettings from './pages/admin/AdminSettings'
-import AdminVerificationQueue from './pages/admin/AdminVerificationQueue'
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminUsers from "./pages/admin/AdminUsers";
+import AdminProviders from "./pages/admin/AdminProviders";
+import AdminBookings from "./pages/admin/AdminBookings";
+import AdminPayments from "./pages/admin/AdminPayments";
+import AdminReviews from "./pages/admin/AdminReviews";
+import AdminSupport from "./pages/admin/AdminSupport";
+import AdminReports from "./pages/admin/AdminReports";
+import AdminAnalytics from "./pages/admin/AdminAnalytics";
+import AdminSettings from "./pages/admin/AdminSettings";
+import AdminVerificationQueue from "./pages/admin/AdminVerificationQueue";
 
-import ProtectedRoute from './components/routes/ProtectedRoute'
-import AdminLogin from './pages/AdminLogin'
+import ProtectedRoute from "./components/routes/ProtectedRoute";
+import AdminLogin from "./pages/AdminLogin";
+import ChatSupport from "./components/chat/ChatSupport";
 
 function App() {
   return (
@@ -76,11 +77,11 @@ function App() {
         toastOptions={{
           duration: 4000,
           style: {
-            background: '#fff',
-            color: '#1A1A1A',
-            borderRadius: '12px',
-            padding: '16px',
-            boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+            background: "#fff",
+            color: "#1A1A1A",
+            borderRadius: "12px",
+            padding: "16px",
+            boxShadow: "0 8px 30px rgba(0,0,0,0.12)",
           },
         }}
       />
@@ -105,11 +106,14 @@ function App() {
         </Route>
 
         {/* Customer Routes */}
-        <Route path="/customer" element={
-          <ProtectedRoute allowedRoles={['customer']}>
-            <DashboardLayout />
-          </ProtectedRoute>
-        }>
+        <Route
+          path="/customer"
+          element={
+            <ProtectedRoute allowedRoles={["customer"]}>
+              <DashboardLayout />
+            </ProtectedRoute>
+          }
+        >
           <Route index element={<CustomerDashboard />} />
           <Route path="dashboard" element={<CustomerDashboard />} />
           <Route path="create-booking" element={<CreateBooking />} />
@@ -123,16 +127,23 @@ function App() {
           <Route path="reviews" element={<CustomerReviews />} />
           <Route path="help" element={<CustomerHelp />} />
           <Route path="errand/:id" element={<ErrandTracking />} />
-          <Route path="service-request/:id" element={<ServiceRequestDetail />} />
+          <Route
+            path="service-request/:id"
+            element={<ServiceRequestDetail />}
+          />
           <Route path="quote-comparison/:id" element={<QuoteComparison />} />
+          <Route path="/customer/chat-support" element={<ChatSupport />} />
         </Route>
 
         {/* Provider Routes */}
-        <Route path="/provider" element={
-          <ProtectedRoute allowedRoles={['provider']}>
-            <DashboardLayout />
-          </ProtectedRoute>
-        }>
+        <Route
+          path="/provider"
+          element={
+            <ProtectedRoute allowedRoles={["provider"]}>
+              <DashboardLayout />
+            </ProtectedRoute>
+          }
+        >
           <Route index element={<ProviderDashboard />} />
           <Route path="dashboard" element={<ProviderDashboard />} />
           <Route path="available-jobs" element={<AvailableJobs />} />
@@ -147,14 +158,18 @@ function App() {
           <Route path="withdrawals" element={<ProviderWithdrawals />} />
           <Route path="availability" element={<ProviderAvailability />} />
           <Route path="verification" element={<ProviderVerification />} />
+          <Route path="/provider/chat-support" element={<ChatSupport />} />
         </Route>
 
         {/* Admin Routes */}
-        <Route path="/admin" element={
-          <ProtectedRoute allowedRoles={['admin']}>
-            <DashboardLayout />
-          </ProtectedRoute>
-        }>
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <DashboardLayout />
+            </ProtectedRoute>
+          }
+        >
           <Route index element={<AdminDashboard />} />
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="users" element={<AdminUsers />} />
@@ -167,13 +182,14 @@ function App() {
           <Route path="analytics" element={<AdminAnalytics />} />
           <Route path="settings" element={<AdminSettings />} />
           <Route path="verification" element={<AdminVerificationQueue />} />
+          <Route path="/admin/chat-support" element={<ChatSupport />} />
         </Route>
 
         {/* 404 */}
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
-  )
+  );
 }
 
-export default App
+export default App;

@@ -1,12 +1,21 @@
-import React, { useState } from 'react'
-import { useGetAvailableJobsQuery, useGetAvailableErrandsQuery, useAcceptBookingMutation } from '../../redux/services/bookingApi'
+import React, { useState, useEffect } from 'react'
+// 1. Pull booking-specific endpoints from bookingApi
+import { 
+  useGetAvailableJobsQuery, 
+  useAcceptBookingMutation 
+} from '../../redux/services/bookingApi'
 import { toast } from 'react-hot-toast'
 import { FaMapMarkerAlt, FaDollarSign, FaClock, FaCheck, FaSearch } from 'react-icons/fa'
-import { useAcceptErrandMutation, useGetAvailableErrandsQuery } from '../../redux/services/errandApi'
+import { 
+  useAcceptErrandMutation, 
+  useGetAvailableErrandsQuery 
+} from '../../redux/services/errandApi'
 import { io } from 'socket.io-client'
 
 const AvailableJobs = () => {
   const [socket, setSocket] = useState(null)
+  
+  // This hook now cleanly resolves from errandApi without collision!
   const { data: jobs, isLoading, refetch } = useGetAvailableErrandsQuery()
   const [acceptErrand] = useAcceptErrandMutation()
 
@@ -33,7 +42,7 @@ const AvailableJobs = () => {
     return () => {
       newSocket.disconnect()
     }
-  }, [])
+  }, [refetch])
 
   const handleAccept = async (jobId) => {
     try {
