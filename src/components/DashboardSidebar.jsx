@@ -39,6 +39,7 @@ const DashboardSidebar = ({ open, onClose }) => {
         { to: '/customer/payments', icon: FaCreditCard, label: 'Payments' },
         { to: '/customer/reviews', icon: FaStar, label: 'Reviews' },
         { to: '/customer/profile', icon: FaUser, label: 'Profile' },
+        { to: '/customer/chat-support', icon: FaComments, label: 'Chat Support' },
         { to: '/customer/settings', icon: FaCog, label: 'Settings' },
         { to: '/customer/help', icon: FaQuestionCircle, label: 'Help Center' },
       ]
@@ -56,6 +57,7 @@ const DashboardSidebar = ({ open, onClose }) => {
         { to: '/provider/reviews', icon: FaStar, label: 'Reviews' },
         { to: '/provider/availability', icon: FaCheckCircle, label: 'Availability' },
         { to: '/provider/verification', icon: FaShieldAlt, label: 'Verification' },
+        { to: '/provider/chat-support', icon: FaComments, label: 'Chat Support' },
         { to: '/provider/profile', icon: FaUser, label: 'Profile' },
         { to: '/provider/settings', icon: FaCog, label: 'Settings' },
       ]
@@ -110,22 +112,12 @@ const DashboardSidebar = ({ open, onClose }) => {
         <div className="flex flex-col h-full">
           {/* Sidebar header with close button */}
           <div className="p-4 border-b border-gray-100 flex-shrink-0 flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <span className="text-xl font-bold text-primary">GEOBUY</span>
-              <span className="text-xs text-text-light">Errands</span>
-            </div>
             <button
               onClick={onClose}
               className="md:hidden text-text-light hover:text-primary transition-colors"
             >
               <FaTimes size={20} />
             </button>
-          </div>
-
-          <div className="p-4 border-b border-gray-100 flex-shrink-0">
-            <p className="text-xs text-text-light capitalize">
-              {user?.role || 'User'} Dashboard
-            </p>
           </div>
 
           {/* Navigation - Scrollable */}

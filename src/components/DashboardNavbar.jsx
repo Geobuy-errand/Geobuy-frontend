@@ -74,7 +74,7 @@ const DashboardNavbar = ({ onMenuClick }) => {
               <FaUserCircle className="text-2xl text-text-light" />
               <button
                 onClick={handleLogout}
-                className="text-text-light hover:text-red-500 transition-colors"
+                className="text-text-light hover:text-red-500 transition-colors cursor-pointer"
                 title="Logout"
               >
                 <FaSignOutAlt size={18} />
