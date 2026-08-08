@@ -68,6 +68,8 @@ import AdminVerificationQueue from "./pages/admin/AdminVerificationQueue";
 import ProtectedRoute from "./components/routes/ProtectedRoute";
 import AdminLogin from "./pages/AdminLogin";
 import ChatSupport from "./components/chat/ChatSupport";
+import ChatEscalation from "./pages/admin/ChatEscalation";
+import ChatbotWidget from "./components/chat/ChatbotWidget";
 
 function App() {
   return (
@@ -85,6 +87,7 @@ function App() {
           },
         }}
       />
+      <ChatbotWidget />
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<Layout />}>
@@ -183,6 +186,17 @@ function App() {
           <Route path="settings" element={<AdminSettings />} />
           <Route path="verification" element={<AdminVerificationQueue />} />
           <Route path="/admin/chat-support" element={<ChatSupport />} />
+        </Route>
+
+        <Route
+          path="/admin/chat-escalation"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <DashboardLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<ChatEscalation />} />
         </Route>
 
         {/* 404 */}
