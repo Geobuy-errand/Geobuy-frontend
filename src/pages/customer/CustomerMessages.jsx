@@ -1,15 +1,76 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useGetBookingsQuery } from '../../redux/services/bookingApi'
-import { useGetMessagesQuery } from '../../redux/services/messageApi'
-import { FaComments, FaChevronRight } from 'react-icons/fa'
+import { useGetMessagesQuery, useSendMessageMutation } from '../../redux/services/messageApi'
+import { useSelector } from 'react-redux'
+import { toast } from 'react-hot-toast'
+import { io } from 'socket.io-client'
+import { FaComments, FaChevronRight, FaPaperPlane, FaSpinner } from 'react-icons/fa'
 
 const CustomerMessages = () => {
+  const { user } = useSelector((state) => state.auth)
   const { data: bookings } = useGetBookingsQuery()
   const [selectedBooking, setSelectedBooking] = useState(null)
-  const { data: messages } = useGetMessagesQuery(selectedBooking?._id, {
+  const [newMessage, setNewMessage] = useState('')
+  const [sendMessage, { isLoading: isSending }] = useSendMessageMutation()
+  const [socket, setSocket] = useState(null)
+  const messagesEndRef = useRef(null)
+  
+  const { data: messages, refetch } = useGetMessagesQuery(selectedBooking?._id, {
     skip: !selectedBooking,
   })
+
+  // Socket connection for real-time messages
+  useEffect(() => {
+    const newSocket = io(import.meta.env.VITE_API_URL || 'http://localhost:5000', {
+      withCredentials: true,
+    })
+
+    newSocket.on('connect', () => {
+      console.log('Messages socket connected')
+    })
+
+    newSocket.on('new-message', (data) => {
+      if (data.bookingId === selectedBooking?._id) {
+        refetch()
+        scrollToBottom()
+      }
+    })
+
+    setSocket(newSocket)
+
+    return () => {
+      newSocket.disconnect()
+    }
+  }, [selectedBooking])
+
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages])
+
+  const scrollToBottom = () => {
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }, 100)
+  }
+
+  const handleSendMessage = async (e) => {
+    e.preventDefault()
+    if (!newMessage.trim() || !selectedBooking) return
+
+    try {
+      await sendMessage({
+        bookingId: selectedBooking._id,
+        content: newMessage.trim(),
+        receiverId: selectedBooking.providerId?._id,
+      }).unwrap()
+      setNewMessage('')
+      refetch()
+      scrollToBottom()
+    } catch (error) {
+      toast.error(error.data?.message || 'Failed to send message')
+    }
+  }
 
   // Get bookings that have messages or are active
   const activeBookings = bookings?.filter(b => 
@@ -27,7 +88,7 @@ const CustomerMessages = () => {
           {activeBookings.length === 0 ? (
             <p className="text-text-light text-sm">No active bookings to message about</p>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-2 max-h-[400px] overflow-y-auto">
               {activeBookings.map((booking) => (
                 <button
                   key={booking._id}
@@ -56,7 +117,7 @@ const CustomerMessages = () => {
         </div>
 
         {/* Messages */}
-        <div className="card md:col-span-2">
+        <div className="card md:col-span-2 flex flex-col">
           {selectedBooking ? (
             <>
               <div className="border-b border-gray-100 pb-3 mb-4">
@@ -66,35 +127,62 @@ const CustomerMessages = () => {
                 <p className="text-sm text-text-light">
                   #{selectedBooking.bookingId} - {selectedBooking.status}
                 </p>
+                {selectedBooking.providerId && (
+                  <p className="text-sm text-text-light">
+                    Provider: {selectedBooking.providerId.fullName}
+                  </p>
+                )}
               </div>
-              <div className="space-y-3 max-h-96 overflow-y-auto">
+              
+              {/* Messages List */}
+              <div className="flex-1 space-y-3 max-h-[300px] overflow-y-auto mb-4">
                 {messages?.length === 0 ? (
                   <p className="text-text-light text-center py-8">
                     No messages yet. Start the conversation!
                   </p>
                 ) : (
-                  messages?.map((msg) => (
-                    <div key={msg._id} className="flex items-start space-x-3">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <span className="text-primary font-semibold text-sm">
-                          {msg.senderId.fullName?.charAt(0)}
-                        </span>
-                      </div>
-                      <div>
-                        <div className="flex items-center space-x-2">
-                          <span className="font-medium text-text text-sm">
-                            {msg.senderId.fullName}
-                          </span>
-                          <span className="text-xs text-text-lighter">
-                            {new Date(msg.createdAt).toLocaleTimeString()}
-                          </span>
+                  messages?.map((msg) => {
+                    const isOwn = msg.senderId._id === user._id
+                    return (
+                      <div
+                        key={msg._id}
+                        className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
+                      >
+                        <div className={`max-w-[80%] ${isOwn ? 'order-2' : 'order-1'}`}>
+                          <div className={`p-3 rounded-xl ${isOwn ? 'bg-primary text-white' : 'bg-gray-100 text-text'}`}>
+                            <p className="text-sm">{msg.content}</p>
+                          </div>
+                          <div className={`flex items-center space-x-1 mt-1 ${isOwn ? 'justify-end' : 'justify-start'}`}>
+                            <span className="text-xs text-text-lighter">
+                              {new Date(msg.createdAt).toLocaleTimeString()}
+                            </span>
+                          </div>
                         </div>
-                        <p className="text-text-light text-sm">{msg.content}</p>
                       </div>
-                    </div>
-                  ))
+                    )
+                  })
                 )}
+                <div ref={messagesEndRef} />
               </div>
+
+              {/* Message Input */}
+              <form onSubmit={handleSendMessage} className="flex space-x-2 border-t border-gray-100 pt-4">
+                <input
+                  type="text"
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  placeholder="Type a message..."
+                  className="input-field flex-1"
+                  disabled={isSending}
+                />
+                <button
+                  type="submit"
+                  disabled={!newMessage.trim() || isSending}
+                  className="btn-primary py-2 px-4 flex items-center space-x-2 disabled:opacity-50"
+                >
+                  {isSending ? <FaSpinner className="animate-spin" /> : <FaPaperPlane />}
+                </button>
+              </form>
             </>
           ) : (
             <div className="text-center py-12">

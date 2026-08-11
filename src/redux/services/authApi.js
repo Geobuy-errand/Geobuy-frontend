@@ -18,6 +18,14 @@ export const authApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['User'],
     }),
+    registerErrandRunner: builder.mutation({
+      query: (data) => ({
+        url: '/auth/register/errand-runner',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: ['User'],
+    }),
     login: builder.mutation({
       query: (data) => ({
         url: '/auth/login',
@@ -55,6 +63,7 @@ export const {
   useRegisterProviderMutation,
   useLoginMutation,
   useAdminLoginMutation,
+  useRegisterErrandRunnerMutation,
   useLogoutMutation,
   useGetCurrentUserQuery,
 } = authApi;

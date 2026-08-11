@@ -1,6 +1,7 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 import { FaFacebook, FaTwitter, FaInstagram, FaLinkedin } from 'react-icons/fa'
+import Logo from './utils/Logo'
 
 const Footer = () => {
   return (
@@ -8,7 +9,8 @@ const Footer = () => {
       <div className="container-custom py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div>
-            <h3 className="text-xl font-bold text-primary-light mb-4">GEOBUY Errands</h3>
+            {/* <h3 className="text-xl font-bold text-primary-light mb-4">GEOBUY Errands</h3> */}
+            <Logo />
             <p className="text-gray-400 text-sm">
               Your time, delivered. Connecting customers with trusted local providers for all your errand needs.
             </p>

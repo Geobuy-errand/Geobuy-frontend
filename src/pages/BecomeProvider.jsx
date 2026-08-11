@@ -63,16 +63,16 @@ const BecomeProvider = () => {
             <h2 className="text-2xl md:text-3xl font-bold mb-4">
               Ready to Start Your Journey?
             </h2>
-            <p className="text-primary-light mb-6">
+            <p className="text-white mb-6">
               Join thousands of providers who are already helping their communities and earning money.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link to="/register/provider" className="bg-white text-primary px-8 py-3 rounded-xl font-medium hover:bg-gray-100 transition-colors">
                 Register as Provider
               </Link>
-              <Link to="/pricing" className="bg-secondary text-white px-8 py-3 rounded-xl font-medium hover:bg-secondary-dark transition-colors">
+              {/* <Link to="/pricing" className="bg-secondary text-white px-8 py-3 rounded-xl font-medium hover:bg-secondary-dark transition-colors">
                 See Pricing
-              </Link>
+              </Link> */}
             </div>
           </div>
         </div>

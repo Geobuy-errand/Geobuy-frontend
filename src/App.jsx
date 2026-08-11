@@ -70,6 +70,21 @@ import AdminLogin from "./pages/AdminLogin";
 import ChatSupport from "./components/chat/ChatSupport";
 import ChatEscalation from "./pages/admin/ChatEscalation";
 import ChatbotWidget from "./components/chat/ChatbotWidget";
+import Subscription from "./pages/Subscription";
+import SubscriptionSuccess from "./pages/SubscriptionSuccess";
+import AdminSubscriptions from "./pages/admin/AdminSubscription";
+import SubscriptionPlans from "./pages/admin/SubscriptionPlan";
+import ErrandRunnerDashboard from "./pages/errand-runner/ErrandRunnerDashboard";
+import ErrandAvailableJobs from "./pages/errand-runner/ErrandAvailableJobs";
+import ErrandAcceptedJobs from "./pages/errand-runner/ErrandAcceptedJobs";
+import ErrandJobDetails from "./pages/errand-runner/ErrandJobDetails";
+import ErrandVerification from "./pages/errand-runner/ErrandVerification";
+import ErrandWallet from "./pages/errand-runner/ErrandWallet";
+import ErrandWithdrawals from "./pages/errand-runner/ErrandWithdrawals";
+import ErrandAvailability from "./pages/errand-runner/ErrandAvailability";
+import ErrandProfile from "./pages/errand-runner/ErrandProfile";
+import ErrandSettings from "./pages/errand-runner/ErrandSettings";
+import RegisterErrandRunner from "./pages/RegisterErrandRunner";
 
 function App() {
   return (
@@ -102,6 +117,7 @@ function App() {
           <Route path="admin/login" element={<AdminLogin />} />
           <Route path="register/customer" element={<RegisterCustomer />} />
           <Route path="register/provider" element={<RegisterProvider />} />
+          <Route path="register/errand-runner" element={<RegisterErrandRunner />} />
           <Route path="privacy" element={<PrivacyPolicy />} />
           <Route path="terms" element={<Terms />} />
           <Route path="book-errand" element={<BookErrand />} />
@@ -164,6 +180,27 @@ function App() {
           <Route path="/provider/chat-support" element={<ChatSupport />} />
         </Route>
 
+        <Route
+          path="/errand-runner"
+          element={
+            <ProtectedRoute allowedRoles={["errand_runner"]}>
+              <DashboardLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<ErrandRunnerDashboard />} />
+          <Route path="dashboard" element={<ErrandRunnerDashboard />} />
+          <Route path="available-jobs" element={<ErrandAvailableJobs />} />
+          <Route path="accepted-jobs" element={<ErrandAcceptedJobs />} />
+          <Route path="verification" element={<ErrandVerification />} />
+          <Route path="job/:id" element={<ErrandJobDetails />} />
+          <Route path="wallet" element={<ErrandWallet />} />
+          <Route path="withdrawals" element={<ErrandWithdrawals />} />
+          <Route path="availability" element={<ErrandAvailability />} />
+          <Route path="profile" element={<ErrandProfile />} />
+          <Route path="settings" element={<ErrandSettings />} />
+        </Route>
+
         {/* Admin Routes */}
         <Route
           path="/admin"
@@ -197,6 +234,51 @@ function App() {
           }
         >
           <Route index element={<ChatEscalation />} />
+        </Route>
+        <Route
+          path="customer/subscriptions"
+          element={
+            <ProtectedRoute allowedRoles={["customer", "provider"]}>
+              <DashboardLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<Subscription />} />
+          <Route path="success" element={<SubscriptionSuccess />} />
+          <Route path="cancel" element={<Subscription />} />
+        </Route>
+        <Route
+          path="provider/subscriptions"
+          element={
+            <ProtectedRoute allowedRoles={["customer", "provider"]}>
+              <DashboardLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<Subscription />} />
+          <Route path="success" element={<SubscriptionSuccess />} />
+          <Route path="cancel" element={<Subscription />} />
+        </Route>
+
+        <Route
+          path="admin/subscriptions"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <DashboardLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<AdminSubscriptions />} />
+        </Route>
+        <Route
+          path="admin/subscription-plans"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <DashboardLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<SubscriptionPlans />} />
         </Route>
 
         {/* 404 */}

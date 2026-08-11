@@ -46,6 +46,9 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
     if (user?.role === 'customer') {
       return <Navigate to="/customer/dashboard" replace />
     }
+    if (user?.role === 'errand_runner') {
+      return <Navigate to="/errand-runner/dashboard" replace />
+    }
     if (user?.role === 'provider') {
       return <Navigate to="/provider/dashboard" replace />
     }

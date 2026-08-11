@@ -1,16 +1,45 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useSelector } from 'react-redux'
 import ChatList from './ChatList'
 import ChatWindow from './ChatWindow'
 import { FaComments, FaHeadset, FaBox, FaFilter } from 'react-icons/fa'
 import axios from 'axios'
 import { toast } from 'react-hot-toast'
+import { io } from 'socket.io-client'
 
 const ChatSupport = () => {
   const { user } = useSelector((state) => state.auth)
   const [selectedChatId, setSelectedChatId] = useState(null)
   const [filterType, setFilterType] = useState('all')
   const [isCreatingSupport, setIsCreatingSupport] = useState(false)
+  const [socket, setSocket] = useState(null)
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  // Socket connection for real-time updates
+  useEffect(() => {
+    const newSocket = io(import.meta.env.VITE_API_URL || 'http://localhost:5000', {
+      withCredentials: true,
+    })
+
+    newSocket.on('connect', () => {
+      console.log('Chat socket connected')
+    })
+
+    newSocket.on('new-message', (data) => {
+      // Refresh chat list when new message arrives
+      setRefreshKey(prev => prev + 1)
+    })
+
+    newSocket.on('new-message-notification', (data) => {
+      setRefreshKey(prev => prev + 1)
+    })
+
+    setSocket(newSocket)
+
+    return () => {
+      newSocket.disconnect()
+    }
+  }, [])
 
   const handleChatSelect = (chatId) => {
     setSelectedChatId(chatId)
@@ -31,6 +60,7 @@ const ChatSupport = () => {
       if (response.data.chat) {
         toast.success('Support chat created! A support agent will assist you soon.')
         setSelectedChatId(response.data.chat._id)
+        setRefreshKey(prev => prev + 1)
       }
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to create support chat')
@@ -102,6 +132,7 @@ const ChatSupport = () => {
             </p>
           </div>
           <ChatList 
+            key={refreshKey}
             onChatSelect={handleChatSelect} 
             selectedChatId={selectedChatId}
             filterType={filterType}
@@ -112,8 +143,10 @@ const ChatSupport = () => {
         <div className="lg:col-span-2 card p-0 overflow-hidden">
           {selectedChatId ? (
             <ChatWindow
+              key={selectedChatId}
               chatId={selectedChatId}
               onClose={() => setSelectedChatId(null)}
+              onMessageSent={() => setRefreshKey(prev => prev + 1)}
             />
           ) : (
             <div className="flex flex-col items-center justify-center h-[400px] text-text-light">

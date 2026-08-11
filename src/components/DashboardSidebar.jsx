@@ -1,6 +1,6 @@
-import React from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
-import { useSelector } from 'react-redux'
+import React from "react";
+import { NavLink, useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 import {
   FaHome,
   FaPlus,
@@ -22,72 +22,143 @@ import {
   FaClipboardList,
   FaTachometerAlt,
   FaTimes,
-} from 'react-icons/fa'
+  FaStumbleupon,
+  FaCrown,
+  FaHandsHelping,
+  FaHistory
+} from "react-icons/fa";
 
 const DashboardSidebar = ({ open, onClose }) => {
-  const { user } = useSelector((state) => state.auth)
-  const navigate = useNavigate()
+  const { user } = useSelector((state) => state.auth);
+  const navigate = useNavigate();
 
   const getNavItems = () => {
-    if (user?.role === 'customer') {
+    if (user?.role === "customer") {
       return [
-        { to: '/customer/dashboard', icon: FaHome, label: 'Dashboard' },
-        { to: '/customer/create-booking', icon: FaPlus, label: 'Create Booking' },
-        { to: '/customer/bookings', icon: FaList, label: 'Booking History' },
-        { to: '/customer/messages', icon: FaComments, label: 'Messages' },
-        { to: '/customer/notifications', icon: FaBell, label: 'Notifications' },
-        { to: '/customer/payments', icon: FaCreditCard, label: 'Payments' },
-        { to: '/customer/reviews', icon: FaStar, label: 'Reviews' },
-        { to: '/customer/profile', icon: FaUser, label: 'Profile' },
-        { to: '/customer/chat-support', icon: FaComments, label: 'Chat Support' },
-        { to: '/customer/settings', icon: FaCog, label: 'Settings' },
-        { to: '/customer/help', icon: FaQuestionCircle, label: 'Help Center' },
+        { to: "/customer/dashboard", icon: FaHome, label: "Dashboard" },
+        {
+          to: "/customer/create-booking",
+          icon: FaPlus,
+          label: "Create Booking",
+        },
+        { to: "/customer/bookings", icon: FaList, label: "Booking History" },
+        { to: "/customer/messages", icon: FaComments, label: "Messages" },
+        { to: "/find-services", icon: FaHandsHelping, label: "Find Services" },
+        { to: "/customer/subscription", icon: FaCrown, label: "Subscription" },
+        {
+          to: "/customer/service-history",
+          icon: FaHistory,
+          label: "Service History",
+        },
+        { to: "/customer/notifications", icon: FaBell, label: "Notifications" },
+        { to: "/customer/payments", icon: FaCreditCard, label: "Payments" },
+        { to: "/customer/reviews", icon: FaStar, label: "Reviews" },
+        { to: "/customer/profile", icon: FaUser, label: "Profile" },
+        {
+          to: "/customer/chat-support",
+          icon: FaComments,
+          label: "Chat Support",
+        },
+        { to: "/customer/settings", icon: FaCog, label: "Settings" },
+        { to: "/customer/help", icon: FaQuestionCircle, label: "Help Center" },
+      ];
+    }
+
+    if (user?.role === "provider") {
+      return [
+        {
+          to: "/provider/dashboard",
+          icon: FaTachometerAlt,
+          label: "Dashboard",
+        },
+        {
+          to: "/provider/available-jobs",
+          icon: FaBriefcase,
+          label: "Available Jobs",
+        },
+        {
+          to: "/provider/accepted-jobs",
+          icon: FaCheckCircle,
+          label: "Accepted Jobs",
+        },
+        { to: "/provider/wallet", icon: FaWallet, label: "Wallet" },
+        { to: '/provider/subscription', icon: FaCrown, label: 'Subscription' },
+        {
+          to: "/provider/withdrawals",
+          icon: FaMoneyBillWave,
+          label: "Withdrawals",
+        },
+        { to: "/provider/messages", icon: FaComments, label: "Messages" },
+        { to: "/provider/notifications", icon: FaBell, label: "Notifications" },
+        { to: "/provider/reviews", icon: FaStar, label: "Reviews" },
+        {
+          to: "/provider/availability",
+          icon: FaCheckCircle,
+          label: "Availability",
+        },
+        {
+          to: "/provider/verification",
+          icon: FaShieldAlt,
+          label: "Verification",
+        },
+        {
+          to: "/provider/chat-support",
+          icon: FaComments,
+          label: "Chat Support",
+        },
+        { to: "/provider/profile", icon: FaUser, label: "Profile" },
+        { to: "/provider/settings", icon: FaCog, label: "Settings" },
+      ];
+    }
+
+    if (user?.role === 'errand_runner') {
+      return [
+        { to: '/errand-runner/dashboard', icon: FaTachometerAlt, label: 'Dashboard' },
+        { to: '/errand-runner/available-jobs', icon: FaBriefcase, label: 'Available Jobs' },
+        { to: '/errand-runner/accepted-jobs', icon: FaCheckCircle, label: 'Accepted Jobs' },
+        { to: '/errand-runner/wallet', icon: FaWallet, label: 'Wallet' },
+        { to: '/errand-runner/withdrawals', icon: FaMoneyBillWave, label: 'Withdrawals' },
+        { to: '/errand-runner/messages', icon: FaComments, label: 'Messages' },
+        { to: '/errand-runner/notifications', icon: FaBell, label: 'Notifications' },
+        { to: '/errand-runner/reviews', icon: FaStar, label: 'Reviews' },
+        { to: '/errand-runner/availability', icon: FaCheckCircle, label: 'Availability' },
+        { to: '/errand-runner/verification', icon: FaShieldAlt, label: 'Verification' },
+        { to: '/errand-runner/profile', icon: FaUser, label: 'Profile' },
+        { to: '/errand-runner/settings', icon: FaCog, label: 'Settings' },
       ]
     }
 
-    if (user?.role === 'provider') {
+    if (user?.role === "admin") {
       return [
-        { to: '/provider/dashboard', icon: FaTachometerAlt, label: 'Dashboard' },
-        { to: '/provider/available-jobs', icon: FaBriefcase, label: 'Available Jobs' },
-        { to: '/provider/accepted-jobs', icon: FaCheckCircle, label: 'Accepted Jobs' },
-        { to: '/provider/wallet', icon: FaWallet, label: 'Wallet' },
-        { to: '/provider/withdrawals', icon: FaMoneyBillWave, label: 'Withdrawals' },
-        { to: '/provider/messages', icon: FaComments, label: 'Messages' },
-        { to: '/provider/notifications', icon: FaBell, label: 'Notifications' },
-        { to: '/provider/reviews', icon: FaStar, label: 'Reviews' },
-        { to: '/provider/availability', icon: FaCheckCircle, label: 'Availability' },
-        { to: '/provider/verification', icon: FaShieldAlt, label: 'Verification' },
-        { to: '/provider/chat-support', icon: FaComments, label: 'Chat Support' },
-        { to: '/provider/profile', icon: FaUser, label: 'Profile' },
-        { to: '/provider/settings', icon: FaCog, label: 'Settings' },
-      ]
+        { to: "/admin/dashboard", icon: FaTachometerAlt, label: "Dashboard" },
+        { to: "/admin/users", icon: FaUsers, label: "Users" },
+        { to: "/admin/providers", icon: FaBriefcase, label: "Providers" },
+        {
+          to: "/admin/verification",
+          icon: FaShieldAlt,
+          label: "Verification Queue",
+        },
+        { to: "/admin/bookings", icon: FaClipboardList, label: "Bookings" },
+        { to: '/admin/subscriptions', icon: FaCrown, label: 'Subscriptions' },
+        { to: "/admin/payments", icon: FaCreditCard, label: "Payments" },
+        { to: "/admin/reviews", icon: FaStar, label: "Reviews" },
+        { to: "/admin/subscription-plans", icon: FaStumbleupon, label: "Subscription Plan" },
+        { to: "/admin/analytics", icon: FaChartBar, label: "Analytics" },
+        { to: "/admin/support", icon: FaQuestionCircle, label: "Support" },
+        { to: "/admin/settings", icon: FaCog, label: "Settings" },
+      ];
     }
 
-    if (user?.role === 'admin') {
-      return [
-        { to: '/admin/dashboard', icon: FaTachometerAlt, label: 'Dashboard' },
-        { to: '/admin/users', icon: FaUsers, label: 'Users' },
-        { to: '/admin/providers', icon: FaBriefcase, label: 'Providers' },
-        { to: '/admin/verification', icon: FaShieldAlt, label: 'Verification Queue' },
-        { to: '/admin/bookings', icon: FaClipboardList, label: 'Bookings' },
-        { to: '/admin/payments', icon: FaCreditCard, label: 'Payments' },
-        { to: '/admin/reviews', icon: FaStar, label: 'Reviews' },
-        { to: '/admin/analytics', icon: FaChartBar, label: 'Analytics' },
-        { to: '/admin/support', icon: FaQuestionCircle, label: 'Support' },
-        { to: '/admin/settings', icon: FaCog, label: 'Settings' },
-      ]
-    }
+    return [];
+  };
 
-    return []
-  }
-
-  const navItems = getNavItems()
+  const navItems = getNavItems();
 
   const handleNavigation = (to, e) => {
-    e.preventDefault()
-    navigate(to)
-    onClose()
-  }
+    e.preventDefault();
+    navigate(to);
+    onClose();
+  };
 
   return (
     <>
@@ -95,7 +166,7 @@ const DashboardSidebar = ({ open, onClose }) => {
       {open && (
         <div
           className="fixed inset-0 z-40 md:hidden"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.2)' }}
+          style={{ backgroundColor: "rgba(0, 0, 0, 0.2)" }}
           onClick={onClose}
         />
       )}
@@ -105,7 +176,7 @@ const DashboardSidebar = ({ open, onClose }) => {
         className={`
           fixed top-0 left-0 h-full w-64 bg-white shadow-large z-50
           transition-transform duration-300 ease-in-out
-          ${open ? 'translate-x-0' : '-translate-x-full'}
+          ${open ? "translate-x-0" : "-translate-x-full"}
           md:translate-x-0 md:static md:top-auto
         `}
       >
@@ -129,14 +200,15 @@ const DashboardSidebar = ({ open, onClose }) => {
                     to={item.to}
                     className={({ isActive }) => `
                       flex items-center space-x-3 px-4 py-2.5 rounded-xl transition-all duration-200
-                      ${isActive
-                        ? 'bg-primary text-white shadow-soft'
-                        : 'text-text-light hover:bg-primary/5 hover:text-primary'
+                      ${
+                        isActive
+                          ? "bg-primary text-white shadow-soft"
+                          : "text-text-light hover:bg-primary/5 hover:text-primary"
                       }
                     `}
                     onClick={() => {
                       if (window.innerWidth < 768) {
-                        onClose()
+                        onClose();
                       }
                     }}
                   >
@@ -153,19 +225,21 @@ const DashboardSidebar = ({ open, onClose }) => {
             <div className="flex items-center space-x-3">
               <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                 <span className="text-primary font-semibold text-sm">
-                  {user?.fullName?.charAt(0) || 'U'}
+                  {user?.fullName?.charAt(0) || "U"}
                 </span>
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{user?.fullName}</p>
-                <p className="text-xs text-text-lighter truncate">{user?.email}</p>
+                <p className="text-xs text-text-lighter truncate">
+                  {user?.email}
+                </p>
               </div>
             </div>
           </div>
         </div>
       </aside>
     </>
-  )
-}
+  );
+};
 
-export default DashboardSidebar
+export default DashboardSidebar;

@@ -4,7 +4,13 @@ import { useSelector, useDispatch } from "react-redux";
 import { useLogoutMutation } from "../redux/services/authApi";
 import { logout } from "../redux/slices/authSlice";
 import { toast } from "react-hot-toast";
-import { FaBars, FaBell, FaUserCircle, FaSignOutAlt, FaComments } from "react-icons/fa";
+import {
+  FaBars,
+  FaBell,
+  FaUserCircle,
+  FaSignOutAlt,
+  FaComments,
+} from "react-icons/fa";
 import { useGetUnreadNotificationCountQuery } from "../redux/services/notificationApi";
 
 const DashboardNavbar = ({ onMenuClick }) => {
@@ -65,6 +71,13 @@ const DashboardNavbar = ({ onMenuClick }) => {
                   {unreadCount > 9 ? "9+" : unreadCount}
                 </span>
               )}
+            </Link>
+            <Link
+              to={`/${user?.role}/subscriptions`}
+              className="block px-4 py-2 text-text-light hover:bg-primary/5 hover:text-primary transition-colors"
+              onClick={() => setIsDropdownOpen(false)}
+            >
+              Subscription
             </Link>
 
             <div className="flex items-center space-x-3">
