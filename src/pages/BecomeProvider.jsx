@@ -1,8 +1,9 @@
 import React from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useOutletContext } from 'react-router-dom'
 import { FaMoneyBillWave, FaClock, FaUsers, FaShieldAlt, FaStar, FaMobile } from 'react-icons/fa'
 
 const BecomeProvider = () => {
+
   const benefits = [
     {
       icon: FaMoneyBillWave,

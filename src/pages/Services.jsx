@@ -1,13 +1,18 @@
 import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useGetServicesQuery } from '../redux/services/serviceApi'
-import { FaSearch, FaRunning, FaHandsHelping, FaArrowRight } from 'react-icons/fa'
+import { FaSearch, FaRunning, FaHandsHelping, FaArrowRight, FaInfoCircle } from 'react-icons/fa'
+import SignupModal from '../components/modals/SignupModal'
+import { useSelector } from 'react-redux'
 
 const Services = () => {
+  const navigate = useNavigate()
+  const { user } = useSelector((state) => state.auth)
   const { data: services, isLoading } = useGetServicesQuery()
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
-  const [activeTab, setActiveTab] = useState('errands') // 'errands' or 'services'
+  const [activeTab, setActiveTab] = useState('errands')
+  const [isSignupModalOpen, setIsSignupModalOpen] = useState(false)
 
   // Part 1: Errands & Deliveries
   const errandCategories = [
@@ -171,6 +176,48 @@ const Services = () => {
 
   const categoryButtons = getCategoryButtons()
 
+  // Handle service request action
+  const handleRequestService = (service) => {
+    if (!user) {
+      setIsSignupModalOpen(true)
+      return
+    }
+    
+    // If user is logged in but not a customer, redirect to find-services
+    if (user.role === 'customer') {
+      navigate('/find-services', { 
+        state: { 
+          selectedCategory: service.category,
+          serviceName: service.name,
+          serviceId: service._id 
+        } 
+      })
+    } else {
+      // For other roles, redirect to find-services
+      navigate('/find-services')
+    }
+  }
+
+  // Handle book errand action
+  const handleBookErrand = (service) => {
+    if (!user) {
+      setIsSignupModalOpen(true)
+      return
+    }
+    
+    if (user.role === 'customer') {
+      navigate('/customer/create-booking', { 
+        state: {
+          selectedService: service,
+          serviceId: service._id,
+          serviceName: service.name 
+        } 
+      })
+    } else {
+      navigate('/customer/create-booking')
+    }
+  }
+
   return (
     <div className="py-12">
       <div className="container-custom">
@@ -292,30 +339,74 @@ const Services = () => {
             </p>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {tabServices?.map((service) => (
-                <div key={service._id} className="card hover:shadow-large transition-shadow">
-                  <div className="text-4xl mb-4">{getCategoryEmoji(service.category) || service.icon || '📋'}</div>
-                  <h3 className="text-lg font-semibold text-text mb-2">{service.name}</h3>
-                  <p className="text-text-light text-sm mb-4">{service.description}</p>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-text-lighter">Starting from</p>
-                      <p className="text-xl font-bold text-primary">£{service.basePrice}</p>
+              {tabServices?.map((service) => {
+                const isErrand = errandCategories.includes(service.category)
+                const isService = serviceCategories.includes(service.category)
+                
+                return (
+                  <div key={service._id} className="card hover:shadow-large transition-shadow">
+                    <div className="text-4xl mb-4">{getCategoryEmoji(service.category) || service.icon || '📋'}</div>
+                    <h3 className="text-lg font-semibold text-text mb-2">{service.name}</h3>
+                    <p className="text-text-light text-sm mb-4">{service.description}</p>
+                    
+                    {/* Pricing Info - No fixed price, only service fee and negotiation */}
+                    <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-start space-x-2">
+                        <FaInfoCircle className="text-primary mt-0.5 flex-shrink-0" />
+                        <div>
+                          {isErrand ? (
+                            <>
+                              <p className="text-sm text-text-light">
+                                <span className="font-medium">Distance-based pricing:</span> £3.50 base + £1.60/mile
+                              </p>
+                              <p className="text-xs text-text-lighter mt-1">
+                                📍 Price calculated based on distance
+                              </p>
+                            </>
+                          ) : (
+                            <>
+                              <p className="text-sm text-text-light">
+                                <span className="font-medium">Service Fee:</span> £1.99 (GEOBUY fee)
+                              </p>
+                              <p className="text-xs text-text-lighter mt-1">
+                                💬 Service price is negotiated directly between you and the provider
+                              </p>
+                            </>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <Link
-                      to={`/register/customer`}
-                      className="btn-primary text-sm py-2 flex items-center space-x-1"
-                    >
-                      <span>Book Now</span>
-                      <FaArrowRight className="text-xs" />
-                    </Link>
+
+                    {isErrand ? (
+                      <button
+                        onClick={() => handleBookErrand(service)}
+                        className="w-full btn-primary text-sm py-2 flex items-center justify-center space-x-1"
+                      >
+                        <span>Book Errand</span>
+                        <FaArrowRight className="text-xs" />
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleRequestService(service)}
+                        className="w-full btn-primary text-sm py-2 flex items-center justify-center space-x-1"
+                      >
+                        <span>Request Service</span>
+                        <FaArrowRight className="text-xs" />
+                      </button>
+                    )}
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </>
         )}
       </div>
+
+      {/* Signup Modal */}
+      <SignupModal 
+        isOpen={isSignupModalOpen} 
+        onClose={() => setIsSignupModalOpen(false)} 
+      />
     </div>
   )
 }

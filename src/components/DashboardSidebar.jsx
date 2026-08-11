@@ -44,7 +44,7 @@ const DashboardSidebar = ({ open, onClose }) => {
         { to: "/customer/bookings", icon: FaList, label: "Booking History" },
         { to: "/customer/messages", icon: FaComments, label: "Messages" },
         { to: "/find-services", icon: FaHandsHelping, label: "Find Services" },
-        { to: "/customer/subscription", icon: FaCrown, label: "Subscription" },
+        { to: "/customer/subscriptions", icon: FaCrown, label: "Subscription" },
         {
           to: "/customer/service-history",
           icon: FaHistory,
@@ -82,7 +82,7 @@ const DashboardSidebar = ({ open, onClose }) => {
           label: "Accepted Jobs",
         },
         { to: "/provider/wallet", icon: FaWallet, label: "Wallet" },
-        { to: '/provider/subscription', icon: FaCrown, label: 'Subscription' },
+        { to: '/provider/subscriptions', icon: FaCrown, label: 'Subscription' },
         {
           to: "/provider/withdrawals",
           icon: FaMoneyBillWave,
