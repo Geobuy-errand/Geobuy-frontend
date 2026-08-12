@@ -42,8 +42,8 @@ const Subscription = () => {
     try {
       const result = await createCheckout({
         planId,
-        successUrl: `${window.location.origin}/subscription/success`,
-        cancelUrl: `${window.location.origin}/subscription`,
+        successUrl: `${window.location.origin}/${user.role}/subscriptions/success`,
+        cancelUrl: `${window.location.origin}/${user.role}/subscriptions`,
       }).unwrap()
 
       if (result.sessionUrl) {
