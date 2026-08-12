@@ -8,8 +8,7 @@ import {
   FaCrown, 
   FaStar, 
   FaRocket,
-  FaCalendarMonth,
-  FaCalendarYear,
+  FaCalendar,
 } from 'react-icons/fa'
 import {
   useGetActivePlansQuery,
@@ -82,9 +81,9 @@ const Subscription = () => {
   }
 
   const getPlanIcon = (plan) => {
-    if (plan.name?.toLowerCase().includes('month')) return <FaCalendarMonth className="text-blue-500" />
-    if (plan.name?.toLowerCase().includes('year')) return <FaCalendarYear className="text-purple-500" />
-    if (plan.name?.toLowerCase().includes('6 month') || plan.name?.toLowerCase().includes('six')) return <FaCalendarMonth className="text-orange-500" />
+    if (plan.name?.toLowerCase().includes('month')) return <FaCalendar className="text-blue-500" />
+    if (plan.name?.toLowerCase().includes('year')) return <FaCalendar className="text-purple-500" />
+    if (plan.name?.toLowerCase().includes('6 month') || plan.name?.toLowerCase().includes('six')) return <FaCalendar className="text-orange-500" />
     return <FaStar />
   }
 
