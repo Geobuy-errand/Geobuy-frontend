@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useSelector } from 'react-redux'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate }  from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import { 
   FaCheck, 
@@ -8,7 +8,8 @@ import {
   FaCrown, 
   FaStar, 
   FaRocket,
-  FaCalendar,
+  FaCalendarMonth,
+  FaCalendarYear,
 } from 'react-icons/fa'
 import {
   useGetActivePlansQuery,
@@ -23,7 +24,7 @@ import {
 const Subscription = () => {
   const { user } = useSelector((state) => state.auth)
   const navigate = useNavigate()
-  const [isProcessing, setIsProcessing] = useState(false)
+  const [processingPlanId, setProcessingPlanId] = useState(null) // Track which plan is processing
 
   // RTK Query hooks
   const { data: plansData, isLoading: plansLoading, refetch: refetchPlans } = useGetActivePlansQuery()
@@ -38,12 +39,12 @@ const Subscription = () => {
   const currentPlan = statusData?.plan || null
 
   const handleSubscribe = async (planId) => {
-    setIsProcessing(true)
+    setProcessingPlanId(planId)
     try {
       const result = await createCheckout({
         planId,
-        successUrl: `${window.location.origin}/${user.role}/subscriptions/success`,
-        cancelUrl: `${window.location.origin}/${user.role}/subscriptions`,
+        successUrl: `${window.location.origin}/${user?.role || 'customer'}/subscription/success`,
+        cancelUrl: `${window.location.origin}/${user?.role || 'customer'}/subscription`,
       }).unwrap()
 
       if (result.sessionUrl) {
@@ -52,7 +53,7 @@ const Subscription = () => {
     } catch (error) {
       toast.error(error.data?.message || 'Failed to start subscription')
     } finally {
-      setIsProcessing(false)
+      setProcessingPlanId(null)
     }
   }
 
@@ -80,14 +81,25 @@ const Subscription = () => {
     }
   }
 
-  const getPlanIcon = (interval) => {
-    if (interval === 'month') return <FaCalendar className="text-blue-500" />
-    if (interval === 'year') return <FaCalendar className="text-purple-500" />
+  const getPlanIcon = (plan) => {
+    if (plan.name?.toLowerCase().includes('month')) return <FaCalendarMonth className="text-blue-500" />
+    if (plan.name?.toLowerCase().includes('year')) return <FaCalendarYear className="text-purple-500" />
+    if (plan.name?.toLowerCase().includes('6 month') || plan.name?.toLowerCase().includes('six')) return <FaCalendarMonth className="text-orange-500" />
     return <FaStar />
   }
 
-  const getIntervalLabel = (interval) => {
-    return interval === 'month' ? 'month' : 'year'
+  const getIntervalLabel = (plan) => {
+    if (plan.metadata?.billingPeriod === '6_months') return '6 months'
+    if (plan.interval === 'month') return 'month'
+    if (plan.interval === 'year') return 'year'
+    return plan.interval
+  }
+
+  const getSavings = (plan) => {
+    if (plan.metadata?.savings) return plan.metadata.savings
+    if (plan.interval === 'year') return '38%'
+    if (plan.name?.toLowerCase().includes('6 month')) return '23%'
+    return null
   }
 
   if (plansLoading) {
@@ -99,6 +111,9 @@ const Subscription = () => {
   }
 
   const isActive = subscriptionStatus === 'active' || subscriptionStatus === 'trialing'
+  
+  // Sort plans by displayOrder or price
+  const sortedPlans = plans ? [...plans].sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0)) : []
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
@@ -142,9 +157,11 @@ const Subscription = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {plans.map((plan) => {
+        {sortedPlans.map((plan) => {
           const isCurrentPlan = isActive && currentPlan?._id === plan._id
+          const isProcessingThisPlan = processingPlanId === plan._id
           const featureList = Object.entries(plan.features || {})
+          const savings = getSavings(plan)
 
           return (
             <div
@@ -164,15 +181,20 @@ const Subscription = () => {
                 </span>
               )}
               <div className="flex items-center space-x-2 text-3xl mb-4">
-                {getPlanIcon(plan.interval)}
+                {getPlanIcon(plan)}
               </div>
               <h3 className="text-xl font-bold text-text">{plan.name}</h3>
               <p className="text-3xl font-bold text-primary mt-2">
                 £{plan.price}
                 <span className="text-sm font-normal text-text-light">
-                  /{getIntervalLabel(plan.interval)}
+                  /{getIntervalLabel(plan)}
                 </span>
               </p>
+              {savings && (
+                <p className="text-sm text-green-600 font-medium mt-1">
+                  Save {savings} compared to monthly
+                </p>
+              )}
               {plan.description && (
                 <p className="text-sm text-text-light mt-1">{plan.description}</p>
               )}
@@ -213,13 +235,16 @@ const Subscription = () => {
                 ) : (
                   <button
                     onClick={() => handleSubscribe(plan._id)}
-                    disabled={isProcessing}
-                    className="w-full btn-primary disabled:opacity-50"
+                    disabled={isProcessingThisPlan}
+                    className="w-full btn-primary disabled:opacity-50 flex items-center justify-center space-x-2"
                   >
-                    {isProcessing ? (
-                      <FaSpinner className="animate-spin mx-auto" />
+                    {isProcessingThisPlan ? (
+                      <>
+                        <FaSpinner className="animate-spin" />
+                        <span>Processing...</span>
+                      </>
                     ) : (
-                      'Start 7-Day Free Trial'
+                      <span>Start 7-Day Free Trial</span>
                     )}
                   </button>
                 )}
@@ -233,6 +258,28 @@ const Subscription = () => {
         })}
       </div>
 
+      {/* FAQ Section */}
+      <div className="mt-12 card bg-gray-50">
+        <h3 className="text-lg font-semibold text-text mb-2">Frequently Asked Questions</h3>
+        <div className="space-y-4">
+          <div>
+            <p className="font-medium text-text">What happens after the free trial?</p>
+            <p className="text-sm text-text-light">Your card will be charged the monthly or yearly fee. You can cancel anytime before the trial ends.</p>
+          </div>
+          <div>
+            <p className="font-medium text-text">Can I switch between monthly and yearly?</p>
+            <p className="text-sm text-text-light">Yes, you can switch plans at any time. Your current plan will be prorated.</p>
+          </div>
+          <div>
+            <p className="font-medium text-text">What payment methods do you accept?</p>
+            <p className="text-sm text-text-light">We accept all major credit and debit cards through Stripe.</p>
+          </div>
+          <div>
+            <p className="font-medium text-text">Is there a discount for yearly subscriptions?</p>
+            <p className="text-sm text-text-light">Yes, yearly subscribers save up to 38% compared to monthly billing.</p>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
