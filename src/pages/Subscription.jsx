@@ -42,8 +42,8 @@ const Subscription = () => {
     try {
       const result = await createCheckout({
         planId,
-        successUrl: `${window.location.origin}/${user?.role || 'customer'}/subscription/success`,
-        cancelUrl: `${window.location.origin}/${user?.role || 'customer'}/subscription`,
+        successUrl: `${window.location.origin}/${user?.role || 'customer'}/subscriptions/success`,
+        cancelUrl: `${window.location.origin}/${user?.role || 'customer'}/subscriptions/cancel`,
       }).unwrap()
 
       if (result.sessionUrl) {
@@ -243,14 +243,14 @@ const Subscription = () => {
                         <span>Processing...</span>
                       </>
                     ) : (
-                      <span>Start 7-Day Free Trial</span>
+                      <span>Start now | Subscribe</span>
                     )}
                   </button>
                 )}
               </div>
 
               <p className="text-xs text-text-lighter mt-4 text-center">
-                7-day free trial • Cancel anytime
+                Subscribe • Cancel anytime
               </p>
             </div>
           )
@@ -261,14 +261,14 @@ const Subscription = () => {
       <div className="mt-12 card bg-gray-50">
         <h3 className="text-lg font-semibold text-text mb-2">Frequently Asked Questions</h3>
         <div className="space-y-4">
-          <div>
+          {/* <div>
             <p className="font-medium text-text">What happens after the free trial?</p>
             <p className="text-sm text-text-light">Your card will be charged the monthly or yearly fee. You can cancel anytime before the trial ends.</p>
-          </div>
-          <div>
+          </div> */}
+          {/* <div>
             <p className="font-medium text-text">Can I switch between monthly and yearly?</p>
             <p className="text-sm text-text-light">Yes, you can switch plans at any time. Your current plan will be prorated.</p>
-          </div>
+          </div> */}
           <div>
             <p className="font-medium text-text">What payment methods do you accept?</p>
             <p className="text-sm text-text-light">We accept all major credit and debit cards through Stripe.</p>

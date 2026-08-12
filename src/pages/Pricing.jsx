@@ -177,13 +177,13 @@ const Pricing = () => {
                     {isProcessing ? (
                       <FaSpinner className="animate-spin mx-auto" />
                     ) : (
-                      'Start 7-Day Free Trial'
+                      'Subscribe now'
                     )}
                   </button>
                 )}
                 {!isCurrentPlan && (
                   <p className="text-xs text-text-lighter mt-4 text-center">
-                    7-day free trial • Cancel anytime
+                    Subscribe now • Cancel anytime
                   </p>
                 )}
               </div>
@@ -192,22 +192,22 @@ const Pricing = () => {
         </div>
 
         <div className="mt-12 text-center">
-          <p className="text-text-light text-sm">
+          {/* <p className="text-text-light text-sm">
             All plans include a 7-day free trial. No questions asked.
-          </p>
+          </p> */}
           <p className="text-text-light text-sm mt-2">
             For errand runners: We take a 20% service fee on each completed errand.
           </p>
         </div>
 
-        <div className="mt-8 bg-gray-50 rounded-2xl p-6 text-center">
+        {/* <div className="mt-8 bg-gray-50 rounded-2xl p-6 text-center">
           <p className="text-text-light">
             Need a custom plan?{' '}
             <Link to="/contact" className="text-primary hover:underline">
               Contact our sales team
             </Link>
           </p>
-        </div>
+        </div> */}
 
         <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
           <div className="text-center p-4">
