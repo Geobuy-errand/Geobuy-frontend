@@ -3,77 +3,92 @@ import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { FaCheckCircle, FaSpinner, FaExclamationTriangle } from 'react-icons/fa'
 import { toast } from 'react-hot-toast'
 import { useSelector } from 'react-redux'
-import axios from 'axios'
+import { useVerifySubscriptionSessionQuery, useGetSubscriptionStatusQuery } from '../redux/services/subscriptionApi'
 
 const SubscriptionSuccess = () => {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const { user } = useSelector((state) => state.auth)
-  const [isVerifying, setIsVerifying] = useState(true)
   const [isSuccess, setIsSuccess] = useState(false)
   const [error, setError] = useState(null)
   const [subscriptionData, setSubscriptionData] = useState(null)
+  
+  const sessionId = searchParams.get('session_id')
+  
+  // ✅ RTK Query - Verify subscription
+  const { 
+    data: verificationData, 
+    isLoading: isVerifying, 
+    error: verificationError,
+    refetch 
+  } = useVerifySubscriptionSessionQuery(sessionId, {
+    skip: !sessionId,
+  })
 
+  // ✅ RTK Query - Check subscription status
+  const { data: statusData, refetch: refetchStatus } = useGetSubscriptionStatusQuery(undefined, {
+    skip: !isSuccess,
+  })
+
+  // Handle verification response
   useEffect(() => {
-    const sessionId = searchParams.get('session_id')
-    console.log('🔍 Session ID from URL:', sessionId)
-    
-    if (sessionId) {
-      verifySubscription(sessionId)
-    } else {
-      setError('No session ID found in the URL')
-      setIsVerifying(false)
-    }
-  }, [searchParams])
-
-  const verifySubscription = async (sessionId) => {
-    try {
-      console.log('🔍 Verifying subscription with session:', sessionId)
+    if (verificationData) {
+      console.log('📦 Verification response:', verificationData)
       
-      // Step 1: Verify the subscription with the backend
-      const response = await axios.get(`/api/subscription/verify-session/${sessionId}`, {
-        withCredentials: true,
-      })
-
-      console.log('📦 Verification response:', response.data)
-
-      if (response.data.success) {
-        setSubscriptionData(response.data)
+      if (verificationData.success) {
+        setSubscriptionData(verificationData)
         setIsSuccess(true)
         toast.success('Subscription activated successfully! 🎉')
         
         // Check status after a moment
         setTimeout(() => {
-          checkSubscriptionStatus()
+          refetchStatus()
         }, 2000)
       } else {
-        setError(response.data.message || 'Failed to verify subscription')
+        setError(verificationData.message || 'Failed to verify subscription')
         toast.error('Failed to verify subscription')
       }
-    } catch (error) {
-      console.error('❌ Verification error:', error)
-      console.error('❌ Error response:', error.response?.data)
-      setError(error.response?.data?.message || 'Failed to verify subscription. Please contact support.')
-      toast.error('Failed to verify subscription')
-    } finally {
-      setIsVerifying(false)
     }
-  }
+  }, [verificationData])
 
-  const checkSubscriptionStatus = async () => {
-    try {
-      const response = await axios.get('/api/subscription/status', {
-        withCredentials: true,
-      })
+  // Handle verification error
+  useEffect(() => {
+    if (verificationError) {
+      console.error('❌ Verification error:', verificationError)
       
-      console.log('📊 Subscription status:', response.data)
+      const errorMessage = verificationError?.data?.message || 
+                          'Failed to verify subscription. Please contact support.'
       
-      if (response.data.isSubscribed) {
-        console.log('✅ Subscription active:', response.data)
-      }
-    } catch (error) {
-      console.error('❌ Status check error:', error)
+      setError(errorMessage)
+      toast.error('Failed to verify subscription')
     }
+  }, [verificationError])
+
+  // Handle status check
+  useEffect(() => {
+    if (statusData?.isSubscribed) {
+      console.log('✅ Subscription active:', statusData)
+    }
+  }, [statusData])
+
+  // If no session ID
+  if (!sessionId && !isVerifying) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh] py-12">
+        <div className="max-w-md w-full">
+          <div className="card text-center border-2 border-red-200 bg-red-50">
+            <FaExclamationTriangle className="text-6xl text-red-500 mx-auto mb-4" />
+            <h1 className="text-2xl font-bold text-text">Invalid Request</h1>
+            <p className="text-text-light mt-2">No session ID found in the URL.</p>
+            <div className="mt-6">
+              <Link to="/subscription" className="btn-primary block w-full">
+                Go to Subscriptions
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (isVerifying) {
@@ -94,19 +109,22 @@ const SubscriptionSuccess = () => {
         <div className="max-w-md w-full">
           <div className="card text-center border-2 border-red-200 bg-red-50">
             <FaExclamationTriangle className="text-6xl text-red-500 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-text">Something Went Wrong</h1>
+            <h1 className="text-2xl font-bold text-text">Verification Failed</h1>
             <p className="text-text-light mt-2">{error}</p>
             <p className="text-sm text-text-lighter mt-1">
-              Please contact support if this issue persists.
+              Your subscription may still be active. Please check your dashboard.
             </p>
             <div className="mt-6 space-y-3">
               <button
-                onClick={() => navigate('/subscription')}
+                onClick={() => refetch()}
                 className="btn-primary block w-full"
               >
                 Try Again
               </button>
-              <Link to="/contact" className="btn-secondary block w-full">
+              <Link to={`/${user?.role || 'customer'}/dashboard`} className="btn-secondary block w-full">
+                Go to Dashboard
+              </Link>
+              <Link to="/contact" className="text-primary hover:underline text-sm block">
                 Contact Support
               </Link>
             </div>

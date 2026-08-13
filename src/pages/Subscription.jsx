@@ -50,7 +50,16 @@ const Subscription = () => {
         window.location.href = result.sessionUrl
       }
     } catch (error) {
-      toast.error(error.data?.message || 'Failed to start subscription')
+       // ✅ Handle subscription conflict errors
+       if (error.data?.message?.includes('already have an active subscription')) {
+        toast.error('You already have an active subscription')
+        refetchStatus()
+      } else if (error.data?.canResume) {
+        toast.info('You have a canceled subscription that can be resumed')
+        // Optionally show resume modal
+      } else {
+        toast.error(error.data?.message || 'Failed to start subscription')
+      }
     } finally {
       setProcessingPlanId(null)
     }

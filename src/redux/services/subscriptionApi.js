@@ -7,6 +7,11 @@ export const subscriptionApi = baseApi.injectEndpoints({
       query: () => '/subscription/plans',
       providesTags: ['Subscription'],
     }),
+     // Verify subscription session (public endpoint)
+     verifySubscriptionSession: builder.query({
+      query: (sessionId) => `/subscription/verify-session/${sessionId}`,
+      // This endpoint doesn't need auth
+    }),
     
     // Get subscription status
     getSubscriptionStatus: builder.query({
@@ -58,4 +63,5 @@ export const {
   useCancelSubscriptionMutation,
   useResumeSubscriptionMutation,
   useGetSubscriptionHistoryQuery,
+  useVerifySubscriptionSessionQuery,
 } = subscriptionApi;
