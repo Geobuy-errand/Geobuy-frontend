@@ -1,13 +1,12 @@
 import React, { useState } from 'react'
-import { useGetAllPaymentsQuery, useRefundPaymentMutation } from '../../redux/services/adminApi'
-import { toast } from 'react-hot-toast'
+import { useGetAllPaymentsQuery, useGetPaymentStatsQuery } from '../../redux/services/adminApi'
 import { FaSearch, FaMoneyBillWave, FaCheckCircle, FaClock, FaTimesCircle, FaUndo } from 'react-icons/fa'
 
 const AdminPayments = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const { data: payments, isLoading, refetch } = useGetAllPaymentsQuery()
-  const [refundPayment, { isLoading: isRefunding }] = useRefundPaymentMutation()
+  const { data: stats } = useGetPaymentStatsQuery()
 
   const filteredPayments = payments?.filter(p => {
     const matchesSearch = p.bookingId?.bookingId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -16,16 +15,6 @@ const AdminPayments = () => {
     const matchesStatus = statusFilter === '' || p.status === statusFilter
     return matchesSearch && matchesStatus
   })
-
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'succeeded': return <FaCheckCircle className="text-green-600" />
-      case 'processing': return <FaClock className="text-yellow-600" />
-      case 'refunded': return <FaUndo className="text-red-600" />
-      case 'failed': return <FaTimesCircle className="text-red-600" />
-      default: return <FaClock className="text-gray-600" />
-    }
-  }
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -37,24 +26,31 @@ const AdminPayments = () => {
     }
   }
 
-  const handleRefund = async (paymentId) => {
-    if (!window.confirm('Are you sure you want to refund this payment?')) return
-
-    try {
-      await refundPayment({
-        paymentId,
-        reason: 'Admin refund',
-      }).unwrap()
-      toast.success('Payment refunded successfully')
-      refetch()
-    } catch (error) {
-      toast.error(error.data?.message || 'Failed to refund payment')
-    }
-  }
-
   return (
     <div>
       <h1 className="text-2xl md:text-3xl font-bold text-text mb-6">Payments</h1>
+
+      {/* Stats */}
+      {stats && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="card">
+            <p className="text-sm text-text-light">Total Revenue</p>
+            <p className="text-2xl font-bold text-primary">£{stats.totalRevenue?.toFixed(2) || '0.00'}</p>
+          </div>
+          <div className="card">
+            <p className="text-sm text-text-light">Today's Revenue</p>
+            <p className="text-2xl font-bold text-secondary">£{stats.todayRevenue?.toFixed(2) || '0.00'}</p>
+          </div>
+          <div className="card">
+            <p className="text-sm text-text-light">Platform Fee</p>
+            <p className="text-2xl font-bold text-blue-600">£{stats.totalPlatformFee?.toFixed(2) || '0.00'}</p>
+          </div>
+          <div className="card">
+            <p className="text-sm text-text-light">Pending Disbursements</p>
+            <p className="text-2xl font-bold text-yellow-600">{stats.pendingDisbursements || 0}</p>
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-col md:flex-row gap-4 mb-6">
@@ -82,7 +78,7 @@ const AdminPayments = () => {
         </select>
       </div>
 
-      {/* Payments List */}
+      {/* Payments Table */}
       {isLoading ? (
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
@@ -97,53 +93,39 @@ const AdminPayments = () => {
           <p className="text-text-light">No payments found</p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {filteredPayments?.map((payment) => (
-            <div key={payment._id} className="card">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div className="flex items-start space-x-4">
-                  <div className="text-2xl">{getStatusIcon(payment.status)}</div>
-                  <div>
-                    <p className="font-semibold text-text">
-                      Booking #{payment.bookingId?.bookingId}
-                    </p>
-                    <p className="text-sm text-text-light">
-                      Customer: {payment.customerId?.fullName}
-                    </p>
-                    <p className="text-sm text-text-light">
-                      Provider: {payment.providerId?.fullName}
-                    </p>
-                    <p className="text-xs text-text-lighter">
-                      {new Date(payment.createdAt).toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex flex-col items-end gap-2">
-                  <div className="text-right">
-                    <p className="text-xl font-bold text-primary">
-                      £{payment.amount?.toFixed(2)}
-                    </p>
-                    <p className="text-sm text-text-lighter">
-                      Fee: £{payment.platformFee?.toFixed(2)} | Provider: £{payment.providerAmount?.toFixed(2)}
-                    </p>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray-200">
+                <th className="text-left py-3 px-4 text-sm font-semibold text-text-light">ID</th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-text-light">Customer</th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-text-light">Provider</th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-text-light">Amount</th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-text-light">Status</th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-text-light">Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredPayments?.map((payment) => (
+                <tr key={payment._id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                  <td className="py-3 px-4 text-sm text-text">
+                    {payment.bookingId?.bookingId || payment.errandId?.errandId || 'N/A'}
+                  </td>
+                  <td className="py-3 px-4 text-text-light">{payment.customerId?.fullName}</td>
+                  <td className="py-3 px-4 text-text-light">{payment.providerId?.fullName}</td>
+                  <td className="py-3 px-4 font-semibold text-primary">£{payment.amount?.toFixed(2)}</td>
+                  <td className="py-3 px-4">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(payment.status)}`}>
                       {payment.status}
                     </span>
-                  </div>
-                  {payment.status === 'succeeded' && (
-                    <button
-                      onClick={() => handleRefund(payment._id)}
-                      disabled={isRefunding}
-                      className="text-red-600 hover:text-red-700 text-sm flex items-center space-x-1 disabled:opacity-50"
-                    >
-                      <FaUndo />
-                      <span>{isRefunding ? 'Refunding...' : 'Refund'}</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
+                  </td>
+                  <td className="py-3 px-4 text-sm text-text-light">
+                    {new Date(payment.createdAt).toLocaleDateString()}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

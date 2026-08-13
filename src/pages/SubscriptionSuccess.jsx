@@ -2,11 +2,13 @@ import React, { useEffect, useState } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { FaCheckCircle, FaSpinner, FaExclamationTriangle } from 'react-icons/fa'
 import { toast } from 'react-hot-toast'
+import { useSelector } from 'react-redux'
 import axios from 'axios'
 
 const SubscriptionSuccess = () => {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  const { user } = useSelector((state) => state.auth)
   const [isVerifying, setIsVerifying] = useState(true)
   const [isSuccess, setIsSuccess] = useState(false)
   const [error, setError] = useState(null)
@@ -14,27 +16,33 @@ const SubscriptionSuccess = () => {
 
   useEffect(() => {
     const sessionId = searchParams.get('session_id')
+    console.log('🔍 Session ID from URL:', sessionId)
+    
     if (sessionId) {
       verifySubscription(sessionId)
     } else {
-      setError('No session ID found')
+      setError('No session ID found in the URL')
       setIsVerifying(false)
     }
   }, [searchParams])
 
   const verifySubscription = async (sessionId) => {
     try {
+      console.log('🔍 Verifying subscription with session:', sessionId)
+      
       // Step 1: Verify the subscription with the backend
       const response = await axios.get(`/api/subscription/verify-session/${sessionId}`, {
         withCredentials: true,
       })
+
+      console.log('📦 Verification response:', response.data)
 
       if (response.data.success) {
         setSubscriptionData(response.data)
         setIsSuccess(true)
         toast.success('Subscription activated successfully! 🎉')
         
-        // Wait a moment before checking status
+        // Check status after a moment
         setTimeout(() => {
           checkSubscriptionStatus()
         }, 2000)
@@ -43,7 +51,8 @@ const SubscriptionSuccess = () => {
         toast.error('Failed to verify subscription')
       }
     } catch (error) {
-      console.error('Verification error:', error)
+      console.error('❌ Verification error:', error)
+      console.error('❌ Error response:', error.response?.data)
       setError(error.response?.data?.message || 'Failed to verify subscription. Please contact support.')
       toast.error('Failed to verify subscription')
     } finally {
@@ -57,11 +66,13 @@ const SubscriptionSuccess = () => {
         withCredentials: true,
       })
       
+      console.log('📊 Subscription status:', response.data)
+      
       if (response.data.isSubscribed) {
         console.log('✅ Subscription active:', response.data)
       }
     } catch (error) {
-      console.error('Status check error:', error)
+      console.error('❌ Status check error:', error)
     }
   }
 
@@ -119,10 +130,10 @@ const SubscriptionSuccess = () => {
           {subscriptionData && (
             <div className="mt-4 p-4 bg-gray-50 rounded-lg text-left">
               <p className="text-sm text-text-light">
-                <span className="font-medium">Plan:</span> {subscriptionData.planName}
+                <span className="font-medium">Plan:</span> {subscriptionData.planName || 'Subscription'}
               </p>
               <p className="text-sm text-text-light">
-                <span className="font-medium">Status:</span> {subscriptionData.status}
+                <span className="font-medium">Status:</span> {subscriptionData.localRecord?.status || subscriptionData.subscription?.status || 'Active'}
               </p>
               <p className="text-sm text-text-light">
                 <span className="font-medium">Trial Period:</span> 7 days free
@@ -131,7 +142,7 @@ const SubscriptionSuccess = () => {
           )}
           
           <div className="mt-6 space-y-3">
-            <Link to="/customer/dashboard" className="btn-primary block">
+            <Link to={`/${user?.role || 'customer'}/dashboard`} className="btn-primary block">
               Go to Dashboard
             </Link>
             <Link to="/book-errand" className="btn-secondary block">
