@@ -120,6 +120,14 @@ export const adminApi = baseApi.injectEndpoints({
       query: () => '/admin/service-providers',
       providesTags: ['Admin'],
     }),
+    updateUser: builder.mutation({
+      query: ({ userId, data }) => ({
+        url: `/admin/users/${userId}`,
+        method: 'PUT',
+        body: data,
+      }),
+      invalidatesTags: ['User'],
+    }),
   }),
   overrideExisting: false,
 });
@@ -159,4 +167,5 @@ export const {
   
   // Service Providers
   useGetServiceProvidersQuery,
+  useUpdateUserMutation
 } = adminApi;

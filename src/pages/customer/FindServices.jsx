@@ -70,6 +70,18 @@ const FindServices = () => {
     skip: !selectedCategory,
   })
 
+  useEffect(() => {
+    if (categories) {
+      console.log('📂 Categories fetched:', categories)
+      console.log('📂 Categories count:', categories.length)
+      if (categories.length > 0) {
+        console.log('📂 First category:', categories[0])
+        console.log('📂 Category names:', categories.map(c => c.name))
+        console.log('📂 Category labels:', categories.map(c => c.label))
+      }
+    }
+  }, [categories])
+
 
   const [createServiceRequest, { isLoading: isCreating }] = useCreateServiceRequestMutation()
 
