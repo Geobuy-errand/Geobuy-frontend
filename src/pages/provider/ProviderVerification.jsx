@@ -1,47 +1,58 @@
 import React, { useState } from 'react'
 import { useSelector } from 'react-redux'
-import { FaShieldAlt, FaCheck, FaClock, FaTimes, FaUpload, FaFileAlt } from 'react-icons/fa'
+import { useGetProviderProfileQuery } from '../../redux/services/providerApi'
+import { toast } from 'react-hot-toast'
+import { FaShieldAlt, FaCheck, FaClock, FaTimes, FaUpload, FaFileAlt, FaIdCard, FaHome, FaBriefcase, FaUserCheck } from 'react-icons/fa'
+import axios from 'axios'
 
-const ProviderVerification = () => {
-  const { user, providerProfile } = useSelector((state) => state.auth)
+const ServiceProviderVerification = () => {
+  const { user } = useSelector((state) => state.auth)
+  const { data: profile, refetch } = useGetProviderProfileQuery()
   const [uploading, setUploading] = useState(false)
+  const [uploadedDocs, setUploadedDocs] = useState({
+    identity: user?.documents?.passport || '',
+    address: user?.documents?.proofOfAddress || '',
+    work: user?.documents?.rightToWork || '',
+    certification: user?.documents?.certification || '',
+    insurance: user?.documents?.insurance || '',
+    dbs: user?.dbsDocument || '',
+  })
 
   const verificationSteps = [
     {
       id: 'identity',
       label: 'Identity Verification',
       description: 'Upload your Passport or Driving Licence',
-      status: user?.documents?.passport ? 'completed' : 'pending',
+      status: uploadedDocs.identity ? 'completed' : 'pending',
+      icon: FaIdCard,
     },
     {
       id: 'address',
       label: 'Proof of Address',
       description: 'Upload a recent utility bill or bank statement',
-      status: user?.documents?.proofOfAddress ? 'completed' : 'pending',
+      status: uploadedDocs.address ? 'completed' : 'pending',
+      icon: FaHome,
     },
     {
       id: 'work',
       label: 'Right to Work',
       description: 'Upload your right to work documentation',
-      status: user?.documents?.rightToWork ? 'completed' : 'pending',
+      status: uploadedDocs.work ? 'completed' : 'pending',
+      icon: FaBriefcase,
     },
     {
-      id: 'driving',
-      label: 'Driving Licence',
-      description: 'Upload your driving licence',
-      status: user?.documents?.drivingLicence ? 'completed' : 'pending',
-    },
-    {
-      id: 'vehicle',
-      label: 'Vehicle Registration',
-      description: 'Upload your vehicle registration document',
-      status: user?.documents?.vehicleRegistration ? 'completed' : 'pending',
+      id: 'certification',
+      label: 'Certifications',
+      description: 'Upload your professional certifications (if applicable)',
+      status: uploadedDocs.certification ? 'completed' : 'pending',
+      icon: FaUserCheck,
     },
     {
       id: 'insurance',
-      label: 'Vehicle Insurance',
-      description: 'Upload your vehicle insurance certificate',
-      status: user?.documents?.vehicleInsurance ? 'completed' : 'pending',
+      label: 'Insurance',
+      description: 'Upload your liability insurance certificate',
+      status: uploadedDocs.insurance ? 'completed' : 'pending',
+      icon: FaShieldAlt,
     },
   ]
 
@@ -51,7 +62,8 @@ const ProviderVerification = () => {
       id: 'dbs',
       label: 'DBS Check',
       description: 'Upload your enhanced DBS certificate',
-      status: user?.dbsDocument ? 'completed' : 'pending',
+      status: uploadedDocs.dbs ? 'completed' : 'pending',
+      icon: FaShieldAlt,
     })
   }
 
@@ -68,14 +80,81 @@ const ProviderVerification = () => {
     }
   }
 
-  const handleUpload = (stepId) => {
-    // In a real app, this would open a file picker and upload to Cloudinary
+  const handleDocumentUpload = async (docType, file) => {
+    if (!file) return
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File size must be less than 5MB')
+      return
+    }
+
+    const formData = new FormData()
+    formData.append('document', file)
+    formData.append('documentType', docType)
+
     setUploading(true)
-    setTimeout(() => {
+    try {
+      const response = await axios.post(
+        `/api/verifications/upload`,
+        formData,
+        {
+          withCredentials: true,
+          headers: { 'Content-Type': 'multipart/form-data' },
+        }
+      )
+
+      if (response.data.fileUrl) {
+        // Update local state
+        setUploadedDocs(prev => ({
+          ...prev,
+          [docType]: response.data.fileUrl,
+        }))
+        
+        toast.success(`${docType} uploaded successfully! Document is pending review.`)
+        refetch()
+        
+        // If all documents are uploaded, prompt user to request verification
+        const allUploaded = Object.values({ ...uploadedDocs, [docType]: response.data.fileUrl }).every(val => val)
+        if (allUploaded) {
+          toast.success('🎉 All documents uploaded! Admin will review your verification.')
+        }
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Upload failed')
+    } finally {
       setUploading(false)
-      toast.success('Document uploaded successfully')
-    }, 2000)
+    }
   }
+
+  const requestVerification = async () => {
+    try {
+      const response = await axios.post(
+        '/api/verifications/request-review',
+        {},
+        { withCredentials: true }
+      )
+      
+      if (response.data.success) {
+        toast.success('Verification review requested! Admin will review your documents.')
+        refetch()
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to request verification')
+    }
+  }
+
+  const allDocumentsUploaded = () => {
+    // Check if all required documents are uploaded
+    const requiredDocs = ['identity', 'address', 'work']
+    if (user?.renderCareServices) requiredDocs.push('dbs')
+    
+    return requiredDocs.every(doc => uploadedDocs[doc])
+  }
+
+  const isPendingReview = profile?.verificationStatus === 'pending'
+  const isApproved = profile?.verificationStatus === 'approved'
+  const isRejected = profile?.verificationStatus === 'rejected'
 
   return (
     <div>
@@ -86,22 +165,44 @@ const ProviderVerification = () => {
           <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
             <FaShieldAlt className="text-2xl text-primary" />
           </div>
-          <div>
+          <div className="flex-1">
             <h2 className="text-lg font-semibold text-text">Verification Status</h2>
             <p className="text-text-light">
               Your account is currently{' '}
               <span className={`font-semibold ${
-                user?.verificationStatus === 'approved' ? 'text-green-600' :
-                user?.verificationStatus === 'rejected' ? 'text-red-600' :
+                isApproved ? 'text-green-600' :
+                isRejected ? 'text-red-600' :
+                isPendingReview ? 'text-blue-600' :
                 'text-yellow-600'
               }`}>
-                {user?.verificationStatus || 'pending'}
+                {isApproved ? 'Approved ✅' :
+                 isRejected ? 'Rejected ❌' :
+                 isPendingReview ? 'Under Review' :
+                 'Not Submitted'}
               </span>
             </p>
-            {user?.rejectionReason && (
-              <p className="text-red-600 text-sm mt-2">
-                Reason: {user.rejectionReason}
+            {isApproved && (
+              <p className="text-green-600 text-sm mt-2">
+                ✅ You are verified and can accept service requests
               </p>
+            )}
+            {isRejected && profile?.rejectionReason && (
+              <p className="text-red-600 text-sm mt-2">
+                Reason: {profile.rejectionReason}
+              </p>
+            )}
+            {isPendingReview && (
+              <p className="text-blue-600 text-sm mt-2">
+                ⏳ Your documents are being reviewed by an admin. You'll be notified once approved.
+              </p>
+            )}
+            {!isApproved && !isPendingReview && allDocumentsUploaded() && (
+              <button
+                onClick={requestVerification}
+                className="mt-3 btn-primary text-sm py-2 px-4"
+              >
+                Request Verification Review
+              </button>
             )}
           </div>
         </div>
@@ -113,7 +214,7 @@ const ProviderVerification = () => {
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <div className="flex items-center space-x-3">
-                  <FaFileAlt className="text-primary" />
+                  <step.icon className="text-primary" />
                   <h3 className="font-semibold text-text">{step.label}</h3>
                 </div>
                 <p className="text-sm text-text-light mt-1">{step.description}</p>
@@ -121,15 +222,23 @@ const ProviderVerification = () => {
                   {getStatusBadge(step.status)}
                 </div>
               </div>
-              {step.status !== 'completed' && (
-                <button
-                  onClick={() => handleUpload(step.id)}
-                  disabled={uploading}
-                  className="btn-outline text-sm py-1 px-3 flex items-center space-x-1"
-                >
+              {step.status !== 'completed' && !isPendingReview && !isApproved && (
+                <label className="cursor-pointer btn-outline text-sm py-1 px-3 flex items-center space-x-1">
                   <FaUpload />
                   <span>Upload</span>
-                </button>
+                  <input
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={(e) => handleDocumentUpload(step.id, e.target.files[0])}
+                    className="hidden"
+                    disabled={uploading || isPendingReview}
+                  />
+                </label>
+              )}
+              {step.status === 'completed' && (
+                <span className="text-green-500 text-sm flex items-center">
+                  <FaCheck className="mr-1" /> Uploaded
+                </span>
               )}
             </div>
           </div>
@@ -141,9 +250,22 @@ const ProviderVerification = () => {
           <strong>Note:</strong> All documents are checked securely and stored safely. 
           We only ask what we need to confirm who you are, keep everyone protected, and pay you correctly.
         </p>
+        {allDocumentsUploaded() && !isPendingReview && !isApproved && (
+          <button
+            onClick={requestVerification}
+            className="mt-3 btn-primary text-sm py-2 px-4"
+          >
+            Submit for Verification
+          </button>
+        )}
+        {isPendingReview && (
+          <p className="mt-2 text-sm text-blue-600">
+            ⏳ Your verification is pending review. You'll be notified once approved.
+          </p>
+        )}
       </div>
     </div>
   )
 }
 
-export default ProviderVerification
+export default ServiceProviderVerification

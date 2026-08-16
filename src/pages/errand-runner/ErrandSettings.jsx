@@ -1,9 +1,9 @@
 import React, { useState } from 'react'
-import { useChangePasswordMutation } from '../../redux/services/providerApi'
+import { useChangePasswordMutation } from '../../redux/services/userApi'
 import { toast } from 'react-hot-toast'
 import { FaLock, FaKey } from 'react-icons/fa'
 
-const ErrandSettings = () => {
+const ErrandRunnerSettings = () => {
   const [changePassword, { isLoading }] = useChangePasswordMutation()
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
@@ -48,7 +48,7 @@ const ErrandSettings = () => {
   }
 
   return (
-    <div>
+    <div className="p-4 md:p-6">
       <h1 className="text-2xl md:text-3xl font-bold text-text mb-6">Settings</h1>
 
       <div className="space-y-6">
@@ -139,4 +139,4 @@ const ErrandSettings = () => {
   )
 }
 
-export default ErrandSettings
+export default ErrandRunnerSettings

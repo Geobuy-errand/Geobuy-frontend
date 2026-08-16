@@ -7,6 +7,7 @@ const BookingHistory = () => {
   const { data: bookings, isLoading } = useGetBookingsQuery()
   const [filter, setFilter] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
+  console.log({bookings})
 
   const filteredBookings = bookings?.filter(booking => {
     const matchesStatus = filter === 'all' || booking.status === filter

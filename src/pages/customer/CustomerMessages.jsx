@@ -6,6 +6,7 @@ import { useSelector } from 'react-redux'
 import { toast } from 'react-hot-toast'
 import { io } from 'socket.io-client'
 import { FaComments, FaChevronRight, FaPaperPlane, FaSpinner } from 'react-icons/fa'
+import axios from 'axios'
 
 const CustomerMessages = () => {
   const { user } = useSelector((state) => state.auth)
@@ -14,6 +15,7 @@ const CustomerMessages = () => {
   const [newMessage, setNewMessage] = useState('')
   const [sendMessage, { isLoading: isSending }] = useSendMessageMutation()
   const [socket, setSocket] = useState(null)
+  const [chatId, setChatId] = useState(null)
   const messagesEndRef = useRef(null)
   
   const { data: messages, refetch } = useGetMessagesQuery(selectedBooking?._id, {
@@ -42,7 +44,32 @@ const CustomerMessages = () => {
     return () => {
       newSocket.disconnect()
     }
+  }, [selectedBooking, refetch])
+
+  // Get or create chat when a booking is selected
+  useEffect(() => {
+    if (selectedBooking) {
+      getOrCreateChat()
+    }
   }, [selectedBooking])
+
+  const getOrCreateChat = async () => {
+    try {
+      const response = await axios.post(
+        '/api/chats/get-or-create',
+        {
+          userId: selectedBooking.providerId?._id,
+          errandId: selectedBooking._id,
+          bookingId: selectedBooking._id,
+        },
+        { withCredentials: true }
+      )
+      setChatId(response.data._id)
+    } catch (error) {
+      console.error('Failed to get/create chat:', error)
+      toast.error('Failed to load chat')
+    }
+  }
 
   useEffect(() => {
     scrollToBottom()
@@ -56,13 +83,14 @@ const CustomerMessages = () => {
 
   const handleSendMessage = async (e) => {
     e.preventDefault()
-    if (!newMessage.trim() || !selectedBooking) return
+    if (!newMessage.trim() || !selectedBooking || !chatId) return
 
     try {
       await sendMessage({
         bookingId: selectedBooking._id,
         content: newMessage.trim(),
         receiverId: selectedBooking.providerId?._id,
+        chatId: chatId, // ✅ Now passing chatId
       }).unwrap()
       setNewMessage('')
       refetch()
@@ -92,7 +120,10 @@ const CustomerMessages = () => {
               {activeBookings.map((booking) => (
                 <button
                   key={booking._id}
-                  onClick={() => setSelectedBooking(booking)}
+                  onClick={() => {
+                    setSelectedBooking(booking)
+                    setChatId(null) // Reset chat ID when switching bookings
+                  }}
                   className={`w-full text-left p-3 rounded-lg transition-colors ${
                     selectedBooking?._id === booking._id
                       ? 'bg-primary/10'
@@ -142,7 +173,7 @@ const CustomerMessages = () => {
                   </p>
                 ) : (
                   messages?.map((msg) => {
-                    const isOwn = msg.senderId._id === user._id
+                    const isOwn = msg.senderId?._id === user?._id
                     return (
                       <div
                         key={msg._id}
@@ -173,16 +204,19 @@ const CustomerMessages = () => {
                   onChange={(e) => setNewMessage(e.target.value)}
                   placeholder="Type a message..."
                   className="input-field flex-1"
-                  disabled={isSending}
+                  disabled={isSending || !chatId}
                 />
                 <button
                   type="submit"
-                  disabled={!newMessage.trim() || isSending}
+                  disabled={!newMessage.trim() || isSending || !chatId}
                   className="btn-primary py-2 px-4 flex items-center space-x-2 disabled:opacity-50"
                 >
                   {isSending ? <FaSpinner className="animate-spin" /> : <FaPaperPlane />}
                 </button>
               </form>
+              {!chatId && (
+                <p className="text-xs text-text-lighter mt-2 text-center">Loading chat...</p>
+              )}
             </>
           ) : (
             <div className="text-center py-12">

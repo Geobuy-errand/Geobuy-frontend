@@ -64,6 +64,8 @@ import AdminReports from "./pages/admin/AdminReports";
 import AdminAnalytics from "./pages/admin/AdminAnalytics";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminVerificationQueue from "./pages/admin/AdminVerificationQueue";
+import ServiceProvidersManagement from "./pages/admin/ServiceProvidersManagement";
+import ServiceDefinitions from "./pages/admin/ServiceDefinitions";
 
 import ProtectedRoute from "./components/routes/ProtectedRoute";
 import AdminLogin from "./pages/AdminLogin";
@@ -85,6 +87,9 @@ import ErrandAvailability from "./pages/errand-runner/ErrandAvailability";
 import ErrandProfile from "./pages/errand-runner/ErrandProfile";
 import ErrandSettings from "./pages/errand-runner/ErrandSettings";
 import RegisterErrandRunner from "./pages/RegisterErrandRunner";
+import ErrandRunnerMessages from "./pages/errand-runner/ErrandMessages";
+import ErrandRunnerReviews from "./pages/errand-runner/ErrandReviews";
+import ServiceCategories from "./pages/admin/ServiceCategories";
 
 function App() {
   return (
@@ -117,7 +122,10 @@ function App() {
           <Route path="admin/login" element={<AdminLogin />} />
           <Route path="register/customer" element={<RegisterCustomer />} />
           <Route path="register/provider" element={<RegisterProvider />} />
-          <Route path="register/errand-runner" element={<RegisterErrandRunner />} />
+          <Route
+            path="register/errand-runner"
+            element={<RegisterErrandRunner />}
+          />
           <Route path="privacy" element={<PrivacyPolicy />} />
           <Route path="terms" element={<Terms />} />
           <Route path="book-errand" element={<BookErrand />} />
@@ -199,6 +207,8 @@ function App() {
           <Route path="availability" element={<ErrandAvailability />} />
           <Route path="profile" element={<ErrandProfile />} />
           <Route path="settings" element={<ErrandSettings />} />
+          <Route path="messages" element={<ErrandRunnerMessages />} />
+          <Route path="reviews" element={<ErrandRunnerReviews />} />
         </Route>
 
         {/* Admin Routes */}
@@ -222,18 +232,13 @@ function App() {
           <Route path="analytics" element={<AdminAnalytics />} />
           <Route path="settings" element={<AdminSettings />} />
           <Route path="verification" element={<AdminVerificationQueue />} />
-          <Route path="/admin/chat-support" element={<ChatSupport />} />
-        </Route>
-
-        <Route
-          path="/admin/chat-escalation"
-          element={
-            <ProtectedRoute allowedRoles={["admin"]}>
-              <DashboardLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<ChatEscalation />} />
+          <Route path="chat-support" element={<ChatSupport />} />
+          <Route path="categories" element={<ServiceCategories />} />
+          <Route path="chat-escalation" element={<ChatEscalation />} />
+          <Route path="subscriptions" element={<AdminSubscriptions />} />
+          <Route path="subscription-plans" element={<SubscriptionPlans />} />
+          <Route path="service-definitions" element={<ServiceDefinitions />} />
+          <Route path="service-providers" element={<ServiceProvidersManagement />} />
         </Route>
         <Route
           path="customer/subscriptions"
@@ -259,28 +264,6 @@ function App() {
           <Route path="success" element={<SubscriptionSuccess />} />
           <Route path="cancel" element={<Subscription />} />
         </Route>
-
-        <Route
-          path="admin/subscriptions"
-          element={
-            <ProtectedRoute allowedRoles={["admin"]}>
-              <DashboardLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<AdminSubscriptions />} />
-        </Route>
-        <Route
-          path="admin/subscription-plans"
-          element={
-            <ProtectedRoute allowedRoles={["admin"]}>
-              <DashboardLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<SubscriptionPlans />} />
-        </Route>
-
         {/* 404 */}
         <Route path="*" element={<NotFound />} />
       </Routes>

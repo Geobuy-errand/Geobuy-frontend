@@ -10,7 +10,15 @@ export const adminApi = baseApi.injectEndpoints({
 
     // ========== USERS ==========
     getUsers: builder.query({
-      query: (params) => `/admin/users?${new URLSearchParams(params)}`,
+      query: ({ search, role, status, verificationStatus, page, limit }) => 
+        `/admin/users?${new URLSearchParams({
+          search: search || '',
+          role: role || '',
+          status: status || '',
+          verificationStatus: verificationStatus || '',
+          page: page || 1,
+          limit: limit || 10,
+        })}`,
       providesTags: ['Admin'],
     }),
     toggleUserStatus: builder.mutation({

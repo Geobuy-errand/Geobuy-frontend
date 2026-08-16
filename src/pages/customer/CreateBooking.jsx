@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { useCreateErrandMutation } from '../../redux/services/errandApi'
+import { useGetServicesQuery } from '../../redux/services/serviceApi'
 import { getDistance } from '../../services/distanceService'
 import AddressAutocomplete from '../../components/AddressAutocomplete'
 import { toast } from 'react-hot-toast'
@@ -9,12 +10,6 @@ import {
   FaCalendar, 
   FaClock, 
   FaCamera, 
-  FaBox,
-  FaFileAlt,
-  FaPills,
-  FaTshirt,
-  FaUsers,
-  FaShoppingBag,
   FaInfoCircle,
   FaArrowRight,
   FaRuler,
@@ -24,7 +19,6 @@ import {
   FaWeightHanging,
   FaClock as FaClockIcon,
   FaBolt,
-  FaMapPin,
   FaDollarSign,
 } from 'react-icons/fa'
 
@@ -33,6 +27,9 @@ const CreateBooking = () => {
   const dispatch = useDispatch()
   const { user } = useSelector((state) => state.auth)
   const [createErrand, { isLoading }] = useCreateErrandMutation()
+  
+  // ✅ Fetch services from API
+  const { data: services, isLoading: servicesLoading } = useGetServicesQuery()
 
   // Pricing constants
   const BASE_FEE = 3.99
@@ -53,6 +50,7 @@ const CreateBooking = () => {
 
   const [formData, setFormData] = useState({
     serviceType: '',
+    serviceId: '',
     pickup: {
       address: '',
       street: '',
@@ -73,7 +71,6 @@ const CreateBooking = () => {
     preferredDate: '',
     preferredTime: '',
     requiresLiveTracking: false,
-    // New pricing fields
     isHeavyItem: false,
     isPeakUrgent: false,
     extraStopsCount: 0,
@@ -109,16 +106,6 @@ const CreateBooking = () => {
   const [isSubscribed, setIsSubscribed] = useState(false)
   const [isDistanceCalculated, setIsDistanceCalculated] = useState(false)
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false)
-
-  const serviceTypes = [
-    { id: 'parcel_delivery', label: 'Parcel Delivery', icon: FaBox, description: 'Pick up and deliver parcels' },
-    { id: 'document_delivery', label: 'Document Delivery', icon: FaFileAlt, description: 'Secure document handling' },
-    { id: 'prescription_pickup', label: 'Prescription Pickup', icon: FaPills, description: 'Collect prescriptions' },
-    { id: 'dry_cleaning_pickup', label: 'Dry Cleaning Pickup', icon: FaTshirt, description: 'Pick up dry cleaning' },
-    { id: 'queue_waiting', label: 'Queue Waiting', icon: FaUsers, description: 'Wait in line on your behalf' },
-    { id: 'shopping', label: 'Shopping', icon: FaShoppingBag, description: 'Grocery, pharmacy, retail' },
-    { id: 'custom', label: 'Custom Errand', icon: FaInfoCircle, description: 'Any other errand' },
-  ]
 
   // Check if user is subscribed
   useEffect(() => {
@@ -209,11 +196,16 @@ const CreateBooking = () => {
     setDistanceError(null)
   }
 
+  // ✅ Handle service selection from API data
   const handleServiceSelect = (serviceId) => {
-    setFormData(prev => ({
-      ...prev,
-      serviceType: serviceId,
-    }))
+    const selectedService = services?.find(s => s._id === serviceId)
+    if (selectedService) {
+      setFormData(prev => ({
+        ...prev,
+        serviceId,
+        serviceType: selectedService.category || selectedService.name,
+      }))
+    }
   }
 
   const calculatePrice = (dist) => {
@@ -238,21 +230,17 @@ const CreateBooking = () => {
       return
     }
     
-    // Get distance rate based on tier
     const ratePerMile = getDistanceRate(distanceInMiles)
     const distanceFee = Math.round((distanceInMiles * ratePerMile) * 100) / 100
     
-    // Calculate subtotal
     let subtotal = BASE_FEE + distanceFee
     
-    // Heavy item fee
     let heavyItemFee = 0
     if (formData.isHeavyItem) {
       heavyItemFee = HEAVY_ITEM_FEE
       subtotal += heavyItemFee
     }
     
-    // Wait time fee (first 5 minutes free)
     let waitTimeFee = 0
     if (formData.waitTimeMinutes > WAIT_TIME_FREE_MIN) {
       const extraMinutes = formData.waitTimeMinutes - WAIT_TIME_FREE_MIN
@@ -260,14 +248,12 @@ const CreateBooking = () => {
       subtotal += waitTimeFee
     }
     
-    // Peak/urgent fee
     let peakUrgentFee = 0
     if (formData.isPeakUrgent) {
       peakUrgentFee = PEAK_URGENT_FEE
       subtotal += peakUrgentFee
     }
     
-    // Extra stops fee
     let extraStopsFee = 0
     if (formData.extraStopsCount > 0) {
       extraStopsFee = Math.round((formData.extraStopsCount * EXTRA_STOP_FEE) * 100) / 100
@@ -276,7 +262,6 @@ const CreateBooking = () => {
     
     subtotal = Math.round(subtotal * 100) / 100
     
-    // Apply subscription discount
     let discountPercentage = 0
     let discountAmount = 0
     let total = subtotal
@@ -287,9 +272,8 @@ const CreateBooking = () => {
       total = Math.round((subtotal - discountAmount) * 100) / 100
     }
     
-    // Revenue split
-    const platformFee = Math.round((total * 0.20) * 100) / 100 // 20%
-    const providerAmount = Math.round((total * 0.80) * 100) / 100 // 80%
+    const platformFee = Math.round((total * 0.20) * 100) / 100
+    const providerAmount = Math.round((total * 0.80) * 100) / 100
 
     setPriceEstimate({
       baseFee: BASE_FEE,
@@ -351,8 +335,8 @@ const CreateBooking = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     
-    if (!formData.serviceType) {
-      toast.error('Please select a service type')
+    if (!formData.serviceId) {
+      toast.error('Please select a service')
       return
     }
     if (!formData.pickup.address) {
@@ -398,11 +382,43 @@ const CreateBooking = () => {
       isDistanceCalculated &&
       addressesValid.pickup &&
       addressesValid.dropoff &&
-      formData.serviceType &&
+      formData.serviceId &&
       formData.pickup.address &&
       formData.dropoff.address &&
       formData.preferredDate &&
       formData.preferredTime
+    )
+  }
+
+  // ✅ Get unique service types from API for display
+  const getServiceIcon = (category) => {
+    const icons = {
+      'shopping': '🛍️',
+      'groceries': '🛒',
+      'pharmacy': '💊',
+      'retail': '🏪',
+      'food_pickup': '🍕',
+      'parcel_delivery': '📦',
+      'document_delivery': '📄',
+      'dry_cleaning': '👔',
+      'key_collection': '🔑',
+      'bill_payments': '💳',
+      'queue_standing': '👥',
+      'school_pickup': '🏫',
+      'pet_assistance': '🐕',
+      'elderly_shopping': '👴',
+      'appointment_assistance': '📋',
+      'business_deliveries': '🏢',
+      'custom': '📌',
+    }
+    return icons[category] || '📋'
+  }
+
+  if (servicesLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <FaSpinner className="animate-spin text-primary text-3xl" />
+      </div>
     )
   }
 
@@ -411,18 +427,18 @@ const CreateBooking = () => {
       <h1 className="text-2xl md:text-3xl font-bold text-text mb-6">Create New Errand</h1>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Service Selection */}
+        {/* Service Selection - ✅ Dynamic from API */}
         <div className="card">
           <h2 className="text-lg font-semibold text-text mb-4">What do you need?</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {serviceTypes.map((service) => {
-              const Icon = service.icon
-              const isSelected = formData.serviceType === service.id
+            {services?.map((service) => {
+              const isSelected = formData.serviceId === service._id
+              const icon = service.icon || getServiceIcon(service.category)
               return (
                 <button
-                  key={service.id}
+                  key={service._id}
                   type="button"
-                  onClick={() => handleServiceSelect(service.id)}
+                  onClick={() => handleServiceSelect(service._id)}
                   className={`p-4 rounded-xl border-2 text-left transition-all duration-200
                     ${isSelected 
                       ? 'border-primary bg-primary/5 ring-2 ring-primary/20' 
@@ -433,13 +449,18 @@ const CreateBooking = () => {
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center
                       ${isSelected ? 'bg-primary text-white' : 'bg-primary/10 text-primary'}`}
                     >
-                      <Icon className="text-lg" />
+                      <span className="text-lg">{icon}</span>
                     </div>
                     <div>
                       <h3 className={`font-medium ${isSelected ? 'text-primary' : 'text-text'}`}>
-                        {service.label}
+                        {service.name}
                       </h3>
                       <p className="text-xs text-text-light">{service.description}</p>
+                      {service.basePrice && (
+                        <p className="text-xs text-primary font-medium mt-1">
+                          From £{service.basePrice}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </button>
@@ -616,7 +637,6 @@ const CreateBooking = () => {
 
           {showAdvancedOptions && (
             <div className="space-y-4 mt-4 pt-4 border-t border-gray-100">
-              {/* Heavy Item */}
               <label className="flex items-center space-x-3">
                 <input
                   type="checkbox"
@@ -630,7 +650,6 @@ const CreateBooking = () => {
                 </div>
               </label>
 
-              {/* Peak/Urgent */}
               <label className="flex items-center space-x-3">
                 <input
                   type="checkbox"
@@ -639,12 +658,11 @@ const CreateBooking = () => {
                   className="w-5 h-5 text-primary rounded border-gray-300 focus:ring-primary"
                 />
                 <div>
-                  <span className="text-sm text-text-light">Peak/Urgent (evenings/weekends/bad weather)</span>
+                  <span className="text-sm text-text-light">Peak/Urgent</span>
                   <p className="text-xs text-text-lighter">+£{PEAK_URGENT_FEE.toFixed(2)}</p>
                 </div>
               </label>
 
-              {/* Extra Stops */}
               <div>
                 <label className="flex items-center space-x-3">
                   <span className="text-sm text-text-light">Extra Stops</span>
@@ -660,7 +678,6 @@ const CreateBooking = () => {
                 </label>
               </div>
 
-              {/* Wait Time */}
               <div>
                 <label className="flex items-center space-x-3">
                   <span className="text-sm text-text-light">Expected Wait Time</span>
@@ -701,7 +718,6 @@ const CreateBooking = () => {
               </div>
             ) : distance > 0 && isDistanceCalculated ? (
               <>
-                {/* Distance Info */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="bg-gray-50 rounded-xl p-3">
                     <div className="flex items-center space-x-2">
@@ -720,7 +736,6 @@ const CreateBooking = () => {
                   </div>
                 </div>
 
-                {/* Price Breakdown */}
                 <div className="bg-gray-50 rounded-xl p-4 space-y-2">
                   <div className="flex justify-between">
                     <span className="text-text-light">Base Fee</span>
@@ -731,7 +746,6 @@ const CreateBooking = () => {
                     <span className="font-medium">£{priceEstimate.distanceFee.toFixed(2)}</span>
                   </div>
                   
-                  {/* Additional Charges */}
                   {formData.isHeavyItem && (
                     <div className="flex justify-between text-orange-600">
                       <span>Heavy Item Fee</span>
@@ -763,7 +777,6 @@ const CreateBooking = () => {
                   </div>
                 </div>
 
-                {/* Subscription Discount */}
                 {isSubscribed && (
                   <div className="bg-green-50 rounded-xl p-4 border border-green-200">
                     <div className="flex items-center justify-between">
@@ -776,7 +789,6 @@ const CreateBooking = () => {
                   </div>
                 )}
 
-                {/* Total */}
                 <div className="bg-primary/5 rounded-xl p-4">
                   <div className="flex items-center justify-between">
                     <span className="text-lg font-semibold text-text">Total</span>
@@ -784,7 +796,6 @@ const CreateBooking = () => {
                   </div>
                 </div>
 
-                {/* Revenue Split */}
                 <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
                   <h4 className="font-semibold text-text mb-2 flex items-center">
                     <FaDollarSign className="mr-2 text-blue-600" />
@@ -804,9 +815,9 @@ const CreateBooking = () => {
               </>
             ) : (
               <div className="text-center py-8 text-text-light">
-                <p>Select both pickup and dropoff addresses from the suggestions</p>
+                <p>Select both pickup and dropoff addresses</p>
                 <p className="text-xs text-text-lighter mt-2">
-                  Distance will be calculated automatically when both addresses are selected
+                  Distance will be calculated automatically
                 </p>
               </div>
             )}

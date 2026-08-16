@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useGetDashboardStatsQuery } from '../../redux/services/adminApi'
-import { io } from 'socket.io-client'
+import socketService from '../../redux/services/socketService'
 import { toast } from 'react-hot-toast'
 import { 
   FaUsers, 
@@ -13,133 +13,185 @@ import {
   FaDollarSign,
   FaArrowRight,
   FaCheckCircle,
-  FaSpinner,
 } from 'react-icons/fa'
 import { Link } from 'react-router-dom'
 
 const AdminDashboard = () => {
   const { data: stats, isLoading, refetch } = useGetDashboardStatsQuery()
-  const [socket, setSocket] = useState(null)
   const [recentActivity, setRecentActivity] = useState([])
   const [isConnected, setIsConnected] = useState(false)
   const [pendingPayments, setPendingPayments] = useState([])
+  const [liveStats, setLiveStats] = useState(null)
 
   useEffect(() => {
     // Connect to socket
-    const newSocket = io(import.meta.env.VITE_API_URL || 'http://localhost:5000', {
-      withCredentials: true,
-    })
+    socketService.connect()
 
-    newSocket.on('connect', () => {
-      console.log('✅ Admin socket connected')
+    // Update connection status
+    setIsConnected(socketService.getConnectionStatus())
+
+    // Join admin room
+    socketService.joinAdmin()
+
+    // Listen for socket connection status
+    const handleConnect = () => {
       setIsConnected(true)
-      newSocket.emit('admin-join')
-    })
+      toast.success('🟢 Real-time connection established')
+    }
 
-    // Listen for new errands
-    newSocket.on('new-errand-available', (data) => {
+    const handleDisconnect = () => {
+      setIsConnected(false)
+    }
+
+    socketService.on('connect', handleConnect)
+    socketService.on('disconnect', handleDisconnect)
+
+    // === LISTEN FOR EVENTS ===
+    
+    // New Errand
+    const handleNewErrand = (data) => {
       setRecentActivity(prev => [
         { 
           type: 'new_errand', 
-          message: `New errand #${data.errandId}`,
+          message: `📦 New errand available: ${data.serviceType || 'Errand'}`,
           data: data,
           timestamp: new Date(),
         },
-        ...prev,
+        ...prev.slice(0, 49),
       ])
-      toast.success(`📦 New errand available: ${data.serviceType}`)
-    })
+      toast.success(`📦 New errand available`)
+      refetch()
+    }
+    socketService.on('new-errand-available', handleNewErrand)
 
-    // Listen for errand status updates
-    newSocket.on('errand-status-updated', (data) => {
+    // Errand Status Update
+    const handleErrandStatusUpdate = (data) => {
       setRecentActivity(prev => [
         { 
           type: 'status_update', 
-          message: `Errand #${data.errand.errandId} is now ${data.status}`,
+          message: `🔄 Errand #${data.errand?.errandId || data.errandId} is now ${data.status}`,
           data: data,
           timestamp: new Date(),
         },
-        ...prev,
+        ...prev.slice(0, 49),
       ])
       refetch()
-    })
+    }
+    socketService.on('errand-status-updated', handleErrandStatusUpdate)
 
-    // Listen for errand completions
-    newSocket.on('errand-completed', (data) => {
+    // Errand Completed
+    const handleErrandCompleted = (data) => {
       setRecentActivity(prev => [
         { 
           type: 'completed', 
-          message: `✅ Errand #${data.errandId} completed!`,
+          message: `✅ Errand #${data.errandId || data.errandCode} completed!`,
           data: data,
           timestamp: new Date(),
         },
-        ...prev,
+        ...prev.slice(0, 49),
       ])
-      toast.success(`✅ Errand ${data.errandId} completed!`)
+      toast.success(`✅ Errand completed!`)
       refetch()
-    })
+    }
+    socketService.on('errand-completed', handleErrandCompleted)
 
-    // Listen for payment confirmations
-    newSocket.on('payment-confirmed', (data) => {
+    // Payment Confirmed
+    const handlePaymentConfirmed = (data) => {
+      const amount = data.amount || 0
       setRecentActivity(prev => [
         { 
           type: 'payment', 
-          message: `💰 Payment of £${data.amount.toFixed(2)} confirmed`,
+          message: `💰 Payment of £${amount.toFixed(2)} confirmed`,
           data: data,
           timestamp: new Date(),
         },
-        ...prev,
+        ...prev.slice(0, 49),
       ])
-      setPendingPayments(prev => [...prev, data])
-      toast.success(`💰 New payment of £${data.amount.toFixed(2)}`)
+      setPendingPayments(prev => [...prev, { ...data, amount }])
+      toast.success(`💰 New payment of £${amount.toFixed(2)}`)
       refetch()
-    })
+    }
+    socketService.on('payment-confirmed', handlePaymentConfirmed)
 
-    // Listen for funds released
-    newSocket.on('funds-released', (data) => {
+    // Funds Released
+    const handleFundsReleased = (data) => {
+      const amount = data.amount || 0
       setRecentActivity(prev => [
         { 
           type: 'payment_released', 
-          message: `💸 £${data.amount.toFixed(2)} released to provider`,
+          message: `💸 £${amount.toFixed(2)} released to provider`,
           data: data,
           timestamp: new Date(),
         },
-        ...prev,
+        ...prev.slice(0, 49),
       ])
-      toast.success(`💸 Funds released: £${data.amount.toFixed(2)}`)
+      setPendingPayments(prev => prev.filter(p => p._id !== data.paymentId))
+      toast.success(`💸 Funds released: £${amount.toFixed(2)}`)
       refetch()
-    })
+    }
+    socketService.on('funds-released', handleFundsReleased)
 
-    // Listen for new providers
-    newSocket.on('new-provider-registered', (data) => {
+    // New Provider
+    const handleNewProvider = (data) => {
       setRecentActivity(prev => [
         { 
           type: 'new_provider', 
-          message: `👤 New provider registered: ${data.name}`,
+          message: `👤 New provider registered: ${data.name || 'Provider'}`,
           data: data,
           timestamp: new Date(),
         },
-        ...prev,
+        ...prev.slice(0, 49),
       ])
-      toast.success(`👤 New provider: ${data.name}`)
+      toast.success(`👤 New provider registered`)
       refetch()
-    })
-
-    setSocket(newSocket)
-
-    return () => {
-      newSocket.disconnect()
     }
-  }, [])
+    socketService.on('new-provider-registered', handleNewProvider)
 
-  // Limit recent activity
+    // New Service Request
+    const handleNewServiceRequest = (data) => {
+      setRecentActivity(prev => [
+        { 
+          type: 'new_service_request', 
+          message: `📋 New service request: ${data.serviceType || 'Service'}`,
+          data: data,
+          timestamp: new Date(),
+        },
+        ...prev.slice(0, 49),
+      ])
+      toast.success(`📋 New service request received`)
+      refetch()
+    }
+    socketService.on('new-service-request', handleNewServiceRequest)
+
+    // Live Stats Update
+    const handleLiveStats = (data) => {
+      setLiveStats(data)
+    }
+    socketService.on('live-stats', handleLiveStats)
+
+    // Cleanup
+    return () => {
+      socketService.off('connect', handleConnect)
+      socketService.off('disconnect', handleDisconnect)
+      socketService.off('new-errand-available', handleNewErrand)
+      socketService.off('errand-status-updated', handleErrandStatusUpdate)
+      socketService.off('errand-completed', handleErrandCompleted)
+      socketService.off('payment-confirmed', handlePaymentConfirmed)
+      socketService.off('funds-released', handleFundsReleased)
+      socketService.off('new-provider-registered', handleNewProvider)
+      socketService.off('new-service-request', handleNewServiceRequest)
+      socketService.off('live-stats', handleLiveStats)
+    }
+  }, [refetch])
+
+  // Display recent activity (limit to 20)
   const displayActivity = recentActivity.slice(0, 20)
 
-  // Get stats for dashboard
+  // Stats cards
   const statCards = [
     {
       icon: FaUsers,
-      label: 'Total Users',
+      label: 'Total Customers',
       value: stats?.totalUsers || 0,
       color: 'text-blue-600',
       bg: 'bg-blue-100',
@@ -164,7 +216,7 @@ const AdminDashboard = () => {
     {
       icon: FaMoneyBillWave,
       label: 'Revenue (Today)',
-      value: `£${stats?.totalRevenue?.toFixed(2) || '0.00'}`,
+      value: `£${(stats?.totalRevenue || 0).toFixed(2)}`,
       color: 'text-primary',
       bg: 'bg-primary/10',
       link: '/admin/payments',
@@ -246,6 +298,7 @@ const AdminDashboard = () => {
                     {activity.type === 'payment' && <FaDollarSign className="text-green-500" />}
                     {activity.type === 'payment_released' && <FaMoneyBillWave className="text-primary" />}
                     {activity.type === 'new_provider' && <FaUserCheck className="text-purple-500" />}
+                    {activity.type === 'new_service_request' && <FaClipboardList className="text-orange-500" />}
                   </div>
                   <div className="flex-1">
                     <p className="text-sm text-text">{activity.message}</p>
@@ -270,7 +323,7 @@ const AdminDashboard = () => {
               <div className="space-y-2">
                 {pendingPayments.slice(0, 5).map((payment, index) => (
                   <div key={index} className="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
-                    <span className="text-sm font-medium">£{payment.amount.toFixed(2)}</span>
+                    <span className="text-sm font-medium">£{(payment.amount || 0).toFixed(2)}</span>
                     <span className="text-xs text-text-lighter">Waiting for release</span>
                   </div>
                 ))}

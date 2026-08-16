@@ -127,19 +127,19 @@ const RegisterProvider = () => {
       const result = await registerMutation(submitData).unwrap()
       
       if (result.user) {
-        dispatch(setUser({ user: result.user, providerProfile: null }))
+        dispatch(setUser({ user: result.user }))
         toast.success('Registration successful! Your account is pending verification.')
         navigate('/provider/dashboard')
       }
     } catch (error) {
-      // Handle validation errors from backend
+      console.error('Registration error:', error)
       if (error.data?.message) {
         toast.error(error.data.message)
       } else if (error.data?.errors && Array.isArray(error.data.errors)) {
         const errorMessage = error.data.errors.map(err => err.message).join('. ')
         toast.error(errorMessage)
       } else {
-        toast.error(error.data?.message || 'Registration failed. Please try again.')
+        toast.error('Registration failed. Please try again.')
       }
     } finally {
       setIsLoading(false)

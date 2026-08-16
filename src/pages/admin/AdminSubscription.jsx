@@ -8,6 +8,7 @@ const AdminSubscriptions = () => {
   const [filter, setFilter] = useState('all')
   const { data, isLoading, refetch } = useGetSubscriptionHistoryQuery()
 
+
   const subscriptions = data?.subscriptions || []
   const stats = data?.stats || {}
 
@@ -23,10 +24,11 @@ const AdminSubscriptions = () => {
 
   const filteredSubscriptions = subscriptions.filter(sub => {
     const matchesSearch = sub.userId?.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          sub.plan?.toLowerCase().includes(searchTerm.toLowerCase())
+                          sub.plan?.interval?.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesFilter = filter === 'all' || sub.status === filter
     return matchesSearch && matchesFilter
   })
+
 
   return (
     <div>
@@ -113,7 +115,7 @@ const AdminSubscriptions = () => {
                     </div>
                   </td>
                   <td className="py-3 px-4">
-                    <span className="capitalize font-medium">{sub.plan}</span>
+                    <span className="capitalize font-medium">{sub.plan.interval}</span>
                   </td>
                   <td className="py-3 px-4">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(sub.status)}`}>
@@ -121,7 +123,7 @@ const AdminSubscriptions = () => {
                     </span>
                   </td>
                   <td className="py-3 px-4 font-medium">
-                    £{sub.plan === 'monthly' ? '9.99' : '99.99'}/{sub.plan === 'monthly' ? 'month' : 'year'}
+                    £{sub.plan.price}
                   </td>
                   <td className="py-3 px-4 text-sm text-text-light">
                     {sub.currentPeriodStart && sub.currentPeriodEnd ? (

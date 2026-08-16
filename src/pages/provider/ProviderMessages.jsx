@@ -1,19 +1,19 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useGetBookingsQuery } from '../../redux/services/bookingApi'
+import { useGetProviderServiceRequestsQuery } from '../../redux/services/serviceApi'
 import { useGetMessagesQuery } from '../../redux/services/messageApi'
-import { FaComments, FaChevronRight, FaUser } from 'react-icons/fa'
+import { FaComments, FaChevronRight, FaUser, FaClipboardList } from 'react-icons/fa'
 
-const ProviderMessages = () => {
-  const { data: bookings } = useGetBookingsQuery()
-  const [selectedBooking, setSelectedBooking] = useState(null)
-  const { data: messages } = useGetMessagesQuery(selectedBooking?._id, {
-    skip: !selectedBooking,
+const ServiceProviderMessages = () => {
+  const { data: requests } = useGetProviderServiceRequestsQuery()
+  const [selectedRequest, setSelectedRequest] = useState(null)
+  const { data: messages } = useGetMessagesQuery(selectedRequest?._id, {
+    skip: !selectedRequest,
   })
 
-  // Get active bookings
-  const activeBookings = bookings?.filter(b => 
-    b.status !== 'cancelled' && b.status !== 'completed'
+  // Get active requests
+  const activeRequests = requests?.filter(r => 
+    r.status !== 'cancelled' && r.status !== 'completed'
   ) || []
 
   return (
@@ -21,32 +21,32 @@ const ProviderMessages = () => {
       <h1 className="text-2xl md:text-3xl font-bold text-text mb-6">Messages</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Booking List */}
+        {/* Request List */}
         <div className="card md:col-span-1">
-          <h2 className="text-lg font-semibold text-text mb-4">Active Bookings</h2>
-          {activeBookings.length === 0 ? (
-            <p className="text-text-light text-sm">No active bookings to message about</p>
+          <h2 className="text-lg font-semibold text-text mb-4">Active Service Requests</h2>
+          {activeRequests.length === 0 ? (
+            <p className="text-text-light text-sm">No active service requests to message about</p>
           ) : (
             <div className="space-y-2">
-              {activeBookings.map((booking) => (
+              {activeRequests.map((request) => (
                 <button
-                  key={booking._id}
-                  onClick={() => setSelectedBooking(booking)}
+                  key={request._id}
+                  onClick={() => setSelectedRequest(request)}
                   className={`w-full text-left p-3 rounded-lg transition-colors ${
-                    selectedBooking?._id === booking._id
+                    selectedRequest?._id === request._id
                       ? 'bg-primary/10'
                       : 'hover:bg-gray-50'
                   }`}
                 >
                   <div className="flex justify-between items-center">
                     <div>
-                      <p className="font-medium text-text">{booking.serviceType}</p>
+                      <p className="font-medium text-text">{request.serviceType}</p>
                       <p className="text-sm text-text-light">
-                        #{booking.bookingId} - {booking.customerId?.fullName}
+                        #{request.requestId} - {request.customerId?.fullName}
                       </p>
                     </div>
                     <FaChevronRight className={`text-text-lighter transition-transform ${
-                      selectedBooking?._id === booking._id ? 'rotate-90' : ''
+                      selectedRequest?._id === request._id ? 'rotate-90' : ''
                     }`} />
                   </div>
                 </button>
@@ -57,7 +57,7 @@ const ProviderMessages = () => {
 
         {/* Messages */}
         <div className="card md:col-span-2">
-          {selectedBooking ? (
+          {selectedRequest ? (
             <>
               <div className="border-b border-gray-100 pb-3 mb-4">
                 <div className="flex items-center space-x-3">
@@ -66,10 +66,11 @@ const ProviderMessages = () => {
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-text">
-                      {selectedBooking.customerId?.fullName}
+                      {selectedRequest.customerId?.fullName}
                     </h3>
-                    <p className="text-sm text-text-light">
-                      #{selectedBooking.bookingId} - {selectedBooking.serviceType}
+                    <p className="text-sm text-text-light flex items-center">
+                      <FaClipboardList className="mr-1 text-xs" />
+                      {selectedRequest.serviceType}
                     </p>
                   </div>
                 </div>
@@ -106,7 +107,7 @@ const ProviderMessages = () => {
           ) : (
             <div className="text-center py-12">
               <FaComments className="text-4xl text-text-lighter mx-auto mb-4" />
-              <p className="text-text-light">Select a booking to view messages</p>
+              <p className="text-text-light">Select a service request to view messages</p>
             </div>
           )}
         </div>
@@ -115,4 +116,4 @@ const ProviderMessages = () => {
   )
 }
 
-export default ProviderMessages
+export default ServiceProviderMessages

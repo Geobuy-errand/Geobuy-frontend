@@ -9,62 +9,57 @@ const ErrandVerification = () => {
   const { user } = useSelector((state) => state.auth)
   const { data: profile, refetch } = useGetErrandRunnerProfileQuery()
   const [uploading, setUploading] = useState(false)
-  const [formData, setFormData] = useState({
-    vehicleType: profile?.vehicleType || 'walking',
-    maxWeightCapacity: profile?.maxWeightCapacity || 10,
-    maxDistancePreference: profile?.maxDistancePreference || 10,
-    about: profile?.about || '',
-    documents: {
-      passport: profile?.documents?.passport || '',
-      drivingLicence: profile?.documents?.drivingLicence || '',
-      proofOfAddress: profile?.documents?.proofOfAddress || '',
-      rightToWork: profile?.documents?.rightToWork || '',
-      vehicleRegistration: profile?.documents?.vehicleRegistration || '',
-      vehicleInsurance: profile?.documents?.vehicleInsurance || '',
-    },
+  const [uploadedDocs, setUploadedDocs] = useState({
+    passport: profile?.documents?.passport || '',
+    drivingLicence: profile?.documents?.drivingLicence || '',
+    proofOfAddress: profile?.documents?.proofOfAddress || '',
+    rightToWork: profile?.documents?.rightToWork || '',
+    vehicleRegistration: profile?.documents?.vehicleRegistration || '',
+    vehicleInsurance: profile?.documents?.vehicleInsurance || '',
+    dbs: profile?.dbsDocument || '',
   })
 
   const verificationSteps = [
     {
-      id: 'identity',
+      id: 'passport',
       label: 'Identity Verification',
       description: 'Upload your Passport or Driving Licence',
-      status: profile?.documents?.passport ? 'completed' : 'pending',
+      status: uploadedDocs.passport ? 'completed' : 'pending',
       icon: FaIdCard,
     },
     {
-      id: 'address',
+      id: 'proofOfAddress',
       label: 'Proof of Address',
       description: 'Upload a recent utility bill or bank statement',
-      status: profile?.documents?.proofOfAddress ? 'completed' : 'pending',
+      status: uploadedDocs.proofOfAddress ? 'completed' : 'pending',
       icon: FaHome,
     },
     {
-      id: 'work',
+      id: 'rightToWork',
       label: 'Right to Work',
       description: 'Upload your right to work documentation',
-      status: profile?.documents?.rightToWork ? 'completed' : 'pending',
+      status: uploadedDocs.rightToWork ? 'completed' : 'pending',
       icon: FaBriefcase,
     },
     {
-      id: 'driving',
+      id: 'drivingLicence',
       label: 'Driving Licence',
       description: 'Upload your driving licence',
-      status: profile?.documents?.drivingLicence ? 'completed' : 'pending',
+      status: uploadedDocs.drivingLicence ? 'completed' : 'pending',
       icon: FaIdCard,
     },
     {
-      id: 'vehicle',
+      id: 'vehicleRegistration',
       label: 'Vehicle Registration',
       description: 'Upload your vehicle registration document',
-      status: profile?.documents?.vehicleRegistration ? 'completed' : 'pending',
+      status: uploadedDocs.vehicleRegistration ? 'completed' : 'pending',
       icon: FaCar,
     },
     {
-      id: 'insurance',
+      id: 'vehicleInsurance',
       label: 'Vehicle Insurance',
       description: 'Upload your vehicle insurance certificate',
-      status: profile?.documents?.vehicleInsurance ? 'completed' : 'pending',
+      status: uploadedDocs.vehicleInsurance ? 'completed' : 'pending',
       icon: FaShieldAlt,
     },
   ]
@@ -75,7 +70,7 @@ const ErrandVerification = () => {
       id: 'dbs',
       label: 'DBS Check',
       description: 'Upload your enhanced DBS certificate',
-      status: profile?.dbsDocument ? 'completed' : 'pending',
+      status: uploadedDocs.dbs ? 'completed' : 'pending',
       icon: FaShieldAlt,
     })
   }
@@ -96,6 +91,11 @@ const ErrandVerification = () => {
   const handleDocumentUpload = async (docType, file) => {
     if (!file) return
 
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File size must be less than 5MB')
+      return
+    }
+
     const formData = new FormData()
     formData.append('document', file)
     formData.append('documentType', docType)
@@ -112,15 +112,11 @@ const ErrandVerification = () => {
       )
 
       if (response.data.fileUrl) {
-        // Update local state
-        setFormData(prev => ({
+        setUploadedDocs(prev => ({
           ...prev,
-          documents: {
-            ...prev.documents,
-            [docType]: response.data.fileUrl,
-          },
+          [docType]: response.data.fileUrl,
         }))
-        toast.success(`${docType} uploaded successfully`)
+        toast.success(`${docType} uploaded successfully!`)
         refetch()
       }
     } catch (error) {
@@ -130,36 +126,74 @@ const ErrandVerification = () => {
     }
   }
 
+  const requestVerification = async () => {
+    try {
+      const response = await axios.post(
+        '/api/verifications/request-review',
+        {},
+        { withCredentials: true }
+      )
+      
+      if (response.data.success) {
+        toast.success('Verification review requested!')
+        refetch()
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to request verification')
+    }
+  }
+
+  const allDocumentsUploaded = () => {
+    const requiredDocs = ['passport', 'proofOfAddress', 'rightToWork']
+    if (user?.renderCareServices) requiredDocs.push('dbs')
+    return requiredDocs.every(doc => uploadedDocs[doc])
+  }
+
+  const isPendingReview = profile?.verificationStatus === 'pending'
+  const isApproved = profile?.verificationStatus === 'approved'
+  const isRejected = profile?.verificationStatus === 'rejected'
+
   return (
     <div>
       <h1 className="text-2xl md:text-3xl font-bold text-text mb-6">Verification</h1>
 
       <div className="card mb-6">
         <div className="flex items-start space-x-4">
-          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
             <FaShieldAlt className="text-2xl text-primary" />
           </div>
-          <div>
+          <div className="flex-1">
             <h2 className="text-lg font-semibold text-text">Verification Status</h2>
             <p className="text-text-light">
               Your account is currently{' '}
               <span className={`font-semibold ${
-                profile?.verificationStatus === 'approved' ? 'text-green-600' :
-                profile?.verificationStatus === 'rejected' ? 'text-red-600' :
+                isApproved ? 'text-green-600' :
+                isRejected ? 'text-red-600' :
+                isPendingReview ? 'text-blue-600' :
                 'text-yellow-600'
               }`}>
-                {profile?.verificationStatus || 'pending'}
+                {isApproved ? 'Approved ✅' :
+                 isRejected ? 'Rejected ❌' :
+                 isPendingReview ? 'Under Review' :
+                 'Not Submitted'}
               </span>
             </p>
-            {profile?.rejectionReason && (
-              <p className="text-red-600 text-sm mt-2">
-                Reason: {profile.rejectionReason}
-              </p>
+            {isApproved && (
+              <p className="text-green-600 text-sm mt-2">✅ You are verified and can accept errands</p>
             )}
-            {profile?.verificationStatus === 'approved' && (
-              <p className="text-green-600 text-sm mt-2">
-                ✅ You are verified and can accept errands
-              </p>
+            {isRejected && profile?.rejectionReason && (
+              <p className="text-red-600 text-sm mt-2">Reason: {profile.rejectionReason}</p>
+            )}
+            {isPendingReview && (
+              <p className="text-blue-600 text-sm mt-2">⏳ Your documents are being reviewed</p>
+            )}
+            {!isApproved && !isPendingReview && allDocumentsUploaded() && (
+              <button
+                onClick={requestVerification}
+                className="mt-3 btn-primary text-sm py-2 px-4"
+              >
+                Request Verification Review
+              </button>
             )}
           </div>
         </div>
@@ -179,7 +213,7 @@ const ErrandVerification = () => {
                   {getStatusBadge(step.status)}
                 </div>
               </div>
-              {step.status !== 'completed' && (
+              {step.status !== 'completed' && !isPendingReview && !isApproved && (
                 <label className="cursor-pointer btn-outline text-sm py-1 px-3 flex items-center space-x-1">
                   <FaUpload />
                   <span>Upload</span>
@@ -188,9 +222,14 @@ const ErrandVerification = () => {
                     accept="image/*,.pdf"
                     onChange={(e) => handleDocumentUpload(step.id, e.target.files[0])}
                     className="hidden"
-                    disabled={uploading}
+                    disabled={uploading || isPendingReview}
                   />
                 </label>
+              )}
+              {step.status === 'completed' && (
+                <span className="text-green-500 text-sm flex items-center">
+                  <FaCheck className="mr-1" /> Uploaded
+                </span>
               )}
             </div>
           </div>
@@ -199,9 +238,19 @@ const ErrandVerification = () => {
 
       <div className="mt-6 bg-blue-50 border border-blue-200 rounded-xl p-4">
         <p className="text-sm text-blue-700">
-          <strong>Note:</strong> All documents are checked securely and stored safely. 
-          We only ask what we need to confirm who you are, keep everyone protected, and pay you correctly.
+          <strong>Note:</strong> All documents are checked securely and stored safely.
         </p>
+        {allDocumentsUploaded() && !isPendingReview && !isApproved && (
+          <button
+            onClick={requestVerification}
+            className="mt-3 btn-primary text-sm py-2 px-4"
+          >
+            Submit for Verification
+          </button>
+        )}
+        {isPendingReview && (
+          <p className="mt-2 text-sm text-blue-600">⏳ Your verification is pending review</p>
+        )}
       </div>
     </div>
   )

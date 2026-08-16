@@ -32,7 +32,7 @@ const Navbar = () => {
     if (!user) return '/login'
     if (user.role === 'customer') return '/customer/dashboard'
     if (user.role === 'errand_runner') return '/errand-runner/dashboard'
-    if (user.role === 'service_provider') return '/service-provider/dashboard'
+    if (user.role === 'provider') return '/service-provider/dashboard'
     if (user.role === 'admin') return '/admin/dashboard'
     return '/login'
   }
@@ -40,7 +40,7 @@ const Navbar = () => {
   const getRoleLabel = () => {
     if (!user) return ''
     if (user.role === 'errand_runner') return 'Errand Runner'
-    if (user.role === 'service_provider') return 'Service Provider'
+    if (user.role === 'provider') return 'Service Provider'
     return user.role
   }
 

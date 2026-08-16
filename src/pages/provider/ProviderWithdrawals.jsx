@@ -3,7 +3,7 @@ import { useGetWalletQuery, useRequestWithdrawalMutation, useGetWithdrawalsQuery
 import { toast } from 'react-hot-toast'
 import { FaMoneyBillWave, FaClock, FaCheck, FaTimes } from 'react-icons/fa'
 
-const ProviderWithdrawals = () => {
+const ServiceProviderWithdrawals = () => {
   const { data: wallet, refetch: refetchWallet } = useGetWalletQuery()
   const { data: withdrawals, isLoading: withdrawalsLoading } = useGetWithdrawalsQuery()
   const [requestWithdrawal, { isLoading }] = useRequestWithdrawalMutation()
@@ -140,4 +140,4 @@ const ProviderWithdrawals = () => {
   )
 }
 
-export default ProviderWithdrawals
+export default ServiceProviderWithdrawals

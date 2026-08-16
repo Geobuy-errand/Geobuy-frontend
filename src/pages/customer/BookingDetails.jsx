@@ -61,6 +61,7 @@ const BookingDetails = () => {
     )
   }
 
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -70,7 +71,7 @@ const BookingDetails = () => {
             Booking #{booking.bookingId}
           </h1>
           <p className="text-text-light">
-            {new Date(booking.date).toLocaleDateString()} at {booking.time}
+            {new Date(booking.createdAt).toLocaleDateString()} at {booking.preferredTime}
           </p>
         </div>
         <div className="flex items-center space-x-3 mt-4 md:mt-0">

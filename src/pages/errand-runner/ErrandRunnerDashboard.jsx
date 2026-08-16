@@ -4,21 +4,53 @@ import { useSelector } from 'react-redux'
 import { useGetAvailableErrandsQuery, useGetErrandsQuery } from '../../redux/services/errandApi'
 import { useGetWalletQuery } from '../../redux/services/walletApi'
 import { useGetErrandRunnerProfileQuery } from '../../redux/services/errandRunnerApi'
-import { FaBriefcase, FaCheckCircle, FaWallet, FaStar, FaClock, FaArrowRight, FaMapMarkerAlt, FaDollarSign } from 'react-icons/fa'
+import socketService from '../../redux/services/socketService'
+import { 
+  FaBriefcase, FaCheckCircle, FaWallet, FaStar, FaClock, 
+  FaArrowRight, FaMapMarkerAlt, FaDollarSign, FaTachometerAlt 
+} from 'react-icons/fa'
 
 const ErrandRunnerDashboard = () => {
   const { user } = useSelector((state) => state.auth)
-  const { data: availableJobs, isLoading: jobsLoading } = useGetAvailableErrandsQuery()
-  const { data: allJobs, isLoading: allJobsLoading } = useGetErrandsQuery()
-  const { data: wallet, isLoading: walletLoading } = useGetWalletQuery()
+  const { data: availableJobs, isLoading: jobsLoading, refetch: refetchAvailable } = useGetAvailableErrandsQuery()
+  const { data: allJobs, isLoading: allJobsLoading, refetch: refetchJobs } = useGetErrandsQuery()
+  const { data: wallet, isLoading: walletLoading, refetch: refetchWallet } = useGetWalletQuery()
   const { data: profile } = useGetErrandRunnerProfileQuery()
+  const [socketConnected, setSocketConnected] = useState(false)
+
+  useEffect(() => {
+    socketService.connect()
+    setSocketConnected(socketService.getConnectionStatus())
+
+    if (user?._id) {
+      socketService.joinRoom(user._id)
+    }
+
+    const handleNewErrand = () => {
+      refetchAvailable()
+      refetchJobs()
+    }
+    socketService.on('new-errand-available', handleNewErrand)
+
+    const handleErrandUpdate = () => {
+      refetchJobs()
+      refetchWallet()
+    }
+    socketService.on('errand-status-updated', handleErrandUpdate)
+
+    return () => {
+      socketService.off('new-errand-available', handleNewErrand)
+      socketService.off('errand-status-updated', handleErrandUpdate)
+    }
+  }, [user, refetchAvailable, refetchJobs, refetchWallet])
 
   const stats = {
     available: availableJobs?.length || 0,
-    accepted: allJobs?.filter(j => j.status === 'accepted' || j.status === 'en_route').length || 0,
+    accepted: allJobs?.filter(j => j.status === 'accepted' || j.status === 'en_route' || j.status === 'collected').length || 0,
     completed: allJobs?.filter(j => j.status === 'delivered' || j.status === 'completed').length || 0,
     balance: wallet?.balance || 0,
     rating: user?.averageRating || 0,
+    verificationStatus: profile?.verificationStatus || 'pending',
   }
 
   const activeJobs = allJobs?.filter(j => j.status === 'accepted' || j.status === 'en_route' || j.status === 'collected') || []
@@ -67,13 +99,16 @@ const ErrandRunnerDashboard = () => {
           Welcome back, {user?.fullName?.split(' ')[0] || 'Runner'}! 🏃
         </h1>
         <p className="text-text-light mt-1">
-          {profile?.verificationStatus === 'approved' 
+          {stats.verificationStatus === 'approved' 
             ? 'You are verified and ready to accept errands!' 
-            : profile?.verificationStatus === 'pending'
-            ? 'Your account is pending verification. You can view jobs but cannot accept them yet.'
+            : stats.verificationStatus === 'pending'
+            ? 'Your account is pending verification. You can view errands but cannot accept them yet.'
             : 'Complete your verification to start accepting errands.'}
         </p>
-        {profile?.verificationStatus !== 'approved' && (
+        {socketConnected && (
+          <span className="text-xs text-green-600 mt-1 inline-block">🟢 Live updates</span>
+        )}
+        {stats.verificationStatus !== 'approved' && (
           <Link to="/errand-runner/verification" className="text-primary hover:underline text-sm mt-2 inline-block">
             Complete Verification →
           </Link>
@@ -83,11 +118,11 @@ const ErrandRunnerDashboard = () => {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
         <div className="card">
-          <p className="text-sm text-text-light">Available Jobs</p>
+          <p className="text-sm text-text-light">Available</p>
           <p className="text-2xl font-bold text-primary">{stats.available}</p>
         </div>
         <div className="card">
-          <p className="text-sm text-text-light">Active Jobs</p>
+          <p className="text-sm text-text-light">Active</p>
           <p className="text-2xl font-bold text-secondary">{stats.accepted}</p>
         </div>
         <div className="card">
@@ -108,16 +143,16 @@ const ErrandRunnerDashboard = () => {
         {/* Active Jobs */}
         <div className="card">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-text">Active Jobs</h2>
+            <h2 className="text-lg font-semibold text-text">Active Errands</h2>
             <Link to="/errand-runner/accepted-jobs" className="text-primary hover:underline text-sm flex items-center">
               View all <FaArrowRight className="ml-1" />
             </Link>
           </div>
           {activeJobs.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-text-light">No active jobs</p>
+              <p className="text-text-light">No active errands</p>
               <Link to="/errand-runner/available-jobs" className="text-primary hover:underline mt-2 inline-block">
-                Find available jobs
+                Find available errands
               </Link>
             </div>
           ) : (
@@ -130,10 +165,10 @@ const ErrandRunnerDashboard = () => {
                 >
                   <div className="flex justify-between items-center">
                     <div>
-                      <p className="font-medium text-text">{job.serviceType}</p>
+                      <p className="font-medium text-text">{job.serviceType?.replace('_', ' ')}</p>
                       <p className="text-sm text-text-light flex items-center">
-                        <FaMapMarkerAlt className="mr-1 text-xs" />
-                        {job.pickup?.address}
+                        <FaMapMarkerAlt className="mr-1 text-xs flex-shrink-0" />
+                        <span className="truncate">{job.pickup?.address}</span>
                       </p>
                     </div>
                     <div className="flex items-center space-x-3">
@@ -161,7 +196,7 @@ const ErrandRunnerDashboard = () => {
                 className="p-4 bg-primary/5 rounded-xl hover:bg-primary/10 transition-colors text-center"
               >
                 <FaBriefcase className="text-primary text-xl mx-auto mb-2" />
-                <p className="text-sm font-medium">Browse Jobs</p>
+                <p className="text-sm font-medium">Browse Errands</p>
               </Link>
               <Link
                 to="/errand-runner/wallet"
@@ -195,8 +230,10 @@ const ErrandRunnerDashboard = () => {
                 {recentCompleted.map((job) => (
                   <div key={job._id} className="flex justify-between items-center p-2 bg-green-50 rounded-lg">
                     <div>
-                      <p className="text-sm font-medium text-text">{job.serviceType}</p>
-                      <p className="text-xs text-text-light">{new Date(job.completedAt || job.updatedAt).toLocaleDateString()}</p>
+                      <p className="text-sm font-medium text-text">{job.serviceType?.replace('_', ' ')}</p>
+                      <p className="text-xs text-text-light">
+                        {new Date(job.completedAt || job.updatedAt).toLocaleDateString()}
+                      </p>
                     </div>
                     <span className="text-sm font-semibold text-green-600">
                       £{job.total?.toFixed(2) || job.estimatedPrice?.toFixed(2)}

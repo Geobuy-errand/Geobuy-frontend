@@ -34,6 +34,8 @@ const Login = () => {
           navigate('/customer/dashboard')
         } else if (role === 'provider') {
           navigate('/provider/dashboard')
+        } else if (role === 'errand_runner') {
+          navigate('/errand-runner/dashboard')
         } else if (role === 'admin') {
           navigate('/admin/dashboard')
         } else {

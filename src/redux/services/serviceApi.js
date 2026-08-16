@@ -2,6 +2,7 @@ import { baseApi } from './api'
 
 export const serviceApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
+    // ========== SERVICE CRUD ==========
     getServices: builder.query({
       query: () => '/services',
       providesTags: ['Service'],
@@ -41,12 +42,49 @@ export const serviceApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['Service'],
     }),
+
+    // ========== SERVICE CATEGORIES (Dynamic - Admin Managed) ==========
     getServiceCategories: builder.query({
       query: () => '/services/categories',
-      providesTags: ['Service'],
+      providesTags: ['ServiceCategory'],
     }),
+    createServiceCategory: builder.mutation({
+      query: (data) => ({
+        url: '/services/categories',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: ['ServiceCategory'],
+    }),
+    updateServiceCategory: builder.mutation({
+      query: ({ id, data }) => ({
+        url: `/services/categories/${id}`,
+        method: 'PUT',
+        body: data,
+      }),
+      invalidatesTags: ['ServiceCategory'],
+    }),
+    deleteServiceCategory: builder.mutation({
+      query: (id) => ({
+        url: `/services/categories/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['ServiceCategory'],
+    }),
+
+    // ========== SERVICE PROVIDERS ==========
     getServiceProviders: builder.query({
       query: (params) => `/services/providers?${new URLSearchParams(params)}`,
+      providesTags: ['Service'],
+    }),
+
+    // ========== SERVICE REQUESTS (Customer) ==========
+    getServiceRequests: builder.query({
+      query: () => '/services/my-requests',
+      providesTags: ['Service'],
+    }),
+    getServiceRequestById: builder.query({
+      query: (id) => `/services/request/${id}`,
       providesTags: ['Service'],
     }),
     createServiceRequest: builder.mutation({
@@ -57,18 +95,29 @@ export const serviceApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['Service'],
     }),
-    getServiceRequestById: builder.query({
-      query: (id) => `/services/request/${id}`,
-      providesTags: ['Service'],
+    cancelServiceRequest: builder.mutation({
+      query: ({ id, reason }) => ({
+        url: `/services/request/${id}/cancel`,
+        method: 'PUT',
+        body: { reason },
+      }),
+      invalidatesTags: ['Service'],
     }),
-    getMyServiceRequests: builder.query({
-      query: () => '/services/my-requests',
-      providesTags: ['Service'],
+    completeServiceRequest: builder.mutation({
+      query: (id) => ({
+        url: `/services/request/${id}/complete`,
+        method: 'PUT',
+      }),
+      invalidatesTags: ['Service'],
     }),
+
+    // ========== PROVIDER SERVICE REQUESTS ==========
     getProviderServiceRequests: builder.query({
       query: () => '/services/provider-requests',
       providesTags: ['Service'],
     }),
+
+    // ========== QUOTES ==========
     submitQuote: builder.mutation({
       query: (data) => ({
         url: '/services/quote',
@@ -88,7 +137,14 @@ export const serviceApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['Service'],
     }),
-    // NEW: Accept quote
+    inviteProviders: builder.mutation({
+      query: ({ requestId, providerIds }) => ({
+        url: `/services/request/${requestId}/invite`,
+        method: 'POST',
+        body: { providerIds },
+      }),
+      invalidatesTags: ['Service'],
+    }),
     acceptQuote: builder.mutation({
       query: ({ quoteId, finalPrice }) => ({
         url: '/services/quote/accept',
@@ -97,7 +153,6 @@ export const serviceApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['Service'],
     }),
-    // NEW: Reject quote
     rejectQuote: builder.mutation({
       query: ({ quoteId, reason }) => ({
         url: '/services/quote/reject',
@@ -106,7 +161,6 @@ export const serviceApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['Service'],
     }),
-    // NEW: Negotiate quote (counter-offer)
     negotiateQuote: builder.mutation({
       query: ({ quoteId, counterAmount, message }) => ({
         url: '/services/quote/negotiate',
@@ -115,24 +169,8 @@ export const serviceApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['Service'],
     }),
-    // NEW: Cancel service request
-    cancelServiceRequest: builder.mutation({
-      query: ({ id, reason }) => ({
-        url: `/services/request/${id}/cancel`,
-        method: 'PUT',
-        body: { reason },
-      }),
-      invalidatesTags: ['Service'],
-    }),
-    // NEW: Complete service request
-    completeServiceRequest: builder.mutation({
-      query: (id) => ({
-        url: `/services/request/${id}/complete`,
-        method: 'PUT',
-      }),
-      invalidatesTags: ['Service'],
-    }),
-    // NEW: Start service request (provider)
+
+    // ========== PROVIDER ACTIONS ==========
     startServiceRequest: builder.mutation({
       query: (id) => ({
         url: `/services/request/${id}/start`,
@@ -144,7 +182,11 @@ export const serviceApi = baseApi.injectEndpoints({
   overrideExisting: true,
 })
 
+// ============================================================
+// EXPORT ALL HOOKS
+// ============================================================
 export const {
+  // Services
   useGetServicesQuery,
   useGetServiceByIdQuery,
   useGetServicesByCategoryQuery,
@@ -152,20 +194,35 @@ export const {
   useCreateServiceMutation,
   useUpdateServiceMutation,
   useDeleteServiceMutation,
+
+  // Categories (Dynamic)
   useGetServiceCategoriesQuery,
+  useCreateServiceCategoryMutation,
+  useUpdateServiceCategoryMutation,
+  useDeleteServiceCategoryMutation,
+
+  // Providers
   useGetServiceProvidersQuery,
-  useCreateServiceRequestMutation,
+
+  // Service Requests (Customer)
+  useGetServiceRequestsQuery,
   useGetServiceRequestByIdQuery,
-  useGetMyServiceRequestsQuery,
+  useCreateServiceRequestMutation,
+  useCancelServiceRequestMutation,
+  useCompleteServiceRequestMutation,
+
+  // Provider Service Requests
   useGetProviderServiceRequestsQuery,
+
+  // Quotes
   useSubmitQuoteMutation,
   useGetQuotesQuery,
   useSelectQuoteMutation,
-  // NEW: Export the new hooks
   useAcceptQuoteMutation,
   useRejectQuoteMutation,
   useNegotiateQuoteMutation,
-  useCancelServiceRequestMutation,
-  useCompleteServiceRequestMutation,
+
+  // Provider Actions
   useStartServiceRequestMutation,
+  useInviteProvidersMutation,
 } = serviceApi

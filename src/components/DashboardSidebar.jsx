@@ -25,7 +25,8 @@ import {
   FaStumbleupon,
   FaCrown,
   FaHandsHelping,
-  FaHistory
+  FaHistory,
+  FaTags
 } from "react-icons/fa";
 
 const DashboardSidebar = ({ open, onClose }) => {
@@ -142,7 +143,11 @@ const DashboardSidebar = ({ open, onClose }) => {
         { to: '/admin/subscriptions', icon: FaCrown, label: 'Subscriptions' },
         { to: "/admin/payments", icon: FaCreditCard, label: "Payments" },
         { to: "/admin/reviews", icon: FaStar, label: "Reviews" },
+        { to: '/admin/categories', icon: FaTags, label: 'Service Categories'},
         { to: "/admin/subscription-plans", icon: FaStumbleupon, label: "Subscription Plan" },
+        { to: '/admin/service-definitions', icon: FaList, label: 'Service Definitions' },
+        { to: '/admin/service-providers', icon: FaUsers, label: 'Service Providers' },
+        { to: '/admin/business-settings', icon: FaCog, label: 'Business Settings' },
         { to: "/admin/analytics", icon: FaChartBar, label: "Analytics" },
         { to: "/admin/support", icon: FaQuestionCircle, label: "Support" },
         { to: "/admin/settings", icon: FaCog, label: "Settings" },

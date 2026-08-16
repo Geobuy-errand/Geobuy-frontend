@@ -1,33 +1,67 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useSelector } from 'react-redux'
-import { useGetAvailableJobsQuery, useGetBookingsQuery } from '../../redux/services/bookingApi'
+import { 
+  useGetServiceRequestsQuery,
+  useGetProviderServiceRequestsQuery 
+} from '../../redux/services/serviceApi'
 import { useGetWalletQuery } from '../../redux/services/walletApi'
+import socketService from '../../redux/services/socketService'
 import { FaBriefcase, FaCheckCircle, FaWallet, FaStar, FaClock, FaArrowRight } from 'react-icons/fa'
 
 const ProviderDashboard = () => {
   const { user } = useSelector((state) => state.auth)
-  const { data: availableJobs } = useGetAvailableJobsQuery()
-  const { data: bookings } = useGetBookingsQuery()
-  const { data: wallet } = useGetWalletQuery()
+  
+  // ✅ Correct hooks for provider
+  const { data: providerRequests, isLoading: requestsLoading, refetch } = useGetProviderServiceRequestsQuery()
+  const { data: wallet, isLoading: walletLoading, refetch: refetchWallet } = useGetWalletQuery()
+  const [socketConnected, setSocketConnected] = useState(false)
 
-  const acceptedJobs = bookings?.filter(b => b.status === 'accepted' || b.status === 'in_progress') || []
-  const completedJobs = bookings?.filter(b => b.status === 'completed') || []
+  useEffect(() => {
+    socketService.connect()
+    setSocketConnected(socketService.getConnectionStatus())
+
+    if (user?._id) {
+      socketService.joinRoom(user._id)
+    }
+
+    const handleNewRequest = () => {
+      refetch()
+    }
+    socketService.on('new-service-request', handleNewRequest)
+
+    return () => {
+      socketService.off('new-service-request', handleNewRequest)
+    }
+  }, [user, refetch])
+
+  // Provider sees requests they've been matched with or have submitted quotes for
+  const pendingRequests = providerRequests?.filter(r => 
+    r.status === 'pending' || r.status === 'quotes_received'
+  ) || []
+  
+  const activeRequests = providerRequests?.filter(r => 
+    r.status === 'provider_selected' || r.status === 'in_progress'
+  ) || []
+  
+  const completedRequests = providerRequests?.filter(r => 
+    r.status === 'completed'
+  ) || []
 
   const stats = [
     {
       icon: FaBriefcase,
-      label: 'Available Jobs',
-      value: availableJobs?.length || 0,
-      color: 'text-blue-600',
-      bg: 'bg-blue-100',
+      label: 'Pending Requests',
+      value: pendingRequests.length,
+      color: 'text-yellow-600',
+      bg: 'bg-yellow-100',
     },
     {
       icon: FaCheckCircle,
       label: 'Active Jobs',
-      value: acceptedJobs.length,
-      color: 'text-green-600',
-      bg: 'bg-green-100',
+      value: activeRequests.length,
+      color: 'text-blue-600',
+      bg: 'bg-blue-100',
     },
     {
       icon: FaWallet,
@@ -45,15 +79,39 @@ const ProviderDashboard = () => {
     },
   ]
 
+  if (requestsLoading || walletLoading) {
+    return (
+      <div className="p-6">
+        <div className="mb-8">
+          <div className="skeleton h-8 w-48 rounded-xl"></div>
+          <div className="skeleton h-4 w-64 rounded-xl mt-2"></div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="card">
+              <div className="skeleton h-12 rounded-xl"></div>
+            </div>
+          ))}
+        </div>
+        <div className="card">
+          <div className="skeleton h-48 rounded-xl"></div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div>
       <div className="mb-8">
         <h1 className="text-2xl md:text-3xl font-bold text-text">
-          Welcome back, {user?.fullName?.split(' ')[0]}! 👋
+          Welcome back, {user?.fullName?.split(' ')[0] || 'Provider'}! 👋
         </h1>
         <p className="text-text-light mt-1">
-          Here's your provider overview.
+          Here's your service provider overview.
         </p>
+        {socketConnected && (
+          <span className="text-xs text-green-600 mt-1 inline-block">🟢 Live updates</span>
+        )}
       </div>
 
       {/* Stats */}
@@ -72,31 +130,31 @@ const ProviderDashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Available Jobs */}
+        {/* Pending Requests */}
         <div className="card">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-text">Available Jobs</h2>
-            <Link to="/provider/available-jobs" className="text-primary hover:underline text-sm flex items-center">
+            <h2 className="text-lg font-semibold text-text">Pending Requests</h2>
+            <Link to="/service-provider/requests" className="text-primary hover:underline text-sm flex items-center">
               View all <FaArrowRight className="ml-1" />
             </Link>
           </div>
-          {availableJobs?.length === 0 ? (
-            <p className="text-text-light text-sm">No jobs available right now</p>
+          {pendingRequests.length === 0 ? (
+            <p className="text-text-light text-sm">No pending requests</p>
           ) : (
             <div className="space-y-3">
-              {availableJobs?.slice(0, 5).map((job) => (
+              {pendingRequests.slice(0, 5).map((request) => (
                 <Link
-                  key={job._id}
-                  to={`/provider/job/${job._id}`}
+                  key={request._id}
+                  to={`/service-provider/request/${request._id}`}
                   className="block p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                 >
                   <div className="flex justify-between items-center">
                     <div>
-                      <p className="font-medium text-text">{job.serviceType}</p>
-                      <p className="text-sm text-text-light">{job.pickup?.address}</p>
+                      <p className="font-medium text-text">{request.serviceType}</p>
+                      <p className="text-sm text-text-light">{request.location?.address}</p>
                     </div>
                     <span className="text-sm font-semibold text-primary">
-                      £{job.estimatedPrice?.toFixed(2)}
+                      £{request.budget?.toFixed(2) || 'Negotiable'}
                     </span>
                   </div>
                 </Link>
@@ -105,28 +163,33 @@ const ProviderDashboard = () => {
           )}
         </div>
 
-        {/* Recent Activity */}
+        {/* Active Jobs */}
         <div className="card">
-          <h2 className="text-lg font-semibold text-text mb-4">Recent Activity</h2>
-          {acceptedJobs.length === 0 && completedJobs.length === 0 ? (
-            <p className="text-text-light text-sm">No recent activity</p>
+          <h2 className="text-lg font-semibold text-text mb-4">Active Jobs</h2>
+          {activeRequests.length === 0 ? (
+            <p className="text-text-light text-sm">No active jobs</p>
           ) : (
             <div className="space-y-3">
-              {acceptedJobs.slice(0, 3).map((job) => (
-                <div key={job._id} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+              {activeRequests.slice(0, 5).map((request) => (
+                <div key={request._id} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                   <div>
-                    <p className="font-medium text-text">{job.serviceType}</p>
+                    <p className="font-medium text-text">{request.serviceType}</p>
                     <p className="text-sm text-text-light flex items-center">
                       <FaClock className="mr-1 text-xs" />
-                      {job.status}
+                      {request.status.replace('_', ' ')}
                     </p>
                   </div>
                   <span className="text-sm font-semibold text-primary">
-                    £{job.estimatedPrice?.toFixed(2)}
+                    £{request.finalPrice?.toFixed(2) || 'Negotiating'}
                   </span>
                 </div>
               ))}
             </div>
+          )}
+          {activeRequests.length > 0 && (
+            <Link to="/service-provider/active" className="text-primary hover:underline text-sm mt-4 inline-block">
+              View all active jobs
+            </Link>
           )}
         </div>
       </div>

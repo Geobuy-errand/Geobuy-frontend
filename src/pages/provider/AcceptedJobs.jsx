@@ -1,35 +1,49 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useGetBookingsQuery, useUpdateBookingStatusMutation } from '../../redux/services/bookingApi'
+import { useGetProviderServiceRequestsQuery, useStartServiceRequestMutation, useCompleteServiceRequestMutation } from '../../redux/services/serviceApi'
 import { toast } from 'react-hot-toast'
-import { FaMapMarkerAlt, FaDollarSign, FaClock, FaPlay, FaCheck, FaTimes } from 'react-icons/fa'
+import { FaMapMarkerAlt, FaDollarSign, FaClock, FaPlay, FaCheck, FaUser, FaStar } from 'react-icons/fa'
 
-const AcceptedJobs = () => {
-  const { data: bookings, isLoading } = useGetBookingsQuery()
-  const [updateStatus] = useUpdateBookingStatusMutation()
+const ServiceProviderAcceptedJobs = () => {
+  const { data: requests, isLoading, refetch } = useGetProviderServiceRequestsQuery()
+  const [startService] = useStartServiceRequestMutation()
+  const [completeService] = useCompleteServiceRequestMutation()
   const [filter, setFilter] = useState('all')
 
-  const acceptedJobs = bookings?.filter(b => 
-    b.status === 'accepted' || b.status === 'in_progress'
+  const acceptedRequests = requests?.filter(r => 
+    r.status === 'provider_selected' || r.status === 'in_progress'
   ) || []
 
-  const filteredJobs = acceptedJobs.filter(job => {
+  const filteredJobs = acceptedRequests.filter(job => {
     if (filter === 'all') return true
     return job.status === filter
   })
 
-  const handleStatusUpdate = async (jobId, status) => {
+  const handleStart = async (jobId) => {
     try {
-      await updateStatus({ id: jobId, status }).unwrap()
-      toast.success(`Job ${status} successfully`)
+      await startService(jobId).unwrap()
+      toast.success('Service started successfully')
+      refetch()
     } catch (error) {
-      toast.error(error.data?.message || 'Failed to update status')
+      toast.error(error.data?.message || 'Failed to start service')
+    }
+  }
+
+  const handleComplete = async (jobId) => {
+    if (!window.confirm('Mark this service as completed?')) return
+    
+    try {
+      await completeService(jobId).unwrap()
+      toast.success('Service completed successfully')
+      refetch()
+    } catch (error) {
+      toast.error(error.data?.message || 'Failed to complete service')
     }
   }
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'accepted': return 'bg-blue-100 text-blue-700'
+      case 'provider_selected': return 'bg-blue-100 text-blue-700'
       case 'in_progress': return 'bg-purple-100 text-purple-700'
       default: return 'bg-gray-100 text-gray-700'
     }
@@ -37,7 +51,7 @@ const AcceptedJobs = () => {
 
   return (
     <div>
-      <h1 className="text-2xl md:text-3xl font-bold text-text mb-6">My Jobs</h1>
+      <h1 className="text-2xl md:text-3xl font-bold text-text mb-6">My Active Jobs</h1>
 
       {/* Filters */}
       <div className="flex gap-4 mb-6">
@@ -50,12 +64,12 @@ const AcceptedJobs = () => {
           All
         </button>
         <button
-          onClick={() => setFilter('accepted')}
+          onClick={() => setFilter('provider_selected')}
           className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-            filter === 'accepted' ? 'bg-primary text-white' : 'bg-gray-100 text-text-light hover:bg-gray-200'
+            filter === 'provider_selected' ? 'bg-primary text-white' : 'bg-gray-100 text-text-light hover:bg-gray-200'
           }`}
         >
-          Accepted
+          Selected
         </button>
         <button
           onClick={() => setFilter('in_progress')}
@@ -67,7 +81,6 @@ const AcceptedJobs = () => {
         </button>
       </div>
 
-      {/* Jobs List */}
       {isLoading ? (
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
@@ -78,7 +91,10 @@ const AcceptedJobs = () => {
         </div>
       ) : filteredJobs.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-text-light">No accepted jobs</p>
+          <p className="text-text-light">No active jobs</p>
+          <Link to="/service-provider/available-jobs" className="text-primary hover:underline mt-2 inline-block">
+            Browse available requests
+          </Link>
         </div>
       ) : (
         <div className="space-y-4">
@@ -89,49 +105,48 @@ const AcceptedJobs = () => {
                   <div className="flex items-center gap-3">
                     <h3 className="text-lg font-semibold text-text">{job.serviceType}</h3>
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(job.status)}`}>
-                      {job.status}
+                      {job.status.replace('_', ' ')}
                     </span>
                   </div>
+                  <p className="text-sm text-text-light mt-1">{job.description}</p>
                   <div className="flex items-center text-sm text-text-light mt-1">
                     <FaMapMarkerAlt className="mr-1" />
-                    {job.pickup?.address}
+                    {job.location?.address}
                   </div>
                   <div className="flex items-center text-sm text-text-light mt-1">
-                    <FaClock className="mr-1" />
-                    {new Date(job.date).toLocaleDateString()} at {job.time}
+                    <FaUser className="mr-1" />
+                    {job.customerId?.fullName}
+                  </div>
+                  <div className="flex items-center text-sm text-text-light mt-1">
+                    <FaDollarSign className="mr-1" />
+                    £{job.finalPrice?.toFixed(2) || 'Negotiating'}
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-2 w-full md:w-auto">
-                  <div className="flex items-center text-xl font-bold text-primary">
-                    <FaDollarSign className="text-lg" />
-                    {job.estimatedPrice?.toFixed(2)}
-                  </div>
-                  <div className="flex gap-2 w-full md:w-auto">
-                    {job.status === 'accepted' && (
-                      <button
-                        onClick={() => handleStatusUpdate(job._id, 'in_progress')}
-                        className="btn-secondary text-sm py-2 px-4 flex items-center space-x-2 w-full md:w-auto"
-                      >
-                        <FaPlay />
-                        <span>Start</span>
-                      </button>
-                    )}
-                    {job.status === 'in_progress' && (
-                      <button
-                        onClick={() => handleStatusUpdate(job._id, 'completed')}
-                        className="btn-primary text-sm py-2 px-4 flex items-center space-x-2 w-full md:w-auto"
-                      >
-                        <FaCheck />
-                        <span>Complete</span>
-                      </button>
-                    )}
-                    <Link
-                      to={`/provider/job/${job._id}`}
-                      className="btn-outline text-sm py-2 px-4 w-full md:w-auto text-center"
+                  {job.status === 'provider_selected' && (
+                    <button
+                      onClick={() => handleStart(job._id)}
+                      className="btn-secondary text-sm py-2 px-4 flex items-center space-x-2 w-full md:w-auto"
                     >
-                      Details
-                    </Link>
-                  </div>
+                      <FaPlay />
+                      <span>Start Service</span>
+                    </button>
+                  )}
+                  {job.status === 'in_progress' && (
+                    <button
+                      onClick={() => handleComplete(job._id)}
+                      className="btn-primary text-sm py-2 px-4 flex items-center space-x-2 w-full md:w-auto"
+                    >
+                      <FaCheck />
+                      <span>Complete Service</span>
+                    </button>
+                  )}
+                  <Link
+                    to={`/service-provider/job/${job._id}`}
+                    className="btn-outline text-sm py-2 px-4 w-full md:w-auto text-center"
+                  >
+                    Details
+                  </Link>
                 </div>
               </div>
             </div>
@@ -142,4 +157,4 @@ const AcceptedJobs = () => {
   )
 }
 
-export default AcceptedJobs
+export default ServiceProviderAcceptedJobs

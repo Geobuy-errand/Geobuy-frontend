@@ -1,260 +1,207 @@
-import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import {
-  useGetServiceCategoriesQuery,
-  useGetServiceProvidersQuery,
-  useCreateServiceRequestMutation,
-} from "../../redux/services/serviceApi";
-import AddressAutocomplete from "../../components/AddressAutocomplete";
-import { toast } from "react-hot-toast";
-import {
-  FaSearch,
-  FaFilter,
-  FaStar,
-  FaMapMarkerAlt,
-  FaClock,
-  FaShieldAlt,
-  FaCheckCircle,
-  FaUserCheck,
-  FaHeart,
-  FaTools,
-  FaBriefcase,
-  FaUser,
-  FaPlus,
-  FaArrowRight,
-  FaSpinner,
-  FaLocationArrow,
-  FaRuler,
-} from "react-icons/fa";
-
-const SERVICE_FEE = 1.99;
-
-// Service types by category
-const SERVICE_TYPES = {
-  care: [
-    { value: "elderly_care", label: "Elderly Care" },
-    { value: "childcare", label: "Childcare" },
-    { value: "personal_care", label: "Personal Care" },
-    { value: "dementia_care", label: "Dementia Care" },
-    { value: "live_in_care", label: "Live-in Care" },
-  ],
-  trades: [
-    { value: "plumbing", label: "Plumbing" },
-    { value: "electrical", label: "Electrical" },
-    { value: "carpentry", label: "Carpentry" },
-    { value: "painting", label: "Painting & Decorating" },
-    { value: "carpet_cleaning", label: "Carpet Cleaning" },
-    { value: "gardening", label: "Gardening" },
-    { value: "roofing", label: "Roofing" },
-  ],
-  professional: [
-    { value: "legal", label: "Legal Services" },
-    { value: "accounting", label: "Accounting" },
-    { value: "consulting", label: "Consulting" },
-    { value: "financial_advice", label: "Financial Advice" },
-    { value: "tax_services", label: "Tax Services" },
-  ],
-  personal: [
-    { value: "tutoring", label: "Tutoring" },
-    { value: "fitness_training", label: "Fitness Training" },
-    { value: "beauty_services", label: "Beauty Services" },
-    { value: "massage_therapy", label: "Massage Therapy" },
-    { value: "hairdressing", label: "Hairdressing" },
-    { value: "nail_tech", label: "Nail Technician" },
-    { value: "barbing", label: "Barbing/Haircut" },
-  ],
-  other: [
-    { value: "cleaning_services", label: "Cleaning Services" },
-    { value: "event_planning", label: "Event Planning" },
-    { value: "pet_sitting", label: "Pet Sitting" },
-    { value: "house_sitting", label: "House Sitting" },
-    { value: "personal_shopping", label: "Personal Shopping" },
-    { value: "custom", label: "Custom Service" },
-  ],
-};
+import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useSelector } from 'react-redux'
+import { 
+  useGetServiceCategoriesQuery, 
+  useGetServiceProvidersQuery, 
+  useCreateServiceRequestMutation 
+} from '../../redux/services/serviceApi'
+import { toast } from 'react-hot-toast'
+import AddressAutocomplete from '../../components/AddressAutocomplete'
+import { 
+  FaSearch, FaStar, FaMapMarkerAlt, FaClock, FaShieldAlt, FaCheckCircle, 
+  FaUserCheck, FaHeart, FaTools, FaBriefcase, FaUser, FaPlus, 
+  FaArrowRight, FaSpinner, FaLocationArrow, FaRuler, FaCheck,
+  FaFilter, FaTimes, FaUsers, FaEnvelope, FaPhone, FaInfoCircle,
+  FaPaperPlane
+} from 'react-icons/fa'
 
 const FindServices = () => {
-  const navigate = useNavigate();
-  const [selectedCategory, setSelectedCategory] = useState(null);
-  const [searchTerm, setSearchTerm] = useState("");
+  const navigate = useNavigate()
+  const { user } = useSelector((state) => state.auth)
+  
+  // State
+  const [selectedCategory, setSelectedCategory] = useState(null)
+  const [selectedProviders, setSelectedProviders] = useState([])
+  const [searchTerm, setSearchTerm] = useState('')
   const [filters, setFilters] = useState({
     dbsChecked: false,
     insured: false,
     rated: false,
-    nearest: true,
-    maxDistance: 20, // miles
-    sortBy: "nearest", // nearest, rating, cheapest
-  });
-  const [showRequestForm, setShowRequestForm] = useState(false);
-  const [userLocation, setUserLocation] = useState(null);
-  const [isGettingLocation, setIsGettingLocation] = useState(false);
-
+    maxDistance: 20,
+    sortBy: 'nearest',
+  })
+  const [userLocation, setUserLocation] = useState(null)
+  const [isGettingLocation, setIsGettingLocation] = useState(false)
+  const [showRequestForm, setShowRequestForm] = useState(false)
+  const [showProviderSelection, setShowProviderSelection] = useState(false)
+  
+  // Request form state
   const [serviceRequest, setServiceRequest] = useState({
-    category: "",
-    serviceType: "",
-    description: "",
+    category: '',
+    serviceType: '',
+    description: '',
     location: {
-      address: "",
-      town: "",
-      postcode: "",
+      address: '',
+      town: '',
+      postcode: '',
       coordinates: null,
     },
-    preferredDate: "",
-    preferredTime: "",
-    budget: "",
+    preferredDate: '',
+    preferredTime: '',
+    budget: '',
     isUrgent: false,
     requiresDBS: false,
     requiresCertification: false,
-  });
+  })
 
-  const { data: categories, isLoading: categoriesLoading } =
-    useGetServiceCategoriesQuery();
-    console.log({selectedCategory})
+  // API hooks
+  const { data: categories, isLoading: categoriesLoading } = useGetServiceCategoriesQuery()
+  const { data: providers, isLoading: providersLoading, refetch: refetchProviders } = useGetServiceProvidersQuery({
+    category: selectedCategory,
+    dbsChecked: filters.dbsChecked,
+    insured: filters.insured,
+    rated: filters.rated,
+    lat: userLocation?.lat || null,  // Send null instead of undefined
+    lng: userLocation?.lng || null,  // Send null instead of undefined
+    radius: filters.maxDistance,
+    limit: 50,
+  }, {
+    skip: !selectedCategory,
+  })
 
-  const { data: providers, isLoading: providersLoading, refetch: refetchProviders } =
-    useGetServiceProvidersQuery({
-      category: selectedCategory,
-      dbsChecked: filters.dbsChecked,
-      insured: filters.insured,
-      rated: filters.rated,
-      lat: userLocation?.lat,
-      lng: userLocation?.lng,
-      radius: filters.maxDistance,
-      limit: 50,
-    });
 
-  const [createServiceRequest, { isLoading: isCreating }] =
-    useCreateServiceRequestMutation();
-
-  const categoryIcons = {
-    care: FaHeart,
-    trades: FaTools,
-    professional: FaBriefcase,
-    personal: FaUser,
-    other: FaPlus,
-  };
+  const [createServiceRequest, { isLoading: isCreating }] = useCreateServiceRequestMutation()
 
   // Get user's location
   const getUserLocation = () => {
-    setIsGettingLocation(true);
+    setIsGettingLocation(true)
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           setUserLocation({
             lat: position.coords.latitude,
             lng: position.coords.longitude,
-          });
-          setIsGettingLocation(false);
-          toast.success("Location detected successfully!");
-          refetchProviders();
+          })
+          setIsGettingLocation(false)
+          toast.success('Location detected successfully!')
+          refetchProviders()
         },
         (error) => {
-          console.error("Location error:", error);
-          setIsGettingLocation(false);
-          toast.error(
-            "Could not get your location. Please enter your address manually."
-          );
-          // Set default location (London)
+          console.error('Location error:', error)
+          setIsGettingLocation(false)
+          toast.error('Could not get your location. Please enter your address manually.')
           setUserLocation({
             lat: 51.5074,
             lng: -0.1276,
-          });
-        },
-        {
-          enableHighAccuracy: true, // Forces device to use best available hardware (GPS/Wi-Fi)
-          timeout: 10000,           // Stops waiting after 10 seconds instead of hanging forever
-          maximumAge: 0             // Forces a fresh location lookup instead of cached data
+          })
         }
-      );
+      )
     } else {
-      setIsGettingLocation(false);
-      toast.error("Geolocation is not supported by your browser.");
-      // Set default location (London)
+      setIsGettingLocation(false)
+      toast.error('Geolocation is not supported by your browser.')
       setUserLocation({
         lat: 51.5074,
         lng: -0.1276,
-      });
+      })
     }
-    
-  };
+  }
 
-  const handleCategorySelect = (categoryId) => {
-    setSelectedCategory(categoryId);
-    setServiceRequest((prev) => ({ 
-      ...prev, 
-      category: categoryId,
-      serviceType: "", // Reset service type when category changes
-    }));
-    setShowRequestForm(true);
-  };
+  const handleCategorySelect = (category) => {
+    setSelectedCategory(category.name)
+    setSelectedProviders([])
+    setServiceRequest(prev => ({ ...prev, category: category.name }))
+    setShowRequestForm(true)
+    setShowProviderSelection(true)
+  }
 
   const handleRequestChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setServiceRequest((prev) => ({
+    const { name, value, type, checked } = e.target
+    setServiceRequest(prev => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }));
-  };
+      [name]: type === 'checkbox' ? checked : value,
+    }))
+  }
 
   const handleLocationSelect = (suggestion) => {
-    const addressParts = suggestion.displayName?.split(",") || [];
-    setServiceRequest((prev) => ({
+    const addressParts = suggestion.displayName?.split(',') || []
+    setServiceRequest(prev => ({
       ...prev,
       location: {
-        address: suggestion.displayName || "",
-        town: addressParts[1]?.trim() || "",
-        postcode: suggestion.postcode || "",
+        address: suggestion.displayName || '',
+        town: addressParts[1]?.trim() || '',
+        postcode: suggestion.postcode || '',
         coordinates: {
           lat: suggestion.lat,
           lng: suggestion.lon,
         },
       },
-    }));
-  };
+    }))
+  }
 
-  const handleRequestSubmit = async (e) => {
-    e.preventDefault();
+  const toggleProviderSelection = (providerId) => {
+    setSelectedProviders(prev => 
+      prev.includes(providerId) 
+        ? prev.filter(id => id !== providerId)
+        : [...prev, providerId]
+    )
+  }
 
+  const selectAllProviders = () => {
+    if (providers) {
+      const allIds = providers.map(p => p._id)
+      setSelectedProviders(allIds)
+    }
+  }
+
+  const deselectAllProviders = () => {
+    setSelectedProviders([])
+  }
+
+  const handleCreateRequest = async () => {
+    // Validate form
     if (!serviceRequest.serviceType) {
-      toast.error("Please select a service type");
-      return;
+      toast.error('Please select a service type')
+      return
     }
     if (!serviceRequest.description) {
-      toast.error("Please describe what you need");
-      return;
+      toast.error('Please describe what you need')
+      return
+    }
+    if (selectedProviders.length === 0) {
+      toast.error('Please select at least one provider to invite')
+      return
     }
 
     try {
-      const result = await createServiceRequest(serviceRequest).unwrap();
-      toast.success("Service request submitted successfully!");
-      navigate(`/customer/service-request/${result.serviceRequest._id}`);
+      const result = await createServiceRequest({
+        ...serviceRequest,
+        invitedProviders: selectedProviders,
+      }).unwrap()
+      
+      toast.success(`Service request created and sent to ${selectedProviders.length} provider(s)!`)
+      navigate(`/customer/service-request/${result.serviceRequest._id}`)
     } catch (error) {
-      toast.error(error.data?.message || "Failed to submit request");
+      toast.error(error.data?.message || 'Failed to create service request')
     }
-  };
+  }
 
-  // Sort providers by distance or rating
   const sortedProviders = () => {
-    if (!providers) return [];
+    if (!providers) return []
     
-    const providersList = [...providers];
+    const providersList = [...providers]
     
-    if (filters.sortBy === "nearest") {
-      providersList.sort((a, b) => (a.distance || 999) - (b.distance || 999));
-    } else if (filters.sortBy === "rating") {
-      providersList.sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0));
-    } else if (filters.sortBy === "cheapest") {
-      providersList.sort((a, b) => (a.serviceRates?.hourlyRate || 999) - (b.serviceRates?.hourlyRate || 999));
+    if (filters.sortBy === 'nearest') {
+      providersList.sort((a, b) => (a.distance || 999) - (b.distance || 999))
+    } else if (filters.sortBy === 'rating') {
+      providersList.sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0))
     }
     
-    return providersList;
-  };
+    return providersList
+  }
 
-  const displayProviders = sortedProviders();
-  const hasProviders = displayProviders && displayProviders.length > 0;
-
-  // Get available service types for selected category
-  const availableServiceTypes = selectedCategory ? SERVICE_TYPES[selectedCategory] || [] : [];
+  const displayProviders = sortedProviders()
+  const hasProviders = displayProviders && displayProviders.length > 0
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -264,7 +211,7 @@ const FindServices = () => {
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-text">Find Local Services</h1>
             <p className="text-text-light mt-2">
-              Connect with trusted local professionals for any service you need
+              Browse providers, select who you want to work with, and create a service request
             </p>
           </div>
 
@@ -280,7 +227,7 @@ const FindServices = () => {
               ) : (
                 <FaLocationArrow />
               )}
-              <span>{isGettingLocation ? "Detecting..." : "Use My Location"}</span>
+              <span>{isGettingLocation ? 'Detecting...' : 'Use My Location'}</span>
             </button>
             {userLocation && (
               <span className="text-sm text-green-600 flex items-center">
@@ -320,9 +267,7 @@ const FindServices = () => {
                 <input
                   type="checkbox"
                   checked={filters.dbsChecked}
-                  onChange={(e) =>
-                    setFilters({ ...filters, dbsChecked: e.target.checked })
-                  }
+                  onChange={(e) => setFilters({ ...filters, dbsChecked: e.target.checked })}
                   className="w-4 h-4 text-primary rounded"
                 />
                 <span className="text-sm">DBS Checked</span>
@@ -331,9 +276,7 @@ const FindServices = () => {
                 <input
                   type="checkbox"
                   checked={filters.insured}
-                  onChange={(e) =>
-                    setFilters({ ...filters, insured: e.target.checked })
-                  }
+                  onChange={(e) => setFilters({ ...filters, insured: e.target.checked })}
                   className="w-4 h-4 text-primary rounded"
                 />
                 <span className="text-sm">Insured</span>
@@ -345,62 +288,76 @@ const FindServices = () => {
               >
                 <option value="nearest">Nearest First</option>
                 <option value="rating">Highest Rated</option>
-                <option value="cheapest">Cheapest</option>
               </select>
             </div>
           </div>
 
-          {/* Categories */}
+          {/* Categories - Dynamic from Database */}
           <div className="mb-8">
-            <h2 className="text-lg font-semibold text-text mb-4">
-              Service Categories
-            </h2>
+            <h2 className="text-lg font-semibold text-text mb-4">Service Categories</h2>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               {categoriesLoading
                 ? Array.from({ length: 5 }).map((_, i) => (
                     <div key={i} className="skeleton h-24 rounded-xl"></div>
                   ))
                 : categories?.map((category) => {
-                    const Icon = categoryIcons[category.id] || FaPlus;
+                    const isSelected = selectedCategory === category.name
                     return (
                       <button
-                        key={category.id}
-                        onClick={() => handleCategorySelect(category.id)}
+                        key={category._id}
+                        onClick={() => handleCategorySelect(category)}
                         className={`p-4 rounded-xl text-center transition-all duration-200
-                        ${
-                          selectedCategory === category.id
-                            ? "bg-primary text-white shadow-soft"
-                            : "bg-white hover:shadow-soft text-text"
-                        }`}
+                          ${isSelected
+                            ? 'bg-primary text-white shadow-soft'
+                            : 'bg-white hover:shadow-soft text-text'
+                          }`}
                       >
-                        <Icon className="text-2xl mx-auto mb-2" />
+                        <span className="text-2xl mx-auto mb-2 block">{category.icon || '📋'}</span>
                         <p className="font-medium text-sm">{category.label}</p>
+                        {category.subCategories && category.subCategories.length > 0 && (
+                          <p className="text-xs opacity-70 mt-1">
+                            {category.subCategories.length} sub-categories
+                          </p>
+                        )}
                       </button>
-                    );
+                    )
                   })}
             </div>
           </div>
 
-          {/* Providers List */}
+          {/* Providers List with Selection */}
           {selectedCategory && (
             <div className="mb-8">
-              <div className="flex justify-between items-center mb-4">
+              <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
                 <div>
-                  <h2 className="text-lg font-semibold text-text">
-                    Available Providers
-                  </h2>
+                  <h2 className="text-lg font-semibold text-text">Available Providers</h2>
                   {userLocation && hasProviders && (
                     <p className="text-sm text-text-light">
                       Showing {displayProviders.length} provider(s) near your location
                     </p>
                   )}
                 </div>
-                <button
-                  onClick={() => setShowRequestForm(!showRequestForm)}
-                  className="btn-primary text-sm py-2"
-                >
-                  {showRequestForm ? "Hide Form" : "Request Service"}
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  {hasProviders && (
+                    <>
+                      <button
+                        onClick={selectAllProviders}
+                        className="btn-outline text-sm py-1 px-3"
+                      >
+                        Select All
+                      </button>
+                      <button
+                        onClick={deselectAllProviders}
+                        className="btn-outline text-sm py-1 px-3"
+                      >
+                        Deselect All
+                      </button>
+                      <span className="text-sm text-text-light flex items-center">
+                        {selectedProviders.length} selected
+                      </span>
+                    </>
+                  )}
+                </div>
               </div>
 
               {providersLoading ? (
@@ -422,8 +379,8 @@ const FindServices = () => {
                         dbsChecked: false,
                         insured: false,
                         maxDistance: 100,
-                      });
-                      refetchProviders();
+                      })
+                      refetchProviders()
                     }}
                     className="mt-4 text-primary hover:underline"
                   >
@@ -431,96 +388,114 @@ const FindServices = () => {
                   </button>
                 </div>
               ) : (
-                displayProviders.map((provider) => (
-                  <div
-                    key={provider._id}
-                    className="card mb-4 hover:shadow-medium transition-shadow"
-                  >
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3 flex-wrap gap-y-2">
-                          <h3 className="font-semibold text-text">
-                            {provider.fullName}
-                          </h3>
-                          <div className="flex items-center text-sm text-yellow-500">
-                            <FaStar />
-                            <span className="ml-1 text-text-light">
-                              {provider.averageRating?.toFixed(1) || "New"}
+                displayProviders.map((provider) => {
+                  const isSelected = selectedProviders.includes(provider._id)
+                  return (
+                    <div
+                      key={provider._id}
+                      className={`card mb-4 transition-all duration-200 ${
+                        isSelected ? 'border-2 border-primary shadow-medium' : 'hover:shadow-medium'
+                      }`}
+                    >
+                      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3 flex-wrap gap-y-2">
+                            <h3 className="font-semibold text-text">
+                              {provider.fullName}
+                            </h3>
+                            <div className="flex items-center text-sm text-yellow-500">
+                              <FaStar />
+                              <span className="ml-1 text-text-light">
+                                {provider.averageRating?.toFixed(1) || 'New'}
+                              </span>
+                            </div>
+                            <span className="text-xs text-text-lighter">
+                              ({provider.totalReviews || 0} reviews)
                             </span>
+                            {provider.distance && (
+                              <span className="flex items-center text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                                <FaRuler className="mr-1" />
+                                {provider.distance.toFixed(1)} miles away
+                              </span>
+                            )}
                           </div>
-                          <span className="text-xs text-text-lighter">
-                            ({provider.totalReviews || 0} reviews)
-                          </span>
-                          {provider.distance && (
-                            <span className="flex items-center text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
-                              <FaRuler className="mr-1" />
-                              {provider.distance.toFixed(1)} miles away
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          {provider.verificationBadges?.includes(
-                            "dbs_checked"
-                          ) && (
-                            <span className="flex items-center text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
-                              <FaCheckCircle className="mr-1" /> DBS Checked
-                            </span>
-                          )}
-                          {provider.verificationBadges?.includes("insured") && (
-                            <span className="flex items-center text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
-                              <FaShieldAlt className="mr-1" /> Insured
-                            </span>
-                          )}
-                          {provider.verificationBadges?.includes(
-                            "certified"
-                          ) && (
-                            <span className="flex items-center text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">
-                              <FaCheckCircle className="mr-1" /> Certified
-                            </span>
-                          )}
-                          {provider.verificationBadges?.includes(
-                            "id_checked"
-                          ) && (
-                            <span className="flex items-center text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full">
-                              <FaUserCheck className="mr-1" /> ID Verified
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-sm text-text-light mt-2">
-                          {provider.about || `Professional ${selectedCategory} service provider`}
-                        </p>
-                      </div>
-                      <div className="flex flex-col items-end gap-2">
-                        {provider.serviceRates?.hourlyRate && (
-                          <p className="text-sm text-text-light">
-                            <span className="font-semibold text-primary">
-                              £{provider.serviceRates.hourlyRate}
-                            </span>
-                            /hr
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {provider.verificationBadges?.includes('dbs_checked') && (
+                              <span className="flex items-center text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
+                                <FaCheckCircle className="mr-1" /> DBS Checked
+                              </span>
+                            )}
+                            {provider.verificationBadges?.includes('insured') && (
+                              <span className="flex items-center text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                                <FaShieldAlt className="mr-1" /> Insured
+                              </span>
+                            )}
+                            {provider.verificationBadges?.includes('certified') && (
+                              <span className="flex items-center text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">
+                                <FaCheckCircle className="mr-1" /> Certified
+                              </span>
+                            )}
+                            {provider.verificationBadges?.includes('id_checked') && (
+                              <span className="flex items-center text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full">
+                                <FaUserCheck className="mr-1" /> ID Verified
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-text-light mt-2">
+                            {provider.about || `Professional service provider`}
                           </p>
-                        )}
-                        <Link
-                          to={`/provider/${provider._id}`}
-                          className="btn-outline text-sm py-1 px-4"
-                        >
-                          View Profile
-                        </Link>
+                          <div className="flex items-center text-sm text-text-light mt-2">
+                            <FaMapMarkerAlt className="mr-1" />
+                            {provider.address?.town || 'Location available'}
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-2">
+                          {provider.serviceRates?.hourlyRate && (
+                            <p className="text-sm text-text-light">
+                              <span className="font-semibold text-primary">
+                                £{provider.serviceRates.hourlyRate}
+                              </span>
+                              /hr
+                            </p>
+                          )}
+                          <button
+                            onClick={() => toggleProviderSelection(provider._id)}
+                            className={`text-sm py-2 px-4 rounded-lg font-medium transition-all duration-200 w-full md:w-auto ${
+                              isSelected
+                                ? 'bg-primary text-white'
+                                : 'border-2 border-gray-300 text-text-light hover:border-primary hover:text-primary'
+                            }`}
+                          >
+                            {isSelected ? (
+                              <span className="flex items-center justify-center space-x-1">
+                                <FaCheck />
+                                <span>Selected</span>
+                              </span>
+                            ) : (
+                              <span>Select Provider</span>
+                            )}
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))
+                  )
+                })
               )}
             </div>
           )}
 
           {/* Service Request Form */}
           {showRequestForm && selectedCategory && (
-            <div className="card">
-              <h2 className="text-xl font-semibold text-text mb-4">
-                Request Service
-              </h2>
-              <form onSubmit={handleRequestSubmit} className="space-y-4">
-                {/* Service Type Dropdown */}
+            <div className="card mt-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold text-text">Create Service Request</h2>
+                <span className="text-sm text-primary">
+                  {selectedProviders.length} provider(s) selected
+                </span>
+              </div>
+
+              <form onSubmit={(e) => { e.preventDefault(); handleCreateRequest(); }} className="space-y-4">
+                {/* Service Type Dropdown - Dynamic from selected category's subcategories */}
                 <div>
                   <label className="block text-sm font-medium text-text-light mb-1">
                     Service Type *
@@ -533,9 +508,9 @@ const FindServices = () => {
                     required
                   >
                     <option value="">Select a service type...</option>
-                    {availableServiceTypes.map((type) => (
-                      <option key={type.value} value={type.value}>
-                        {type.label}
+                    {categories?.find(c => c.name === selectedCategory)?.subCategories?.map((subCategory) => (
+                      <option key={subCategory} value={subCategory}>
+                        {subCategory.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                       </option>
                     ))}
                     <option value="other">Other (Please specify in description)</option>
@@ -568,13 +543,13 @@ const FindServices = () => {
                     value={serviceRequest.location.address}
                     onSelect={handleLocationSelect}
                     onChange={(e) => {
-                      setServiceRequest((prev) => ({
+                      setServiceRequest(prev => ({
                         ...prev,
                         location: {
                           ...prev.location,
                           address: e.target.value,
                         },
-                      }));
+                      }))
                     }}
                     country="gb"
                     minChars={2}
@@ -632,9 +607,7 @@ const FindServices = () => {
                       onChange={handleRequestChange}
                       className="w-5 h-5 text-primary rounded border-gray-300 focus:ring-primary"
                     />
-                    <span className="text-sm text-text-light">
-                      This is urgent
-                    </span>
+                    <span className="text-sm text-text-light">This is urgent</span>
                   </label>
                   <label className="flex items-center space-x-3">
                     <input
@@ -644,9 +617,7 @@ const FindServices = () => {
                       onChange={handleRequestChange}
                       className="w-5 h-5 text-primary rounded border-gray-300 focus:ring-primary"
                     />
-                    <span className="text-sm text-text-light">
-                      Requires DBS checked provider
-                    </span>
+                    <span className="text-sm text-text-light">Requires DBS checked provider</span>
                   </label>
                   <label className="flex items-center space-x-3">
                     <input
@@ -656,9 +627,7 @@ const FindServices = () => {
                       onChange={handleRequestChange}
                       className="w-5 h-5 text-primary rounded border-gray-300 focus:ring-primary"
                     />
-                    <span className="text-sm text-text-light">
-                      Requires certified provider
-                    </span>
+                    <span className="text-sm text-text-light">Requires certified provider</span>
                   </label>
                 </div>
 
@@ -670,23 +639,39 @@ const FindServices = () => {
                       </span>
                       <p className="text-xs text-blue-600">Fixed booking fee</p>
                     </div>
-                    <span className="font-bold text-blue-700">
-                      £{SERVICE_FEE.toFixed(2)}
-                    </span>
+                    <span className="font-bold text-blue-700">£1.99</span>
                   </div>
                   <p className="text-xs text-text-lighter mt-2">
-                    * Service fee is charged by GEOBUY. Service provider amount
-                    is negotiated directly.
+                    * Service fee is charged by GEOBUY. Service provider amount is negotiated directly.
                   </p>
                 </div>
 
+                {selectedProviders.length > 0 && (
+                  <div className="bg-green-50 rounded-xl p-4 border border-green-200">
+                    <p className="text-sm text-green-700">
+                      ✅ {selectedProviders.length} provider(s) will be invited to quote for this service
+                    </p>
+                  </div>
+                )}
+
                 <button
                   type="submit"
-                  disabled={isCreating}
+                  disabled={isCreating || selectedProviders.length === 0}
                   className="w-full btn-primary disabled:opacity-50 flex items-center justify-center space-x-2"
                 >
-                  <span>{isCreating ? "Submitting..." : "Submit Request"}</span>
-                  <FaArrowRight />
+                  {isCreating ? (
+                    <FaSpinner className="animate-spin" />
+                  ) : (
+                    <FaPaperPlane />
+                  )}
+                  <span>
+                    {isCreating 
+                      ? 'Creating Request...' 
+                      : selectedProviders.length === 0 
+                        ? 'Select Providers First' 
+                        : `Send to ${selectedProviders.length} Provider(s)`
+                    }
+                  </span>
                 </button>
               </form>
             </div>
@@ -694,7 +679,7 @@ const FindServices = () => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default FindServices;
+export default FindServices

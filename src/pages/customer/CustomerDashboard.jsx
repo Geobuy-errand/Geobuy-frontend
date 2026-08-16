@@ -1,15 +1,74 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { useGetBookingsQuery } from '../../redux/services/bookingApi'
+import { useGetErrandsQuery } from '../../redux/services/errandApi'
+import socketService from '../../redux/services/socketService'
 import { FaPlus, FaClock } from 'react-icons/fa'
 
 const CustomerDashboard = () => {
   const { user } = useSelector((state) => state.auth || { user: null })
-  const { data: bookings, isLoading, error } = useGetBookingsQuery()
+  const { data: bookings, isLoading, refetch } = useGetBookingsQuery()
+  const { data: errands, isLoading: errandsLoading } = useGetErrandsQuery()
+  const [liveUpdates, setLiveUpdates] = useState([])
+  const [socketConnected, setSocketConnected] = useState(false)
 
-  // Handle loading state
-  if (isLoading) {
+  useEffect(() => {
+    // Connect to socket
+    socketService.connect()
+    setSocketConnected(socketService.getConnectionStatus())
+
+    // Listen for errand status updates
+    const handleErrandUpdate = (data) => {
+      setLiveUpdates(prev => [
+        { 
+          type: 'errand_update', 
+          message: `Errand #${data.errandId} is now ${data.status}`,
+          timestamp: new Date(),
+        },
+        ...prev.slice(0, 4),
+      ])
+      refetch()
+    }
+    socketService.on('errand-status-updated', handleErrandUpdate)
+
+    return () => {
+      socketService.off('errand-status-updated', handleErrandUpdate)
+    }
+  }, [refetch])
+
+  // Combine bookings and errands for stats
+  const allBookings = bookings || []
+  const allErrands = errands || []
+  const totalActive = allBookings.filter(b => b.status === 'pending' || b.status === 'accepted').length +
+                      allErrands.filter(e => e.status === 'pending' || e.status === 'accepted' || e.status === 'en_route').length
+
+  const stats = {
+    total: allBookings.length + allErrands.length,
+    pending: allBookings.filter(b => b.status === 'pending').length + allErrands.filter(e => e.status === 'pending').length,
+    active: totalActive,
+    completed: allBookings.filter(b => b.status === 'completed').length + allErrands.filter(e => e.status === 'delivered' || e.status === 'completed').length,
+  }
+
+  const recentItems = [...allBookings.slice(0, 3), ...allErrands.slice(0, 3)]
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .slice(0, 5)
+
+  const getStatusColor = (status) => {
+    const map = {
+      'pending': 'bg-yellow-100 text-yellow-700',
+      'accepted': 'bg-blue-100 text-blue-700',
+      'en_route': 'bg-purple-100 text-purple-700',
+      'collected': 'bg-indigo-100 text-indigo-700',
+      'delivered': 'bg-green-100 text-green-700',
+      'completed': 'bg-green-100 text-green-700',
+      'cancelled': 'bg-red-100 text-red-700',
+      'in_progress': 'bg-blue-100 text-blue-700',
+    }
+    return map[status] || 'bg-gray-100 text-gray-700'
+  }
+
+  if (isLoading || errandsLoading) {
     return (
       <div className="p-6">
         <div className="mb-8">
@@ -34,35 +93,6 @@ const CustomerDashboard = () => {
     )
   }
 
-  // Handle error state
-  if (error) {
-    return (
-      <div className="p-6">
-        <div className="card bg-red-50 border border-red-200">
-          <h3 className="text-red-700 font-semibold">Error loading bookings</h3>
-          <p className="text-red-600 text-sm mt-2">
-            {error?.data?.message || 'Failed to load bookings. Please try again later.'}
-          </p>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="mt-4 btn-primary text-sm py-2"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  const stats = {
-    total: bookings?.length || 0,
-    pending: bookings?.filter(b => b.status === 'pending').length || 0,
-    completed: bookings?.filter(b => b.status === 'completed').length || 0,
-    cancelled: bookings?.filter(b => b.status === 'cancelled').length || 0,
-  }
-
-  const recentBookings = bookings?.slice(0, 5) || []
-
   return (
     <div>
       <div className="mb-8">
@@ -70,14 +100,17 @@ const CustomerDashboard = () => {
           Welcome back, {user?.fullName?.split(' ')[0] || 'User'}! 👋
         </h1>
         <p className="text-text-light mt-1">
-          Here's what's happening with your errands.
+          Here's what's happening with your errands and bookings.
         </p>
+        {socketConnected && (
+          <span className="text-xs text-green-600 mt-1 inline-block">🟢 Live updates</span>
+        )}
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <div className="card">
-          <p className="text-sm text-text-light">Total Bookings</p>
+          <p className="text-sm text-text-light">Total</p>
           <p className="text-2xl font-bold text-primary">{stats.total}</p>
         </div>
         <div className="card">
@@ -85,12 +118,12 @@ const CustomerDashboard = () => {
           <p className="text-2xl font-bold text-secondary">{stats.pending}</p>
         </div>
         <div className="card">
-          <p className="text-sm text-text-light">Completed</p>
-          <p className="text-2xl font-bold text-green-600">{stats.completed}</p>
+          <p className="text-sm text-text-light">Active</p>
+          <p className="text-2xl font-bold text-blue-600">{stats.active}</p>
         </div>
         <div className="card">
-          <p className="text-sm text-text-light">Cancelled</p>
-          <p className="text-2xl font-bold text-red-600">{stats.cancelled}</p>
+          <p className="text-sm text-text-light">Completed</p>
+          <p className="text-2xl font-bold text-green-600">{stats.completed}</p>
         </div>
       </div>
 
@@ -98,7 +131,7 @@ const CustomerDashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <Link to="/customer/create-booking" className="card hover:shadow-large transition-shadow flex items-center justify-between group">
           <div>
-            <h3 className="text-lg font-semibold text-text">Create New Booking</h3>
+            <h3 className="text-lg font-semibold text-text">Create New Errand</h3>
             <p className="text-text-light text-sm">Get help with your errands</p>
           </div>
           <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
@@ -108,8 +141,8 @@ const CustomerDashboard = () => {
 
         <Link to="/customer/bookings" className="card hover:shadow-large transition-shadow flex items-center justify-between group">
           <div>
-            <h3 className="text-lg font-semibold text-text">View All Bookings</h3>
-            <p className="text-text-light text-sm">Track your errand history</p>
+            <h3 className="text-lg font-semibold text-text">View History</h3>
+            <p className="text-text-light text-sm">Track all your errands</p>
           </div>
           <div className="w-12 h-12 rounded-full bg-secondary/10 flex items-center justify-center group-hover:bg-secondary/20 transition-colors">
             <FaClock className="text-secondary text-xl" />
@@ -117,39 +150,34 @@ const CustomerDashboard = () => {
         </Link>
       </div>
 
-      {/* Recent Bookings */}
+      {/* Recent Activity */}
       <div className="card">
-        <h3 className="text-lg font-semibold text-text mb-4">Recent Bookings</h3>
-        {recentBookings.length === 0 ? (
+        <h3 className="text-lg font-semibold text-text mb-4">Recent Activity</h3>
+        {recentItems.length === 0 ? (
           <div className="text-center py-8">
-            <p className="text-text-light">No bookings yet.</p>
+            <p className="text-text-light">No activity yet.</p>
             <Link to="/customer/create-booking" className="text-primary hover:underline mt-2 inline-block">
-              Create your first booking
+              Create your first errand
             </Link>
           </div>
         ) : (
           <div className="space-y-3">
-            {recentBookings.map((booking) => (
+            {recentItems.map((item) => (
               <Link
-                key={booking._id}
-                to={`/customer/booking/${booking._id}`}
+                key={item._id}
+                to={`/customer/${item.errandId ? 'errand' : 'booking'}/${item._id}`}
                 className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
               >
                 <div>
-                  <p className="font-medium text-text">{booking.serviceType}</p>
-                  <p className="text-sm text-text-light">{booking.pickup?.address}</p>
+                  <p className="font-medium text-text">{item.serviceType || item.serviceType}</p>
+                  <p className="text-sm text-text-light">{item.pickup?.address || item.pickup?.address}</p>
                 </div>
                 <div className="flex items-center space-x-4">
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium
-                    ${booking.status === 'completed' ? 'bg-green-100 text-green-700' :
-                      booking.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                      booking.status === 'cancelled' ? 'bg-red-100 text-red-700' :
-                      'bg-blue-100 text-blue-700'}`}
-                  >
-                    {booking.status}
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(item.status)}`}>
+                    {item.status?.replace('_', ' ')}
                   </span>
                   <span className="text-sm font-semibold text-text">
-                    £{booking.estimatedPrice?.toFixed(2)}
+                    £{item.total?.toFixed(2) || item.estimatedPrice?.toFixed(2)}
                   </span>
                 </div>
               </Link>

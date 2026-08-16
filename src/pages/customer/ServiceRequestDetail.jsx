@@ -1,6 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { useGetServiceRequestByIdQuery, useAcceptQuoteMutation, useRejectQuoteMutation, useNegotiateQuoteMutation } from '../../redux/services/serviceApi'
+import { useGetServiceRequestByIdQuery, useInviteProvidersMutation } from '../../redux/services/serviceApi'
 import { useSelector } from 'react-redux'
 import { toast } from 'react-hot-toast'
 import { 
@@ -18,7 +18,10 @@ import {
   FaComments,
   FaHandshake,
   FaTimesCircle,
-  FaPaperPlane
+  FaPaperPlane,
+  FaUsers,
+  FaCheck,
+  FaSpinner,
 } from 'react-icons/fa'
 
 const ServiceRequestDetail = () => {
@@ -26,16 +29,63 @@ const ServiceRequestDetail = () => {
   const navigate = useNavigate()
   const { user } = useSelector((state) => state.auth)
   const { data: request, isLoading, refetch } = useGetServiceRequestByIdQuery(id)
-  const [acceptQuote] = useAcceptQuoteMutation()
-  const [rejectQuote] = useRejectQuoteMutation()
-  const [negotiateQuote] = useNegotiateQuoteMutation()
-  const [showNegotiation, setShowNegotiation] = useState(false)
-  const [counterAmount, setCounterAmount] = useState('')
-  const [negotiationMessage, setNegotiationMessage] = useState('')
-  const [selectedQuoteId, setSelectedQuoteId] = useState(null)
+  const [inviteProviders, { isLoading: isInviting }] = useInviteProvidersMutation()
+  const [selectedProviders, setSelectedProviders] = useState([])
+  const [showInviteModal, setShowInviteModal] = useState(false)
 
   const isCustomer = user?._id === request?.customerId?._id
-  const isProvider = user?._id === request?.selectedProviderId?._id
+
+  const handleInviteProviders = async () => {
+    if (selectedProviders.length === 0) {
+      toast.error('Please select at least one provider to invite')
+      return
+    }
+
+    try {
+      await inviteProviders({
+        requestId: id,
+        providerIds: selectedProviders,
+      }).unwrap()
+      
+      toast.success(`Invited ${selectedProviders.length} provider(s)`)
+      setSelectedProviders([])
+      setShowInviteModal(false)
+      refetch()
+    } catch (error) {
+      toast.error(error.data?.message || 'Failed to invite providers')
+    }
+  }
+
+  const toggleProviderSelection = (providerId) => {
+    setSelectedProviders(prev => 
+      prev.includes(providerId) 
+        ? prev.filter(id => id !== providerId)
+        : [...prev, providerId]
+    )
+  }
+
+  if (isLoading) {
+    return (
+      <div className="p-6">
+        <div className="skeleton h-64 rounded-xl"></div>
+        <div className="mt-6 space-y-4">
+          <div className="skeleton h-32 rounded-xl"></div>
+          <div className="skeleton h-32 rounded-xl"></div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!request) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-text-light">Request not found</p>
+        <button onClick={() => navigate(-1)} className="text-primary hover:underline mt-2">
+          Go back
+        </button>
+      </div>
+    )
+  }
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -63,73 +113,19 @@ const ServiceRequestDetail = () => {
     }
   }
 
-  const handleAcceptQuote = async (quoteId) => {
-    try {
-      await acceptQuote({ quoteId }).unwrap()
-      toast.success('Quote accepted! Provider has been notified.')
-      refetch()
-    } catch (error) {
-      toast.error(error.data?.message || 'Failed to accept quote')
+  // Providers that have been invited or matched
+  const matchedProviders = request.matchedProviders || []
+  const invitedProviders = request.invitedProviders || []
+  
+  // Combine and deduplicate
+  const allProviders = [...matchedProviders, ...invitedProviders]
+  const uniqueProviders = allProviders.reduce((acc, current) => {
+    const exists = acc.find(item => item.providerId._id === current.providerId._id)
+    if (!exists) {
+      acc.push(current)
     }
-  }
-
-  const handleRejectQuote = async (quoteId) => {
-    if (!window.confirm('Are you sure you want to reject this quote?')) return
-    try {
-      await rejectQuote({ quoteId }).unwrap()
-      toast.success('Quote rejected')
-      refetch()
-    } catch (error) {
-      toast.error(error.data?.message || 'Failed to reject quote')
-    }
-  }
-
-  const handleNegotiate = async (quoteId) => {
-    if (!counterAmount || parseFloat(counterAmount) <= 0) {
-      toast.error('Please enter a valid amount')
-      return
-    }
-
-    try {
-      await negotiateQuote({
-        quoteId,
-        counterAmount: parseFloat(counterAmount),
-        message: negotiationMessage,
-      }).unwrap()
-      toast.success('Counter-offer sent!')
-      setCounterAmount('')
-      setNegotiationMessage('')
-      setShowNegotiation(false)
-      refetch()
-    } catch (error) {
-      toast.error(error.data?.message || 'Failed to send counter-offer')
-    }
-  }
-
-  if (isLoading) {
-    return (
-      <div className="p-6">
-        <div className="skeleton h-64 rounded-xl"></div>
-        <div className="mt-6 space-y-4">
-          <div className="skeleton h-32 rounded-xl"></div>
-          <div className="skeleton h-32 rounded-xl"></div>
-        </div>
-      </div>
-    )
-  }
-
-  if (!request) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-text-light">Request not found</p>
-        <button onClick={() => navigate('/customer/service-requests')} className="text-primary hover:underline mt-2">
-          Back to requests
-        </button>
-      </div>
-    )
-  }
-
-  const provider = request.selectedProviderId
+    return acc
+  }, [])
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
@@ -213,321 +209,168 @@ const ServiceRequestDetail = () => {
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Matched Providers */}
-        {request.matchedProviders?.length > 0 && (
-          <div className="card md:col-span-2">
-            <h2 className="text-lg font-semibold text-text mb-4 flex items-center">
+      {/* Matched Providers Section */}
+      {isCustomer && request.status === 'pending' && (
+        <div className="card mt-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-semibold text-text flex items-center">
               <FaUsers className="mr-2 text-primary" />
-              Matched Providers ({request.matchedProviders.length})
+              Available Providers ({uniqueProviders.length})
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {request.matchedProviders.map((match) => (
-                <div key={match.providerId._id} className="p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="font-semibold text-text">{match.providerId.fullName}</p>
-                      <div className="flex items-center space-x-2 mt-1">
-                        <div className="flex items-center text-sm text-yellow-500">
-                          <FaStar />
-                          <span className="ml-1 text-text-light">
-                            {match.providerId.averageRating?.toFixed(1) || 'New'}
-                          </span>
-                        </div>
-                        <span className="text-xs text-text-lighter">
-                          ({match.providerId.totalReviews || 0} reviews)
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {match.matchScore && (
-                          <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-                            Match: {Math.round(match.matchScore)}%
-                          </span>
-                        )}
-                        {match.distance && (
-                          <span className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full">
-                            {match.distance.toFixed(1)} km away
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${
-                      match.status === 'responded' ? 'bg-green-100 text-green-700' :
-                      match.status === 'invited' ? 'bg-blue-100 text-blue-700' :
-                      'bg-gray-100 text-gray-700'
-                    }`}>
-                      {match.status}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Quotes & Negotiation */}
-        {request.quotes?.length > 0 && (
-          <div className="card md:col-span-2">
-            <h2 className="text-lg font-semibold text-text mb-4 flex items-center">
-              <FaComments className="mr-2 text-primary" />
-              Quotes & Negotiation
-            </h2>
-            <div className="space-y-4">
-              {request.quotes.map((quote) => (
-                <div key={quote._id} className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                    <div>
-                      <div className="flex items-center space-x-3">
-                        <p className="font-semibold text-text">{quote.providerId.fullName}</p>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${
-                          quote.status === 'accepted' ? 'bg-green-100 text-green-700' :
-                          quote.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                          'bg-yellow-100 text-yellow-700'
-                        }`}>
-                          {quote.status}
-                        </span>
-                      </div>
-                      <p className="text-2xl font-bold text-primary mt-1">£{quote.amount.toFixed(2)}</p>
-                      {quote.message && (
-                        <p className="text-sm text-text-light mt-1">"{quote.message}"</p>
-                      )}
-                      <p className="text-xs text-text-lighter mt-1">
-                        Estimated duration: {quote.estimatedDuration || 'Not specified'} hours
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {isCustomer && quote.status === 'pending' && (
-                        <>
-                          <button
-                            onClick={() => handleAcceptQuote(quote._id)}
-                            className="btn-primary text-sm py-1 px-3"
-                          >
-                            Accept
-                          </button>
-                          <button
-                            onClick={() => {
-                              setSelectedQuoteId(quote._id)
-                              setShowNegotiation(true)
-                            }}
-                            className="btn-outline text-sm py-1 px-3"
-                          >
-                            Negotiate
-                          </button>
-                          <button
-                            onClick={() => handleRejectQuote(quote._id)}
-                            className="text-red-600 hover:text-red-700 text-sm py-1 px-3"
-                          >
-                            Reject
-                          </button>
-                        </>
-                      )}
-                      {quote.status === 'accepted' && (
-                        <span className="flex items-center text-green-600">
-                          <FaCheckCircle className="mr-1" />
-                          Accepted
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Negotiation UI */}
-                  {showNegotiation && selectedQuoteId === quote._id && isCustomer && (
-                    <div className="mt-4 pt-4 border-t border-gray-100">
-                      <h4 className="font-medium text-text mb-2">Make Counter-Offer</h4>
-                      <div className="space-y-3">
-                        <div>
-                          <label className="block text-sm font-medium text-text-light mb-1">
-                            Your Offer (£)
-                          </label>
-                          <input
-                            type="number"
-                            value={counterAmount}
-                            onChange={(e) => setCounterAmount(e.target.value)}
-                            className="input-field"
-                            placeholder="Enter your offer"
-                            step="0.01"
-                            min="0"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-text-light mb-1">
-                            Message (Optional)
-                          </label>
-                          <textarea
-                            value={negotiationMessage}
-                            onChange={(e) => setNegotiationMessage(e.target.value)}
-                            rows="2"
-                            className="input-field resize-none"
-                            placeholder="Add a message..."
-                          />
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleNegotiate(quote._id)}
-                            className="btn-primary text-sm py-2 px-4 flex items-center space-x-2"
-                          >
-                            <FaPaperPlane />
-                            <span>Send Counter-Offer</span>
-                          </button>
-                          <button
-                            onClick={() => {
-                              setShowNegotiation(false)
-                              setSelectedQuoteId(null)
-                              setCounterAmount('')
-                              setNegotiationMessage('')
-                            }}
-                            className="btn-outline text-sm py-2 px-4"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            {/* Negotiation History */}
-            {request.negotiationHistory?.length > 0 && (
-              <div className="mt-4 pt-4 border-t border-gray-100">
-                <h4 className="font-medium text-text mb-2 flex items-center">
-                  <FaHandshake className="mr-2 text-primary" />
-                  Negotiation History
-                </h4>
-                <div className="space-y-2">
-                  {request.negotiationHistory.map((entry, index) => (
-                    <div key={index} className="flex items-start space-x-3 p-2 bg-gray-50 rounded-lg">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs flex-shrink-0 ${
-                        entry.from === 'customer' ? 'bg-primary' : 'bg-secondary'
-                      }`}>
-                        {entry.from === 'customer' ? 'C' : 'P'}
-                      </div>
-                      <div>
-                        <p className="text-sm text-text-light">
-                          <span className="font-medium">{entry.from === 'customer' ? 'You' : 'Provider'}</span>
-                          {entry.offerAmount && ` offered £${entry.offerAmount.toFixed(2)}`}
-                          {entry.status === 'accepted' && ' ✅ Accepted'}
-                          {entry.status === 'rejected' && ' ❌ Rejected'}
-                        </p>
-                        {entry.message && (
-                          <p className="text-sm text-text-lighter">"{entry.message}"</p>
-                        )}
-                        <p className="text-xs text-text-lighter">
-                          {new Date(entry.timestamp).toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+            {uniqueProviders.length > 0 && (
+              <button
+                onClick={() => setShowInviteModal(true)}
+                className="btn-primary text-sm py-2 px-4 flex items-center space-x-2"
+              >
+                <FaPaperPlane />
+                <span>Invite Selected</span>
+              </button>
             )}
           </div>
-        )}
 
-        {/* Selected Provider */}
-        {provider && (
-          <div className="card md:col-span-2">
-            <h2 className="text-lg font-semibold text-text mb-4 flex items-center">
-              <FaUser className="mr-2 text-primary" />
-              Selected Provider
-            </h2>
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <div className="flex items-start space-x-4">
-                <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
-                  <FaUser className="text-primary text-2xl" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-text">{provider.fullName}</h3>
-                  <div className="flex items-center space-x-2 mt-1">
-                    <div className="flex items-center text-sm text-yellow-500">
-                      <FaStar />
-                      <span className="ml-1 text-text-light">
-                        {provider.averageRating?.toFixed(1) || 'New'}
-                      </span>
+          {uniqueProviders.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-text-light">No providers available for this service yet</p>
+              <p className="text-sm text-text-lighter mt-1">Check back later or expand your search</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {uniqueProviders.map((match) => {
+                const provider = match.providerId
+                const isInvited = match.status === 'invited'
+                const hasQuoted = match.quote?.amount > 0
+                
+                return (
+                  <div key={provider._id} className={`p-4 rounded-lg border ${isInvited ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50'}`}>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <p className="font-semibold text-text">{provider.fullName}</p>
+                          {isInvited && (
+                            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                              Invited
+                            </span>
+                          )}
+                          {hasQuoted && (
+                            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                              Quoted £{match.quote.amount}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center space-x-2 mt-1">
+                          <div className="flex items-center text-sm text-yellow-500">
+                            <FaStar />
+                            <span className="ml-1 text-text-light">
+                              {provider.averageRating?.toFixed(1) || 'New'}
+                            </span>
+                          </div>
+                          <span className="text-xs text-text-lighter">
+                            ({provider.totalReviews || 0} reviews)
+                          </span>
+                          {match.distance && (
+                            <span className="text-xs text-text-lighter">
+                              • {match.distance.toFixed(1)} miles away
+                            </span>
+                          )}
+                          {match.matchScore && (
+                            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                              {Math.round(match.matchScore)}% match
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-text-light mt-1">{match.about || 'Professional service provider'}</p>
+                      </div>
+                      {isCustomer && !isInvited && (
+                        <input
+                          type="checkbox"
+                          checked={selectedProviders.includes(provider._id)}
+                          onChange={() => toggleProviderSelection(provider._id)}
+                          className="w-5 h-5 text-primary rounded border-gray-300 focus:ring-primary mt-1"
+                        />
+                      )}
+                      {isInvited && (
+                        <FaCheckCircle className="text-green-500 text-xl" />
+                      )}
                     </div>
-                    <span className="text-xs text-text-lighter">
-                      ({provider.totalReviews || 0} reviews)
-                    </span>
                   </div>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {provider.verificationBadges?.includes('dbs_checked') && (
-                      <span className="flex items-center text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
-                        <FaCheckCircle className="mr-1" /> DBS Checked
-                      </span>
-                    )}
-                    {provider.verificationBadges?.includes('insured') && (
-                      <span className="flex items-center text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
-                        <FaCheckCircle className="mr-1" /> Insured
-                      </span>
-                    )}
-                    {provider.verificationBadges?.includes('certified') && (
-                      <span className="flex items-center text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
-                        <FaCheckCircle className="mr-1" /> Certified
-                      </span>
-                    )}
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Invite Modal */}
+      {showInviteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-text">Invite Providers</h2>
+              <button
+                onClick={() => setShowInviteModal(false)}
+                className="text-text-light hover:text-text"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-text-light mb-4">
+              Selected {selectedProviders.length} provider(s) to invite. They will be notified and can submit quotes.
+            </p>
+
+            <div className="space-y-3 max-h-60 overflow-y-auto mb-4">
+              {uniqueProviders.map((match) => {
+                const provider = match.providerId
+                const isSelected = selectedProviders.includes(provider._id)
+                return (
+                  <div
+                    key={provider._id}
+                    className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                      isSelected ? 'border-primary bg-primary/5' : 'border-gray-200 hover:bg-gray-50'
+                    }`}
+                    onClick={() => toggleProviderSelection(provider._id)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium text-text">{provider.fullName}</p>
+                        <div className="flex items-center space-x-2 text-sm text-text-light">
+                          <span>⭐ {provider.averageRating?.toFixed(1) || 'New'}</span>
+                          <span>• {match.distance?.toFixed(1) || '?'} miles</span>
+                        </div>
+                      </div>
+                      <div className={`w-5 h-5 rounded border ${isSelected ? 'bg-primary border-primary' : 'border-gray-300'}`}>
+                        {isSelected && <FaCheck className="text-white text-xs mt-1 mx-auto" />}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-              <div className="flex flex-col items-end gap-2">
-                <Link
-                  to={`/provider/${provider._id}`}
-                  className="btn-outline text-sm py-1 px-4"
-                >
-                  View Profile
-                </Link>
-                <div className="flex items-center space-x-2 text-sm text-text-light">
-                  <FaPhone className="text-text-lighter" />
-                  <span>{provider.phoneNumber}</span>
-                </div>
-                <div className="flex items-center space-x-2 text-sm text-text-light">
-                  <FaEnvelope className="text-text-lighter" />
-                  <span>{provider.email}</span>
-                </div>
-                {request.finalPrice && (
-                  <div className="mt-2 p-2 bg-primary/5 rounded-lg">
-                    <p className="text-sm text-text-light">Final Price</p>
-                    <p className="text-xl font-bold text-primary">£{request.finalPrice.toFixed(2)}</p>
-                  </div>
+                )
+              })}
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowInviteModal(false)}
+                className="flex-1 btn-outline"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleInviteProviders}
+                disabled={isInviting || selectedProviders.length === 0}
+                className="flex-1 btn-primary disabled:opacity-50"
+              >
+                {isInviting ? (
+                  <FaSpinner className="animate-spin mx-auto" />
+                ) : (
+                  `Invite ${selectedProviders.length} Provider(s)`
                 )}
-              </div>
+              </button>
             </div>
           </div>
-        )}
-
-        {/* Actions */}
-        {isCustomer && request.status === 'quotes_received' && !request.selectedProviderId && (
-          <div className="md:col-span-2 flex justify-center gap-4">
-            <Link
-              to={`/customer/quote-comparison/${request._id}`}
-              className="btn-primary flex items-center space-x-2"
-            >
-              <span>Compare Quotes</span>
-              <FaCheckCircle />
-            </Link>
-          </div>
-        )}
-
-        {isCustomer && request.status === 'provider_selected' && (
-          <div className="md:col-span-2 flex justify-center">
-            <button
-              onClick={async () => {
-                try {
-                  await completeServiceRequest(request._id).unwrap()
-                  toast.success('Service request completed!')
-                  refetch()
-                } catch (error) {
-                  toast.error(error.data?.message || 'Failed to complete')
-                }
-              }}
-              className="btn-primary flex items-center space-x-2"
-            >
-              <FaCheckCircle />
-              <span>Mark as Completed</span>
-            </button>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }
