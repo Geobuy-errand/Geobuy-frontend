@@ -1,4 +1,4 @@
-import React, {useState} from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import {
   FaClock,
@@ -11,9 +11,13 @@ import {
   FaHeart,
   FaRunning,
   FaHandsHelping,
+  FaUsers,
+  FaLink,
+  FaHandshake,
+  FaMapMarkerAlt,
+  FaStar,
 } from "react-icons/fa";
 import SignupModal from "../components/modals/SignupModal";
-
 
 const features = [
   {
@@ -82,10 +86,47 @@ const exploreOptions = [
     iconColor: "text-purple-600",
     hoverColor: "hover:border-purple-300",
   },
+  // ============================================================
+  // NEW CONNECT OPTION
+  // ============================================================
+  {
+    icon: FaLink,
+    title: "Connect with Others",
+    description:
+      "Pay a one-time fee of £1.99 to connect with people in your area. Network, collaborate, find mentors, and build meaningful relationships.",
+    link: "/customer/connect",
+    color: "bg-green-50 border-green-200",
+    iconColor: "text-green-600",
+    hoverColor: "hover:border-green-300",
+  },
 ];
 
 const Home = () => {
-  const [isSignupModalOpen, setIsSignupModalOpen] = useState(false)
+  const [isSignupModalOpen, setIsSignupModalOpen] = useState(false);
+
+  // Connect features for the detailed section
+  const connectFeatures = [
+    {
+      icon: FaUsers,
+      title: "Network Locally",
+      description: "Connect with professionals and like-minded people in your area",
+    },
+    {
+      icon: FaHandshake,
+      title: "Find Opportunities",
+      description: "Discover collaboration, mentorship, and business partnerships",
+    },
+    {
+      icon: FaMapMarkerAlt,
+      title: "Location-Based",
+      description: "Meet people near you for in-person or virtual connections",
+    },
+    {
+      icon: FaStar,
+      title: "Rate & Review",
+      description: "Build trust with a rating system for successful connections",
+    },
+  ];
 
   return (
     <div>
@@ -104,10 +145,7 @@ const Home = () => {
               Connect with verified local providers to get your errands done
               quickly and efficiently.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              {/* <Link to="/register/customer" className="btn-primary">
-                Get Started
-              </Link> */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center flex-wrap">
               <button
                 onClick={() => setIsSignupModalOpen(true)}
                 className="btn-primary"
@@ -120,6 +158,13 @@ const Home = () => {
               <Link to="/find-services" className="btn-secondary">
                 Find Services
               </Link>
+              <Link
+                to="/customer/connect"
+                className="bg-green-600 text-white px-6 py-3 rounded-xl font-medium hover:bg-green-700 transition-colors flex items-center space-x-2"
+              >
+                <FaLink className="text-lg" />
+                <span>Connect</span>
+              </Link>
             </div>
           </div>
         </div>
@@ -131,9 +176,9 @@ const Home = () => {
           <h2 className="section-title text-center">How Can We Help You?</h2>
           <p className="section-subtitle text-center max-w-2xl mx-auto mb-12">
             Choose the service that fits your needs. From quick errands to
-            professional services.
+            professional services and networking.
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
             {exploreOptions.map((option, index) => (
               <Link
                 key={index}
@@ -161,6 +206,61 @@ const Home = () => {
                 </div>
               </Link>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Connect Feature Highlight Section */}
+      <section className="py-16 bg-gradient-to-r from-green-50 to-blue-50">
+        <div className="container-custom">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-12">
+              <div className="inline-block p-3 bg-green-100 rounded-full mb-4">
+                <FaLink className="text-3xl text-green-600" />
+              </div>
+              <h2 className="text-3xl md:text-4xl font-bold text-text mb-4">
+                Connect with People in Your Area
+              </h2>
+              <p className="text-text-light text-lg max-w-2xl mx-auto">
+                Build meaningful connections with professionals, mentors, and
+                like-minded individuals near you. Pay a small one-time fee of
+                <span className="text-primary font-bold mx-1">£1.99</span> and
+                start networking today.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {connectFeatures.map((feature, index) => (
+                <div
+                  key={index}
+                  className="bg-white rounded-xl p-6 text-center shadow-soft hover:shadow-medium transition-shadow"
+                >
+                  <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-3">
+                    <feature.icon className="text-xl text-green-600" />
+                  </div>
+                  <h4 className="font-semibold text-text mb-1">
+                    {feature.title}
+                  </h4>
+                  <p className="text-sm text-text-light">
+                    {feature.description}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <div className="text-center mt-8">
+              <Link
+                to="/customer/connect"
+                className="btn-primary inline-flex items-center space-x-2 text-lg px-8 py-3"
+              >
+                <FaLink />
+                <span>Start Connecting</span>
+                <span className="text-sm opacity-75">£1.99</span>
+              </Link>
+              <p className="text-xs text-text-lighter mt-3">
+                * One-time payment. No recurring charges. 100% secure.
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -234,7 +334,7 @@ const Home = () => {
             Join thousands of satisfied customers and providers on GEOBUY
             Errands.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center flex-wrap">
             <Link
               to="/register/customer"
               className="bg-white text-primary px-8 py-3 rounded-xl font-medium hover:bg-gray-100 transition-colors"
@@ -247,9 +347,17 @@ const Home = () => {
             >
               I Want to Help
             </Link>
+            <Link
+              to="/customer/connect"
+              className="bg-green-500 text-white px-8 py-3 rounded-xl font-medium hover:bg-green-600 transition-colors flex items-center space-x-2"
+            >
+              <FaLink />
+              <span>Connect Now</span>
+            </Link>
           </div>
         </div>
       </section>
+
       <SignupModal
         isOpen={isSignupModalOpen}
         onClose={() => setIsSignupModalOpen(false)}

@@ -26,7 +26,9 @@ import {
   FaCrown,
   FaHandsHelping,
   FaHistory,
-  FaTags
+  FaTags,
+  FaLink,
+  FaUnlink
 } from "react-icons/fa";
 
 const DashboardSidebar = ({ open, onClose }) => {
@@ -51,10 +53,20 @@ const DashboardSidebar = ({ open, onClose }) => {
           icon: FaHistory,
           label: "Service History",
         },
-        { to: "/customer/notifications", icon: FaBell, label: "Notifications" },
+        {
+          label: 'Connect',
+          icon: FaLink,
+          to: '/customer/connect',
+        },
+        {
+          label: 'My Connections',
+          icon: FaUnlink,
+          to: '/customer/connections',
+        },
         { to: "/customer/payments", icon: FaCreditCard, label: "Payments" },
         { to: "/customer/reviews", icon: FaStar, label: "Reviews" },
         { to: "/customer/profile", icon: FaUser, label: "Profile" },
+        { to: "/customer/notifications", icon: FaBell, label: "Notifications" },
         {
           to: "/customer/chat-support",
           icon: FaComments,
@@ -147,6 +159,12 @@ const DashboardSidebar = ({ open, onClose }) => {
         { to: "/admin/subscription-plans", icon: FaStumbleupon, label: "Subscription Plan" },
         { to: '/admin/service-definitions', icon: FaList, label: 'Service Definitions' },
         { to: '/admin/service-providers', icon: FaUsers, label: 'Service Providers' },
+        {
+          title: 'Connections',
+          icon: FaLink,
+          path: '/admin/connections',
+          roles: ['admin'],
+        },
         { to: '/admin/business-settings', icon: FaCog, label: 'Business Settings' },
         { to: "/admin/analytics", icon: FaChartBar, label: "Analytics" },
         { to: "/admin/support", icon: FaQuestionCircle, label: "Support" },

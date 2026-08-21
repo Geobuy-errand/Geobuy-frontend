@@ -15,7 +15,19 @@ const Login = () => {
   const navigate = useNavigate()
   const location = useLocation()
 
-  const from = location.state?.from?.pathname || '/'
+  // const from = location.state?.from?.pathname || '/'
+  const from = location.state?.from || '/'
+
+  const getDashboardPath = (role) => {
+    const dashboards = {
+      admin: '/admin/dashboard',
+      provider: '/provider/dashboard',
+      errand_runner: '/runner/dashboard',
+      customer: '/customer/dashboard',
+    }
+    return dashboards[role] || '/customer/dashboard'
+  }
+
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -27,20 +39,23 @@ const Login = () => {
       if (result.user) {
         dispatch(setUser({ user: result.user, providerProfile: null }))
         toast.success('Login successful!')
+
+        const redirectPath = from !== '/' ? from : getDashboardPath(result.user.role)
+        navigate(redirectPath, { replace: true })
         
         // Redirect based on role
-        const role = result.user.role
-        if (role === 'customer') {
-          navigate('/customer/dashboard')
-        } else if (role === 'provider') {
-          navigate('/provider/dashboard')
-        } else if (role === 'errand_runner') {
-          navigate('/errand-runner/dashboard')
-        } else if (role === 'admin') {
-          navigate('/admin/dashboard')
-        } else {
-          navigate('/')
-        }
+        // const role = result.user.role
+        // if (role === 'customer') {
+        //   navigate('/customer/dashboard')
+        // } else if (role === 'provider') {
+        //   navigate('/provider/dashboard')
+        // } else if (role === 'errand_runner') {
+        //   navigate('/errand-runner/dashboard')
+        // } else if (role === 'admin') {
+        //   navigate('/admin/dashboard')
+        // } else {
+        //   navigate('/')
+        // }
       }
     } catch (error) {
       toast.error(error.data?.message || 'Login failed. Please check your credentials.')

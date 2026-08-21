@@ -37,25 +37,33 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
 
   // If not authenticated, redirect to login
   if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />
   }
 
   // Check if user has required role
   if (allowedRoles.length > 0 && !allowedRoles.includes(user?.role)) {
     // Redirect to appropriate dashboard based on role
-    if (user?.role === 'customer') {
-      return <Navigate to="/customer/dashboard" replace />
-    }
-    if (user?.role === 'errand_runner') {
-      return <Navigate to="/errand-runner/dashboard" replace />
-    }
-    if (user?.role === 'provider') {
-      return <Navigate to="/provider/dashboard" replace />
-    }
-    if (user?.role === 'admin') {
-      return <Navigate to="/admin/dashboard" replace />
-    }
-    return <Navigate to="/" replace />
+
+    const dashboardPath = 
+      user?.role === 'admin' ? '/admin/dashboard' :
+      user?.role === 'provider' ? '/provider/dashboard' :
+      user?.role === 'errand_runner' ? '/runner/dashboard' :
+      '/customer/dashboard'
+      return <Navigate to={dashboardPath} replace />
+
+    // if (user?.role === 'customer') {
+    //   return <Navigate to="/customer/dashboard" replace />
+    // }
+    // if (user?.role === 'errand_runner') {
+    //   return <Navigate to="/errand-runner/dashboard" replace />
+    // }
+    // if (user?.role === 'provider') {
+    //   return <Navigate to="/provider/dashboard" replace />
+    // }
+    // if (user?.role === 'admin') {
+    //   return <Navigate to="/admin/dashboard" replace />
+    // }
+    // return <Navigate to="/" replace />
   }
 
   // If all checks pass, render the children

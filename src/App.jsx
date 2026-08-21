@@ -90,6 +90,10 @@ import RegisterErrandRunner from "./pages/RegisterErrandRunner";
 import ErrandRunnerMessages from "./pages/errand-runner/ErrandMessages";
 import ErrandRunnerReviews from "./pages/errand-runner/ErrandReviews";
 import ServiceCategories from "./pages/admin/ServiceCategories";
+import AdminConnections from "./pages/admin/AdminConnections";
+import Connect from "./pages/customer/Connect";
+import CustomerConnections from "./pages/customer/CustomerConnections";
+
 
 function App() {
   return (
@@ -154,6 +158,8 @@ function App() {
           <Route path="reviews" element={<CustomerReviews />} />
           <Route path="help" element={<CustomerHelp />} />
           <Route path="errand/:id" element={<ErrandTracking />} />
+          <Route path="connect" element={<Connect />} />
+          <Route path="connections" element={<CustomerConnections />} />
           <Route
             path="service-request/:id"
             element={<ServiceRequestDetail />}
@@ -239,6 +245,7 @@ function App() {
           <Route path="subscription-plans" element={<SubscriptionPlans />} />
           <Route path="service-definitions" element={<ServiceDefinitions />} />
           <Route path="service-providers" element={<ServiceProvidersManagement />} />
+          <Route path="connections" element={<AdminConnections />} />
         </Route>
         <Route
           path="customer/subscriptions"
