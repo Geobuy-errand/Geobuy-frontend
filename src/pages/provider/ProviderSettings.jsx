@@ -1,10 +1,18 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useDispatch } from 'react-redux'
 import { useChangePasswordMutation } from '../../redux/services/providerApi'
+import { useLogoutMutation } from '../../redux/services/authApi'
+import { logout } from '../../redux/slices/authSlice'
 import { toast } from 'react-hot-toast'
-import { FaLock, FaKey } from 'react-icons/fa'
+import { FaLock, FaKey, FaSignOutAlt } from 'react-icons/fa'
 
 const ProviderSettings = () => {
-  const [changePassword, { isLoading }] = useChangePasswordMutation()
+  const navigate = useNavigate()
+  const dispatch = useDispatch()
+  const [changePassword, { isLoading: isChangingPassword }] = useChangePasswordMutation()
+  const [logoutMutation, { isLoading: isLoggingOut }] = useLogoutMutation()
+  
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
@@ -44,6 +52,17 @@ const ProviderSettings = () => {
       })
     } catch (error) {
       toast.error(error.data?.message || 'Failed to change password')
+    }
+  }
+
+  const handleLogout = async () => {
+    try {
+      await logoutMutation().unwrap()
+      dispatch(logout())
+      toast.success('Logged out successfully')
+      navigate('/')
+    } catch (error) {
+      toast.error('Logout failed')
     }
   }
 
@@ -116,15 +135,35 @@ const ProviderSettings = () => {
 
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isChangingPassword}
               className="w-full btn-primary disabled:opacity-50"
             >
-              {isLoading ? 'Changing...' : 'Change Password'}
+              {isChangingPassword ? 'Changing...' : 'Change Password'}
             </button>
           </form>
         </div>
 
-        {/* Account Actions */}
+        {/* ✅ Logout Section */}
+        <div className="card max-w-2xl border-gray-200">
+          <h2 className="text-lg font-semibold text-text mb-4 flex items-center">
+            <FaSignOutAlt className="mr-2 text-red-500" />
+            Account Actions
+          </h2>
+          <p className="text-sm text-text-light mb-4">
+            Sign out of your account on this device.
+          </p>
+          <button
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+            className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-xl transition-colors flex items-center space-x-2 disabled:opacity-50"
+          >
+            <FaSignOutAlt />
+            <span>{isLoggingOut ? 'Logging out...' : 'Logout'}</span>
+          </button>
+        </div>
+
+        {/* ⚠️ Danger Zone - Commented out */}
+        {/*
         <div className="card max-w-2xl border-red-200 bg-red-50">
           <h2 className="text-lg font-semibold text-red-700 mb-2">Danger Zone</h2>
           <p className="text-sm text-red-600 mb-4">
@@ -134,6 +173,7 @@ const ProviderSettings = () => {
             Delete Account
           </button>
         </div>
+        */}
       </div>
     </div>
   )

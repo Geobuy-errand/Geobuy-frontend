@@ -4,7 +4,7 @@ import { useSelector, useDispatch } from 'react-redux'
 import { useLogoutMutation } from '../redux/services/authApi'
 import { logout } from '../redux/slices/authSlice'
 import { toast } from 'react-hot-toast'
-import { FaBars, FaTimes, FaUserCircle, FaShieldAlt, FaRunning } from 'react-icons/fa'
+import { FaBars, FaTimes, FaUserCircle, FaShieldAlt, FaRunning, FaSignOutAlt } from 'react-icons/fa'
 import SignupModal from './modals/SignupModal'
 import Logo from './utils/Logo'
 
@@ -49,10 +49,13 @@ const Navbar = () => {
       <nav className="bg-white shadow-soft sticky top-0 z-50">
         <div className="container-custom">
           <div className="flex justify-between items-center h-16">
-          <Logo />
+            <Logo />
 
             {/* Desktop Menu */}
             <div className="hidden md:flex items-center space-x-6">
+              <Link to="/connect" className="text-primary font-medium hover:text-primary/80 transition-colors">
+                Connect ❤️
+              </Link>
               <Link to="/services" className="text-text-light hover:text-primary transition-colors">
                 Services
               </Link>
@@ -115,9 +118,10 @@ const Navbar = () => {
                           setIsDropdownOpen(false)
                           handleLogout()
                         }}
-                        className="block w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 transition-colors"
+                        className="block w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 transition-colors flex items-center space-x-2"
                       >
-                        Logout
+                        <FaSignOutAlt />
+                        <span>Logout</span>
                       </button>
                     </div>
                   )}
@@ -154,32 +158,40 @@ const Navbar = () => {
           {isOpen && (
             <div className="md:hidden py-4 border-t border-gray-100">
               <div className="flex flex-col space-y-3">
-                <Link to="/services" className="text-text-light hover:text-primary transition-colors">
+                <Link to="/connect" className="text-primary font-medium hover:text-primary/80 transition-colors" onClick={() => setIsOpen(false)}>
+                  Connect ❤️
+                </Link>
+                <Link to="/services" className="text-text-light hover:text-primary transition-colors" onClick={() => setIsOpen(false)}>
                   Services
                 </Link>
-                <Link to="/pricing" className="text-text-light hover:text-primary transition-colors">
+                <Link to="/pricing" className="text-text-light hover:text-primary transition-colors" onClick={() => setIsOpen(false)}>
                   Pricing
                 </Link>
-                <Link to="/become-provider" className="text-text-light hover:text-primary transition-colors">
+                <Link to="/become-provider" className="text-text-light hover:text-primary transition-colors" onClick={() => setIsOpen(false)}>
                   Become a Provider
                 </Link>
-                <Link to="/about" className="text-text-light hover:text-primary transition-colors">
+                <Link to="/about" className="text-text-light hover:text-primary transition-colors" onClick={() => setIsOpen(false)}>
                   About
                 </Link>
 
                 {isAuthenticated ? (
                   <>
-                    <Link to={getDashboardLink()} className="text-text-light hover:text-primary transition-colors">
+                    <Link to={getDashboardLink()} className="text-text-light hover:text-primary transition-colors" onClick={() => setIsOpen(false)}>
                       Dashboard
                     </Link>
+                    <Link to={`/${user?.role}/settings`} className="text-text-light hover:text-primary transition-colors" onClick={() => setIsOpen(false)}>
+                      Settings
+                    </Link>
+                    {/* ✅ Logout Button in Mobile Menu */}
                     <button
                       onClick={() => {
                         setIsOpen(false)
                         handleLogout()
                       }}
-                      className="text-red-600 hover:text-red-700 transition-colors text-left"
+                      className="flex items-center space-x-2 text-red-600 hover:text-red-700 transition-colors text-left py-2 border-t border-gray-100 mt-2 pt-3"
                     >
-                      Logout
+                      <FaSignOutAlt />
+                      <span>Logout</span>
                     </button>
                   </>
                 ) : (

@@ -4,7 +4,7 @@ import DashboardNavbar from '../DashboardNavbar'
 import DashboardSidebar from '../DashboardSidebar'
 
 const DashboardLayout = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(true) // Default to open on desktop
+  const [sidebarOpen, setSidebarOpen] = useState(false) // Default to open on desktop
   const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {

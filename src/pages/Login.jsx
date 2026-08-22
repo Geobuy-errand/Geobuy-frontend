@@ -1,48 +1,49 @@
-import React, { useState } from 'react'
-import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { useDispatch } from 'react-redux'
-import { useLoginMutation } from '../redux/services/authApi'
-import { setUser } from '../redux/slices/authSlice'
-import { toast } from 'react-hot-toast'
-import { FaEnvelope, FaLock, FaShieldAlt } from 'react-icons/fa'
+import React, { useState } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { useLoginMutation } from "../redux/services/authApi";
+import { setUser } from "../redux/slices/authSlice";
+import { toast } from "react-hot-toast";
+import { FaEnvelope, FaLock, FaLockOpen, FaShieldAlt } from "react-icons/fa";
 
 const Login = () => {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [loginMutation] = useLoginMutation()
-  const dispatch = useDispatch()
-  const navigate = useNavigate()
-  const location = useLocation()
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [loginMutation] = useLoginMutation();
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   // const from = location.state?.from?.pathname || '/'
-  const from = location.state?.from || '/'
+  const from = location.state?.from || "/";
 
   const getDashboardPath = (role) => {
     const dashboards = {
-      admin: '/admin/dashboard',
-      provider: '/provider/dashboard',
-      errand_runner: '/runner/dashboard',
-      customer: '/customer/dashboard',
-    }
-    return dashboards[role] || '/customer/dashboard'
-  }
-
+      admin: "/admin/dashboard",
+      provider: "/provider/dashboard",
+      errand_runner: "/runner/dashboard",
+      customer: "/customer/dashboard",
+    };
+    return dashboards[role] || "/customer/dashboard";
+  };
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setIsLoading(true)
+    e.preventDefault();
+    setIsLoading(true);
 
     try {
-      const result = await loginMutation({ email, password }).unwrap()
-      
-      if (result.user) {
-        dispatch(setUser({ user: result.user, providerProfile: null }))
-        toast.success('Login successful!')
+      const result = await loginMutation({ email, password }).unwrap();
 
-        const redirectPath = from !== '/' ? from : getDashboardPath(result.user.role)
-        navigate(redirectPath, { replace: true })
-        
+      if (result.user) {
+        dispatch(setUser({ user: result.user, providerProfile: null }));
+        toast.success("Login successful!");
+
+        const redirectPath =
+          from !== "/" ? from : getDashboardPath(result.user.role);
+        navigate(redirectPath, { replace: true });
+
         // Redirect based on role
         // const role = result.user.role
         // if (role === 'customer') {
@@ -58,11 +59,13 @@ const Login = () => {
         // }
       }
     } catch (error) {
-      toast.error(error.data?.message || 'Login failed. Please check your credentials.')
+      toast.error(
+        error.data?.message || "Login failed. Please check your credentials."
+      );
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center py-12">
@@ -96,9 +99,19 @@ const Login = () => {
                 Password
               </label>
               <div className="relative">
-                <FaLock className="absolute left-3 top-1/2 -translate-y-1/2 text-text-lighter" />
+                {showPassword ? (
+                  <FaLock
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-text-lighter"
+                  />
+                ) : (
+                  <FaLockOpen
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-text-lighter"
+                  />
+                )}
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="input-field pl-10"
@@ -113,24 +126,33 @@ const Login = () => {
               disabled={isLoading}
               className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? 'Signing in...' : 'Sign In'}
+              {isLoading ? "Signing in..." : "Sign In"}
             </button>
           </form>
 
           <div className="mt-6 text-center">
             <p className="text-sm text-text-light">
-              Don't have an account?{' '}
-              <Link to="/register/customer" className="text-primary hover:underline font-medium">
+              Don't have an account?{" "}
+              <Link
+                to="/register/customer"
+                className="text-primary hover:underline font-medium"
+              >
                 Sign up
               </Link>
             </p>
-            
+
             <div className="mt-4 flex justify-center space-x-4">
-              <Link to="/register/customer" className="text-sm text-text-light hover:text-primary transition-colors">
+              <Link
+                to="/register/customer"
+                className="text-sm text-text-light hover:text-primary transition-colors"
+              >
                 Register as Customer
               </Link>
               <span className="text-text-lighter">|</span>
-              <Link to="/register/provider" className="text-sm text-text-light hover:text-primary transition-colors">
+              <Link
+                to="/register/provider"
+                className="text-sm text-text-light hover:text-primary transition-colors"
+              >
                 Register as Provider
               </Link>
             </div>
@@ -159,7 +181,7 @@ const Login = () => {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default Login
+export default Login;

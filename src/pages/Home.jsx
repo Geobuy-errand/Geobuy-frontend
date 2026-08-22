@@ -94,7 +94,7 @@ const exploreOptions = [
     title: "Connect with Others",
     description:
       "Pay a one-time fee of £1.99 to connect with people in your area. Network, collaborate, find mentors, and build meaningful relationships.",
-    link: "/customer/connect",
+    link: "/connect",
     color: "bg-green-50 border-green-200",
     iconColor: "text-green-600",
     hoverColor: "hover:border-green-300",
@@ -159,7 +159,7 @@ const Home = () => {
                 Find Services
               </Link>
               <Link
-                to="/customer/connect"
+                to="/connect"
                 className="bg-green-600 text-white px-6 py-3 rounded-xl font-medium hover:bg-green-700 transition-colors flex items-center space-x-2"
               >
                 <FaLink className="text-lg" />
@@ -250,7 +250,7 @@ const Home = () => {
 
             <div className="text-center mt-8">
               <Link
-                to="/customer/connect"
+                to="/connect"
                 className="btn-primary inline-flex items-center space-x-2 text-lg px-8 py-3"
               >
                 <FaLink />
@@ -348,7 +348,7 @@ const Home = () => {
               I Want to Help
             </Link>
             <Link
-              to="/customer/connect"
+              to="/connect"
               className="bg-green-500 text-white px-8 py-3 rounded-xl font-medium hover:bg-green-600 transition-colors flex items-center space-x-2"
             >
               <FaLink />

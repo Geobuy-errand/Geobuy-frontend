@@ -93,6 +93,7 @@ import ServiceCategories from "./pages/admin/ServiceCategories";
 import AdminConnections from "./pages/admin/AdminConnections";
 import Connect from "./pages/customer/Connect";
 import CustomerConnections from "./pages/customer/CustomerConnections";
+import ConnectLanding from "./pages/ConnectLanding";
 
 
 function App() {
@@ -134,6 +135,7 @@ function App() {
           <Route path="terms" element={<Terms />} />
           <Route path="book-errand" element={<BookErrand />} />
           <Route path="find-services" element={<FindServices />} />
+          <Route path="/connect" element={<ConnectLanding />} />
         </Route>
 
         {/* Customer Routes */}

@@ -44,14 +44,15 @@ const DashboardNavbar = ({ onMenuClick }) => {
             </button>
             <Link to="/" className="flex items-center space-x-2">
               <span className="text-xl font-bold text-primary">GEOBUY</span>
-              <span className="text-sm text-text-light">Errands</span>
+              <span className="text-sm text-text-light hidden sm:inline">Errands</span>
             </Link>
           </div>
 
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2 md:space-x-4">
+            {/* ✅ Notification - Hidden on mobile */}
             <Link
               to={`/${user?.role}/notifications`}
-              className="relative text-text-light hover:text-primary transition-colors"
+              className="hidden md:block relative text-text-light hover:text-primary transition-colors"
             >
               <FaBell size={20} />
               {unreadCount?.count > 0 && (
@@ -60,37 +61,40 @@ const DashboardNavbar = ({ onMenuClick }) => {
                 </span>
               )}
             </Link>
+
+            {/* Chat - Hidden on mobile */}
             <Link
               to={`/${user?.role}/chat-support`}
-              className="text-text-light hover:text-primary transition-colors relative"
+              className="hidden md:block text-text-light hover:text-primary transition-colors relative"
             >
               <FaComments size={20} />
-              {/* Show unread badge */}
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </span>
-              )}
             </Link>
+
+            {/* Subscription - Hidden on mobile */}
             <Link
               to={`/${user?.role}/subscriptions`}
-              className="block px-4 py-2 text-text-light hover:bg-primary/5 hover:text-primary transition-colors"
-              onClick={() => setIsDropdownOpen(false)}
+              className="hidden md:block text-sm text-text-light hover:text-primary transition-colors"
             >
               Subscription
             </Link>
 
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-2 md:space-x-3">
+              {/* ✅ Profile Icon - Hidden on mobile */}
+              <FaUserCircle className="hidden md:block text-2xl text-text-light" />
+              
+              {/* ✅ User Name - Hidden on mobile */}
               <span className="hidden md:block text-sm text-text-light">
                 {user?.fullName}
               </span>
-              <FaUserCircle className="text-2xl text-text-light" />
+              
+              {/* ✅ Logout Button - Always Visible */}
               <button
                 onClick={handleLogout}
-                className="text-text-light hover:text-red-500 transition-colors cursor-pointer"
+                className="flex items-center space-x-1 px-3 py-1.5 md:px-4 md:py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-colors cursor-pointer text-sm md:text-base"
                 title="Logout"
               >
-                <FaSignOutAlt size={18} />
+                <FaSignOutAlt size={16} className="md:size-[18]" />
+                <span className="hidden sm:inline">Logout</span>
               </button>
             </div>
           </div>
