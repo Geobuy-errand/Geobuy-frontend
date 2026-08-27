@@ -4,7 +4,7 @@ import { useDispatch } from 'react-redux'
 import { useRegisterCustomerMutation } from '../redux/services/authApi'
 import { setUser } from '../redux/slices/authSlice'
 import { toast } from 'react-hot-toast'
-import { FaUser, FaEnvelope, FaPhone, FaLock, FaHome, FaCity, FaMapPin, FaCheckCircle, FaTimesCircle } from 'react-icons/fa'
+import { FaUser, FaEnvelope, FaPhone, FaLock, FaHome, FaCity, FaMapPin, FaCheckCircle, FaTimesCircle, FaEyeSlash, FaEye } from 'react-icons/fa'
 
 const RegisterCustomer = () => {
   const [formData, setFormData] = useState({
@@ -25,6 +25,8 @@ const RegisterCustomer = () => {
     acceptedPrivacy: false,
   })
   const [isLoading, setIsLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [registerMutation] = useRegisterCustomerMutation()
   const dispatch = useDispatch()
   const navigate = useNavigate()
@@ -221,9 +223,9 @@ const RegisterCustomer = () => {
                   Password *
                 </label>
                 <div className="relative">
-                  <FaLock className="absolute left-3 top-1/2 -translate-y-1/2 text-text-lighter" />
+                  {showPassword ? <FaEyeSlash onClick={()=> setShowPassword(!showPassword)} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-lighter cursor-pointer" /> : <FaEye onClick={()=> setShowPassword(!showPassword)} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-lighter cursor-pointer" />}
                   <input
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     name="password"
                     value={formData.password}
                     onChange={handleChange}
@@ -242,9 +244,9 @@ const RegisterCustomer = () => {
                   Confirm Password *
                 </label>
                 <div className="relative">
-                  <FaLock className="absolute left-3 top-1/2 -translate-y-1/2 text-text-lighter" />
+                  {showConfirmPassword ? <FaEyeSlash onClick={()=> setShowConfirmPassword(!showConfirmPassword)} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-lighter cursor-pointer" /> : <FaEye onClick={()=> setShowConfirmPassword(!showConfirmPassword)} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-lighter cursor-pointer" />}
                   <input
-                    type="password"
+                    type={showConfirmPassword ? 'text' : 'password'}
                     name="confirmPassword"
                     value={formData.confirmPassword}
                     onChange={handleChange}

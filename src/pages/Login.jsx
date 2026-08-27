@@ -4,7 +4,7 @@ import { useDispatch } from "react-redux";
 import { useLoginMutation } from "../redux/services/authApi";
 import { setUser } from "../redux/slices/authSlice";
 import { toast } from "react-hot-toast";
-import { FaEnvelope, FaLock, FaLockOpen, FaShieldAlt } from "react-icons/fa";
+import { FaEnvelope, FaEye, FaEyeSlash, FaLock, FaLockOpen, FaShieldAlt } from "react-icons/fa";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -100,12 +100,12 @@ const Login = () => {
               </label>
               <div className="relative">
                 {showPassword ? (
-                  <FaLock
+                  <FaEyeSlash
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute left-3 top-1/2 -translate-y-1/2 text-text-lighter"
                   />
                 ) : (
-                  <FaLockOpen
+                  <FaEye
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute left-3 top-1/2 -translate-y-1/2 text-text-lighter"
                   />

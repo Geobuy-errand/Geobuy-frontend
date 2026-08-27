@@ -94,6 +94,7 @@ import AdminConnections from "./pages/admin/AdminConnections";
 import Connect from "./pages/customer/Connect";
 import CustomerConnections from "./pages/customer/CustomerConnections";
 import ConnectLanding from "./pages/ConnectLanding";
+import ConnectDashboard from "./pages/customer/ConnectDashboard";
 
 
 function App() {
@@ -149,6 +150,7 @@ function App() {
         >
           <Route index element={<CustomerDashboard />} />
           <Route path="dashboard" element={<CustomerDashboard />} />
+          <Route path="connect-dashboard" element={<ConnectDashboard />} />
           <Route path="create-booking" element={<CreateBooking />} />
           <Route path="bookings" element={<BookingHistory />} />
           <Route path="booking/:id" element={<BookingDetails />} />
@@ -161,7 +163,8 @@ function App() {
           <Route path="help" element={<CustomerHelp />} />
           <Route path="errand/:id" element={<ErrandTracking />} />
           <Route path="connect" element={<Connect />} />
-          <Route path="connections" element={<CustomerConnections />} />
+          <Route path="connections" element={<ConnectDashboard />} />
+          {/* <Route path="connections" element={<CustomerConnections />} /> */}
           <Route
             path="service-request/:id"
             element={<ServiceRequestDetail />}

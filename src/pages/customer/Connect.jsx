@@ -5,53 +5,59 @@ import {
   useCreateConnectionMutation,
   useCreateCheckoutSessionMutation,
   useCheckPaymentStatusQuery,
+  useGetConnectionStatusQuery,
 } from '../../redux/services/connectionApi'
 import { toast } from 'react-hot-toast'
-import AddressAutocomplete from '../../components/AddressAutocomplete'
+import UKStatesDropdown from '../../components/utils/UKStatesDropdown'
 import { 
   FaUser, FaEnvelope, FaPhone, FaMapMarkerAlt, FaCalendar, 
   FaClock, FaTag, FaSpinner, FaCheckCircle, FaArrowRight,
-  FaCreditCard, FaLock, FaCheck, FaInfoCircle,
-  FaHeart, FaUsers, FaCoffee, FaStar
+  FaCreditCard, FaLink, FaLock, FaCheck, FaInfoCircle,
+  FaHeart, FaUsers, FaStar
 } from 'react-icons/fa'
 
 const Connect = () => {
   const navigate = useNavigate()
   const { user } = useSelector((state) => state.auth)
   
+  // ✅ Check if user already connected
+  const { data: statusData, isLoading: statusLoading } = useGetConnectionStatusQuery()
   const { data: paymentStatus, refetch: refetchPaymentStatus } = useCheckPaymentStatusQuery()
   const [createCheckoutSession, { isLoading: isCreatingSession }] = useCreateCheckoutSessionMutation()
   const [createConnection, { isLoading: isCreating }] = useCreateConnectionMutation()
   
   const [hasPaid, setHasPaid] = useState(false)
+  const [hasConnected, setHasConnected] = useState(false)
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [isProcessingPayment, setIsProcessingPayment] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // ✅ Updated Purpose Options - Dating/Relationship Focused
-  const purposeOptions = [
-    { value: 'casual_date', label: '😊 Casual date', description: 'Relaxed, fun, no pressure' },
-    { value: 'flirting_fun', label: '🔥 Flirting & fun', description: 'Lighthearted chats, good vibes' },
-    { value: 'serious_relationship', label: '❤️ Serious relationship', description: 'Long-term, genuine connection' },
-    { value: 'friendship_first', label: '☕ Friendship first', description: 'Start as friends, see where it goes' },
-    { value: 'open_to_anything', label: '🧭 Open to anything', description: 'Keep it easy, see how it flows' },
-    { value: 'group_meetups_only', label: '💃 Group meetups only', description: 'Enjoy the gathering, no pressure' },
-    { value: 'meaningful_connections', label: '🤝 Meaningful connections', description: 'Real chats, no games' },
-    { value: 'just_to_mingle', label: '🎉 Just to mingle', description: 'Meet new people, have a great time' },
-    { value: 'ready_for_commitment', label: '💍 Ready for commitment', description: 'Looking for my person' },
+  // ✅ UK States for dropdown
+  const UK_STATES = [
+    'England', 'Scotland', 'Wales', 'Northern Ireland',
+    'London', 'Manchester', 'Birmingham', 'Liverpool',
+    'Bristol', 'Sheffield', 'Leeds', 'Newcastle',
+    'Nottingham', 'Southampton', 'Brighton', 'Oxford',
+    'Cambridge', 'York', 'Bath', 'Edinburgh', 'Glasgow',
+    'Aberdeen', 'Dundee', 'Cardiff', 'Swansea', 'Belfast',
+    'Derry', 'All UK'
   ]
 
-  // Form state
+  // ✅ Check if already connected
+  useEffect(() => {
+    if (statusData?.hasConnected) {
+      setHasConnected(true)
+      // Redirect to Connect Dashboard
+      navigate('/customer/connect-dashboard')
+    }
+  }, [statusData, navigate])
+
+  // Form state - ✅ Replaced location with state
   const [formData, setFormData] = useState({
     fullName: user?.fullName || '',
     email: user?.email || '',
     phoneNumber: user?.phoneNumber || '',
-    location: {
-      address: user?.address?.street ? `${user.address.street}, ${user.address.town}, ${user.address.postcode}` : '',
-      town: user?.address?.town || '',
-      postcode: user?.address?.postcode || '',
-      coordinates: null,
-    },
+    state: '', // ✅ New field - UK State
     purpose: '',
     customPurpose: '',
     interests: [],
@@ -65,13 +71,25 @@ const Connect = () => {
     connectionTime: '',
   })
 
+  // Purpose Options
+  const purposeOptions = [
+    { value: 'casual_date', label: '😊 Casual date', description: 'Relaxed, fun, no pressure' },
+    { value: 'flirting_fun', label: '🔥 Flirting & fun', description: 'Lighthearted chats, good vibes' },
+    { value: 'serious_relationship', label: '❤️ Serious relationship', description: 'Long-term, genuine connection' },
+    { value: 'friendship_first', label: '☕ Friendship first', description: 'Start as friends, see where it goes' },
+    { value: 'open_to_anything', label: '🧭 Open to anything', description: 'Keep it easy, see how it flows' },
+    { value: 'group_meetups_only', label: '💃 Group meetups only', description: 'Enjoy the gathering, no pressure' },
+    { value: 'meaningful_connections', label: '🤝 Meaningful connections', description: 'Real chats, no games' },
+    { value: 'just_to_mingle', label: '🎉 Just to mingle', description: 'Meet new people, have a great time' },
+    { value: 'ready_for_commitment', label: '💍 Ready for commitment', description: 'Looking for my person' },
+  ]
+
   const interestOptions = [
     'technology', 'business', 'healthcare', 'education', 'arts',
     'finance', 'legal', 'real_estate', 'hospitality', 'retail',
     'manufacturing', 'non_profit', 'government', 'other'
   ]
 
-  // ✅ Updated Day Options - Sunday highlighted as special
   const dayOptions = [
     { value: 'sunday', label: 'Sunday ✨', special: true },
     { value: 'monday', label: 'Monday' },
@@ -116,7 +134,7 @@ const Connect = () => {
       const data = await response.json()
       
       if (data.message === 'Payment verified successfully') {
-        toast.success('Payment successful! You can now create connections.')
+        toast.success('Payment successful! You can now create your connection.')
         setHasPaid(true)
         refetchPaymentStatus()
         window.history.replaceState({}, document.title, window.location.pathname)
@@ -174,22 +192,6 @@ const Connect = () => {
     }
   }
 
-  const handleLocationSelect = (suggestion) => {
-    const addressParts = suggestion.displayName?.split(',') || []
-    setFormData(prev => ({
-      ...prev,
-      location: {
-        address: suggestion.displayName || '',
-        town: addressParts[1]?.trim() || '',
-        postcode: suggestion.postcode || '',
-        coordinates: {
-          lat: suggestion.lat,
-          lng: suggestion.lon,
-        },
-      },
-    }))
-  }
-
   const handleSubmit = async (e) => {
     e.preventDefault()
     
@@ -198,12 +200,13 @@ const Connect = () => {
       return
     }
 
-    if (!formData.purpose) {
-      toast.error('Please select what you\'re looking for')
+    if (!formData.state) {
+      toast.error('Please select your state')
       return
     }
-    if (!formData.location.address) {
-      toast.error('Please enter your location')
+
+    if (!formData.purpose) {
+      toast.error('Please select what you\'re looking for')
       return
     }
 
@@ -211,7 +214,8 @@ const Connect = () => {
     try {
       const result = await createConnection(formData).unwrap()
       toast.success('Connection created successfully! 🎉')
-      navigate('/customer/connections')
+      // ✅ Redirect to Connect Dashboard with posts
+      navigate('/customer/connect-dashboard')
     } catch (error) {
       if (error.data?.requiresPayment) {
         setShowPaymentModal(true)
@@ -226,11 +230,25 @@ const Connect = () => {
 
   const CONNECTION_FEE = 1.99
 
+  // If user is not logged in, redirect
   useEffect(() => {
     if (!user) {
       navigate('/login')
     }
   }, [user, navigate])
+
+  // If already connected, redirect to dashboard
+  if (statusLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <FaSpinner className="animate-spin text-3xl text-primary" />
+      </div>
+    )
+  }
+
+  if (hasConnected) {
+    return null // Will redirect via useEffect
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -242,7 +260,7 @@ const Connect = () => {
             {hasPaid ? (
               <span className="text-green-600 flex items-center gap-2">
                 <FaCheckCircle className="text-green-500" />
-                You've paid the fee — create your connection profile now!
+                You've paid the fee — complete your profile to start connecting!
               </span>
             ) : (
               <span>Pay a one-time fee of £{CONNECTION_FEE} to unlock weekly group dates and individual meetups</span>
@@ -378,34 +396,24 @@ const Connect = () => {
               </div>
             </div>
 
-            {/* Location */}
+            {/* ✅ UK State Dropdown - Replaces location */}
             <div>
               <label className="block text-sm font-medium text-text-light mb-1">
-                Your Location *
+                Your State / Region *
               </label>
-              <AddressAutocomplete
-                label=""
-                placeholder="Enter your location..."
-                value={formData.location.address}
-                onSelect={handleLocationSelect}
-                onChange={(e) => {
-                  setFormData(prev => ({
-                    ...prev,
-                    location: {
-                      ...prev.location,
-                      address: e.target.value,
-                    },
-                  }))
-                }}
-                country="gb"
-                minChars={2}
+              <UKStatesDropdown
+                value={formData.state}
+                onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                placeholder="Select your state..."
+                required
+                className="bg-white"
               />
               <p className="text-xs text-text-lighter mt-1">
-                We'll find meetup spots near you 🗺️
+                We'll show you meetup spots and activities in your area 🗺️
               </p>
             </div>
 
-            {/* ✅ Updated Purpose Dropdown */}
+            {/* Purpose Dropdown */}
             <div>
               <label className="block text-sm font-medium text-text-light mb-2">
                 What are you looking for? *
@@ -460,7 +468,7 @@ const Connect = () => {
               </div>
             </div>
 
-            {/* ✅ Updated Availability - Sunday Highlighted */}
+            {/* Availability */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-text-light mb-2">
@@ -570,7 +578,7 @@ const Connect = () => {
                 <FaCheckCircle className="text-green-500 text-xl mr-3" />
                 <div>
                   <p className="font-medium text-green-700">Fee Already Paid</p>
-                  <p className="text-sm text-green-600">You can create unlimited connections</p>
+                  <p className="text-sm text-green-600">Complete your profile to start connecting!</p>
                 </div>
               </div>
             )}
@@ -607,8 +615,8 @@ const Connect = () => {
               <h4 className="font-medium text-text">How GEOBUY Connect Works</h4>
               <p className="text-sm text-text-light mt-1">
                 1. Pay the one-time fee of £{CONNECTION_FEE}<br />
-                2. Tell us what you're looking for<br />
-                3. Get weekly Sunday group meetup spots near you<br />
+                2. Select your state and tell us what you're looking for<br />
+                3. Get weekly Sunday group meetup spots in your area<br />
                 4. Or schedule individual meetups any day of the week<br />
                 5. Show up, mingle, and make meaningful connections!
               </p>

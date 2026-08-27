@@ -47,7 +47,10 @@ export const connectionApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['Connection'],
     }),
-    
+    getConnectionStatus: builder.query({
+      query: () => '/connections/status',
+      providesTags: ['Connection'],
+    }),
     getMyConnections: builder.query({
       query: (params) => `/connections/my-connections?${new URLSearchParams(params)}`,
       providesTags: ['Connection'],
@@ -116,5 +119,5 @@ export const {
   useRateConnectionMutation,
   useAdminGetConnectionsQuery,
   useAdminUpdateConnectionMutation,
-
+  useGetConnectionStatusQuery
 } = connectionApi
