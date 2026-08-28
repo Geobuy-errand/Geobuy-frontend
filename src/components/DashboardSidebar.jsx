@@ -41,11 +41,11 @@ const DashboardSidebar = ({ open, onClose }) => {
       return [
         { to: "/customer/dashboard", icon: FaHome, label: "Dashboard" },
         {
-          to: "/customer/create-booking",
+          to: "/customer/create-errand",
           icon: FaPlus,
-          label: "Create Booking",
+          label: "Create Errand",
         },
-        { to: "/customer/bookings", icon: FaList, label: "Booking History" },
+        { to: "/customer/bookings", icon: FaList, label: "Errand History" },
         { to: "/customer/messages", icon: FaComments, label: "Messages" },
         { to: "/find-services", icon: FaHandsHelping, label: "Find Services" },
         { to: "/customer/subscriptions", icon: FaCrown, label: "Subscription" },
@@ -156,14 +156,14 @@ const DashboardSidebar = ({ open, onClose }) => {
         { to: '/admin/service-definitions', icon: FaList, label: 'Service Definitions' },
         { to: '/admin/service-providers', icon: FaUsers, label: 'Service Providers' },
         {
-          title: 'Connections',
+          label: 'Connections',
           icon: FaLink,
-          path: '/admin/connections',
+          to: '/admin/connections',
         },
         {
-          title: 'Connection Posts',
+          label: 'Connection Posts',
           icon: FaNewspaper,
-          path: '/admin/connection-posts',
+          to: '/admin/connection-posts',
         },
         
         { to: '/admin/business-settings', icon: FaCog, label: 'Business Settings' },

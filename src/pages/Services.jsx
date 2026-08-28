@@ -206,7 +206,7 @@ const Services = () => {
     }
     
     if (user.role === 'customer') {
-      navigate('/customer/create-booking', { 
+      navigate('/customer/create-errand', { 
         state: {
           selectedService: service,
           serviceId: service._id,
@@ -214,7 +214,7 @@ const Services = () => {
         } 
       })
     } else {
-      navigate('/customer/create-booking')
+      navigate('/customer/create-errand')
     }
   }
 

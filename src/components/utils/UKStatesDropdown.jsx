@@ -1,42 +1,23 @@
 import React from 'react'
 
 export const UK_STATES = [
-  // Regions
   { value: 'england', label: '🏴󠁧󠁢󠁥󠁮󠁧󠁿 England' },
   { value: 'scotland', label: '🏴󠁧󠁢󠁳󠁣󠁴󠁿 Scotland' },
   { value: 'wales', label: '🏴󠁧󠁢󠁷󠁬󠁳󠁿 Wales' },
   { value: 'northern_ireland', label: '🇮🇪 Northern Ireland' },
-  
-  // Major Cities
-  { value: 'london', label: '📍 London' },
-  { value: 'manchester', label: '📍 Manchester' },
-  { value: 'birmingham', label: '📍 Birmingham' },
-  { value: 'liverpool', label: '📍 Liverpool' },
-  { value: 'bristol', label: '📍 Bristol' },
-  { value: 'sheffield', label: '📍 Sheffield' },
-  { value: 'leeds', label: '📍 Leeds' },
-  { value: 'newcastle', label: '📍 Newcastle' },
-  { value: 'nottingham', label: '📍 Nottingham' },
-  { value: 'southampton', label: '📍 Southampton' },
-  { value: 'brighton', label: '📍 Brighton' },
-  { value: 'oxford', label: '📍 Oxford' },
-  { value: 'cambridge', label: '📍 Cambridge' },
-  { value: 'york', label: '📍 York' },
-  { value: 'bath', label: '📍 Bath' },
-  { value: 'edinburgh', label: '📍 Edinburgh' },
-  { value: 'glasgow', label: '📍 Glasgow' },
-  { value: 'aberdeen', label: '📍 Aberdeen' },
-  { value: 'dundee', label: '📍 Dundee' },
-  { value: 'cardiff', label: '📍 Cardiff' },
-  { value: 'swansea', label: '📍 Swansea' },
-  { value: 'belfast', label: '📍 Belfast' },
-  { value: 'derry', label: '📍 Derry' },
 ]
+
+export const UK_REGIONS = {
+  england: { lat: 52.3555, lng: -1.1743 },
+  scotland: { lat: 56.4907, lng: -4.2026 },
+  wales: { lat: 52.1307, lng: -3.7837 },
+  northern_ireland: { lat: 54.7877, lng: -6.4923 },
+}
 
 const UKStatesDropdown = ({ 
   value, 
   onChange, 
-  placeholder = 'Select your state...', 
+  placeholder = 'Select a state...', 
   required = false, 
   className = '' 
 }) => {

@@ -129,7 +129,7 @@ const CustomerDashboard = () => {
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <Link to="/customer/create-booking" className="card hover:shadow-large transition-shadow flex items-center justify-between group">
+        <Link to="/customer/create-errand" className="card hover:shadow-large transition-shadow flex items-center justify-between group">
           <div>
             <h3 className="text-lg font-semibold text-text">Create New Errand</h3>
             <p className="text-text-light text-sm">Get help with your errands</p>
@@ -156,7 +156,7 @@ const CustomerDashboard = () => {
         {recentItems.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-text-light">No activity yet.</p>
-            <Link to="/customer/create-booking" className="text-primary hover:underline mt-2 inline-block">
+            <Link to="/customer/create-errand" className="text-primary hover:underline mt-2 inline-block">
               Create your first errand
             </Link>
           </div>

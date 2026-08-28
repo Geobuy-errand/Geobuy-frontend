@@ -71,7 +71,7 @@ const exploreOptions = [
     title: "Book an Errand",
     description:
       "Get your errands done quickly by trusted local providers. Shopping, deliveries, pickups and more.",
-    link: "/customer/create-booking",
+    link: "/customer/create-errand",
     color: "bg-blue-50 border-blue-200",
     iconColor: "text-blue-600",
     hoverColor: "hover:border-blue-300",
@@ -152,7 +152,7 @@ const Home = () => {
               >
                 Get Started
               </button>
-              <Link to="/customer/create-booking" className="btn-outline">
+              <Link to="/customer/create-errand" className="btn-outline">
                 Book an Errand
               </Link>
               <Link to="/find-services" className="btn-secondary">

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { FaMapMarkerAlt, FaSpinner, FaTimes, FaSearch, FaCity, FaGlobe, FaLocationArrow } from 'react-icons/fa'
-import UKStatesDropdown from './utils/UKStatesDropdown'
+import { FaMapMarkerAlt, FaSpinner, FaTimes, FaSearch, FaCity, FaLocationArrow } from 'react-icons/fa'
 
 const AddressAutocomplete = ({
   value,
@@ -13,32 +12,25 @@ const AddressAutocomplete = ({
   disabled = false,
   country = 'gb',
   minChars = 2,
-  showFallback = true, // Show fallback options
 }) => {
   const [suggestions, setSuggestions] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
   const [inputValue, setInputValue] = useState(value || '')
   const [selectedAddress, setSelectedAddress] = useState(null)
-  const [fallbackMode, setFallbackMode] = useState(false)
-  const [manualCoordinates, setManualCoordinates] = useState({ lat: '', lng: '' })
   const wrapperRef = useRef(null)
   const inputRef = useRef(null)
   const debounceTimer = useRef(null)
 
-  // UK Cities/States for fallback
+  // UK Cities for fallback
   const UK_CITIES = [
     'London', 'Manchester', 'Birmingham', 'Liverpool', 'Bristol',
     'Sheffield', 'Leeds', 'Newcastle', 'Nottingham', 'Southampton',
     'Brighton', 'Oxford', 'Cambridge', 'York', 'Bath',
     'Edinburgh', 'Glasgow', 'Aberdeen', 'Dundee', 'Cardiff',
     'Swansea', 'Belfast', 'Derry', 'Reading', 'Milton Keynes',
-    'St Albans', 'Chelmsford', 'Colchester', 'Peterborough', 'Norwich',
-    'Leicester', 'Coventry', 'Stoke', 'Wolverhampton', 'Plymouth',
-    'Exeter', 'Bournemouth', 'Portsmouth', 'Canterbury', 'Dover'
   ]
 
-  // Close suggestions when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
@@ -49,14 +41,12 @@ const AddressAutocomplete = ({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // Update input when value prop changes
   useEffect(() => {
     if (value !== inputValue && !selectedAddress) {
       setInputValue(value || '')
     }
   }, [value])
 
-  // Fetch address suggestions from multiple sources
   const fetchSuggestions = async (query) => {
     if (!query || query.length < minChars) {
       setSuggestions([])
@@ -65,72 +55,64 @@ const AddressAutocomplete = ({
     }
 
     setIsLoading(true)
-    setFallbackMode(false)
     
     try {
+      // Try Nominatim first
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?` +
+        `q=${encodeURIComponent(query)}&` +
+        `format=json&` +
+        `addressdetails=1&` +
+        `limit=10&` +
+        `countrycodes=gb&` +
+        `accept-language=en&` +
+        `bounded=1&` +
+        `viewbox=-10.0,60.0,2.0,49.0`
+      )
+
       let results = []
-
-      // Try 1: Nominatim (Free, reliable for UK)
-      try {
-        const response = await fetch(
-          `https://nominatim.openstreetmap.org/search?` +
-          `q=${encodeURIComponent(query)}&` +
-          `format=json&` +
-          `addressdetails=1&` +
-          `limit=15&` +
-          `countrycodes=gb&` +
-          `accept-language=en&` +
-          `bounded=1&` +
-          `viewbox=-10.0,60.0,2.0,49.0`
-        )
-
-        if (response.ok) {
-          const data = await response.json()
-          results = data
-            .filter(item => {
-              const isUK = item.display_name?.includes('United Kingdom') ||
-                          item.display_name?.includes('UK') ||
-                          item.address?.country_code === 'gb'
-              return isUK
-            })
-            .map(item => ({
-              displayName: item.display_name || '',
-              lat: parseFloat(item.lat) || 0,
-              lon: parseFloat(item.lon) || 0,
-              address: item.address || {},
-              importance: item.importance || 0,
-              type: item.type || 'address',
-              class: item.class || 'place',
-              houseNumber: item.address?.house_number || '',
-              road: item.address?.road || item.address?.street || '',
-              suburb: item.address?.suburb || '',
-              city: item.address?.city || item.address?.town || item.address?.village || '',
-              county: item.address?.county || item.address?.state || '',
-              postcode: item.address?.postcode || '',
-              country: item.address?.country || 'United Kingdom',
-              region: item.address?.region || '',
-              source: 'nominatim'
-            }))
-        }
-      } catch (e) {
-        console.warn('Nominatim fetch failed:', e.message)
+      if (response.ok) {
+        const data = await response.json()
+        results = data
+          .filter(item => {
+            const isUK = item.display_name?.includes('United Kingdom') ||
+                        item.display_name?.includes('UK') ||
+                        item.address?.country_code === 'gb'
+            return isUK
+          })
+          .map(item => ({
+            displayName: item.display_name || '',
+            lat: parseFloat(item.lat) || 0,
+            lon: parseFloat(item.lon) || 0,
+            address: item.address || {},
+            importance: item.importance || 0,
+            type: item.type || 'address',
+            class: item.class || 'place',
+            houseNumber: item.address?.house_number || '',
+            road: item.address?.road || item.address?.street || '',
+            suburb: item.address?.suburb || '',
+            city: item.address?.city || item.address?.town || item.address?.village || '',
+            county: item.address?.county || item.address?.state || '',
+            postcode: item.address?.postcode || '',
+            country: item.address?.country || 'United Kingdom',
+            region: item.address?.region || '',
+          }))
       }
 
-      // Try 2: If Nominatim returns few results, use local UK city matching
+      // If few results, add city suggestions
       if (results.length < 3) {
         const lowerQuery = query.toLowerCase()
         const matchedCities = UK_CITIES
           .filter(city => city.toLowerCase().includes(lowerQuery))
           .map(city => ({
             displayName: `${city}, United Kingdom`,
-            lat: 0, // Will be resolved
+            lat: 0,
             lon: 0,
             address: { city: city, country: 'United Kingdom' },
             type: 'city',
             class: 'place',
             city: city,
             country: 'United Kingdom',
-            source: 'fallback',
             isFallback: true
           }))
         
@@ -139,30 +121,18 @@ const AddressAutocomplete = ({
 
       setSuggestions(results)
       setIsOpen(results.length > 0)
-
-      // If no results, suggest fallback mode
-      if (results.length === 0 && query.length >= 3) {
-        setFallbackMode(true)
-      }
-
     } catch (error) {
-      console.error('Address suggestions error:', error)
+      console.warn('Address search error:', error)
       setSuggestions([])
-      // Show fallback options
-      if (query.length >= 3) {
-        setFallbackMode(true)
-      }
     } finally {
       setIsLoading(false)
     }
   }
 
-  // Debounced search
   const handleInputChange = (e) => {
     const val = e.target.value
     setInputValue(val)
     setSelectedAddress(null)
-    setFallbackMode(false)
     
     if (debounceTimer.current) {
       clearTimeout(debounceTimer.current)
@@ -173,7 +143,6 @@ const AddressAutocomplete = ({
     }, 300)
   }
 
-  // Handle selection of an address
   const handleSelect = (suggestion) => {
     const fullAddress = suggestion.displayName || 
                        (suggestion.city ? `${suggestion.city}, United Kingdom` : '')
@@ -182,7 +151,6 @@ const AddressAutocomplete = ({
     setSelectedAddress(suggestion)
     setSuggestions([])
     setIsOpen(false)
-    setFallbackMode(false)
     
     if (onChange) {
       onChange({
@@ -198,7 +166,6 @@ const AddressAutocomplete = ({
     }
   }
 
-  // Handle city selection from fallback
   const handleCitySelect = (city) => {
     const fullAddress = `${city}, United Kingdom`
     const suggestion = {
@@ -210,7 +177,6 @@ const AddressAutocomplete = ({
       class: 'place',
       city: city,
       country: 'United Kingdom',
-      source: 'fallback',
       isFallback: true
     }
     
@@ -218,7 +184,6 @@ const AddressAutocomplete = ({
     setSelectedAddress(suggestion)
     setSuggestions([])
     setIsOpen(false)
-    setFallbackMode(false)
     
     if (onChange) {
       onChange({
@@ -234,13 +199,11 @@ const AddressAutocomplete = ({
     }
   }
 
-  // Clear the input
   const handleClear = () => {
     setInputValue('')
     setSelectedAddress(null)
     setSuggestions([])
     setIsOpen(false)
-    setFallbackMode(false)
     if (onChange) {
       onChange({
         target: {
@@ -254,7 +217,35 @@ const AddressAutocomplete = ({
     }
   }
 
-  // Get formatted address for display
+  const useCurrentLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords
+          const suggestion = {
+            displayName: `Current Location (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`,
+            lat: latitude,
+            lon: longitude,
+            address: { country: 'United Kingdom' },
+            type: 'location',
+            class: 'place',
+            isFallback: true
+          }
+          setInputValue(`Current Location (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`)
+          setSelectedAddress(suggestion)
+          setIsOpen(false)
+          
+          if (onSelect) {
+            onSelect(suggestion)
+          }
+        },
+        (error) => {
+          console.warn('Geolocation failed:', error.message)
+        }
+      )
+    }
+  }
+
   const getFormattedAddress = (suggestion) => {
     if (suggestion.isFallback) {
       return suggestion.city || suggestion.displayName
@@ -276,38 +267,6 @@ const AddressAutocomplete = ({
     if (suggestion.class === 'building') return 'Building'
     if (suggestion.class === 'amenity') return 'Landmark'
     return 'Address'
-  }
-
-  // Use current location as fallback
-  const useCurrentLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords
-          const suggestion = {
-            displayName: `Current Location (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`,
-            lat: latitude,
-            lon: longitude,
-            address: { country: 'United Kingdom' },
-            type: 'location',
-            class: 'place',
-            isFallback: true,
-            source: 'geolocation'
-          }
-          setInputValue(`Current Location (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`)
-          setSelectedAddress(suggestion)
-          setIsOpen(false)
-          setFallbackMode(false)
-          
-          if (onSelect) {
-            onSelect(suggestion)
-          }
-        },
-        (error) => {
-          console.warn('Geolocation failed:', error.message)
-        }
-      )
-    }
   }
 
   return (
@@ -356,16 +315,13 @@ const AddressAutocomplete = ({
         </div>
       </div>
 
-      {/* Suggestions Dropdown */}
+      {/* Suggestions Dropdown - Without Error Messages */}
       {isOpen && suggestions.length > 0 && (
-        <div className="absolute z-50 w-full mt-1 bg-white rounded-xl shadow-large border border-gray-200 max-h-80 overflow-y-auto">
+        <div className="absolute z-50 w-full mt-1 bg-white rounded-xl shadow-large border border-gray-200 max-h-72 overflow-y-auto">
           <div className="p-2 border-b border-gray-100 sticky top-0 bg-white flex justify-between items-center">
             <p className="text-xs text-text-lighter">
               {suggestions.length} address{suggestions.length > 1 ? 'es' : ''} found
             </p>
-            {fallbackMode && (
-              <span className="text-xs text-amber-600">Using fallback</span>
-            )}
           </div>
           {suggestions.map((suggestion, index) => {
             const displayAddress = getFormattedAddress(suggestion)
@@ -377,11 +333,11 @@ const AddressAutocomplete = ({
                 key={index}
                 type="button"
                 onClick={() => handleSelect(suggestion)}
-                className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0 flex items-start space-x-3 ${isFallback ? 'bg-amber-50/50' : ''}`}
+                className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0 flex items-start space-x-3 ${isFallback ? 'bg-amber-50/30' : ''}`}
               >
                 <div className="mt-0.5 flex-shrink-0">
                   {isFallback ? (
-                    <FaCity className="text-amber-500 text-sm" />
+                    <FaCity className="text-amber-400 text-sm" />
                   ) : (
                     <FaMapMarkerAlt className="text-primary text-sm" />
                   )}
@@ -398,7 +354,7 @@ const AddressAutocomplete = ({
                   <p className="text-xs text-text-lighter truncate mt-0.5">
                     {suggestion.city || suggestion.county || suggestion.region || 'United Kingdom'}
                     {suggestion.postcode && ` • ${suggestion.postcode}`}
-                    {isFallback && ' • Approximate location'}
+                    {isFallback && ' • City centre approximate'}
                   </p>
                 </div>
               </button>
@@ -406,50 +362,6 @@ const AddressAutocomplete = ({
           })}
           
           {/* Use Current Location option */}
-          <button
-            type="button"
-            onClick={useCurrentLocation}
-            className="w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-t border-gray-100 flex items-center space-x-3"
-          >
-            <FaLocationArrow className="text-blue-500 text-sm" />
-            <span className="text-sm text-blue-600 font-medium">Use Current Location</span>
-          </button>
-        </div>
-      )}
-
-      {/* Fallback Mode - Show UK Cities */}
-      {fallbackMode && !isOpen && inputValue.length >= 3 && (
-        <div className="absolute z-50 w-full mt-1 bg-white rounded-xl shadow-large border border-amber-200 max-h-60 overflow-y-auto">
-          <div className="p-3 border-b border-amber-100 bg-amber-50/50">
-            <div className="flex items-center space-x-2">
-              <FaCity className="text-amber-500" />
-              <p className="text-sm text-amber-700 font-medium">Can't find exact address? Try selecting a city:</p>
-            </div>
-            <p className="text-xs text-amber-600 mt-1">Distance will be calculated using city centre</p>
-          </div>
-          <div className="p-2">
-            {UK_CITIES
-              .filter(city => city.toLowerCase().includes(inputValue.toLowerCase()))
-              .slice(0, 10)
-              .map((city) => (
-                <button
-                  key={city}
-                  type="button"
-                  onClick={() => handleCitySelect(city)}
-                  className="w-full text-left px-3 py-2 hover:bg-amber-50 rounded-lg transition-colors flex items-center space-x-3"
-                >
-                  <FaCity className="text-amber-400 text-sm" />
-                  <div>
-                    <p className="text-sm font-medium text-text">{city}</p>
-                    <p className="text-xs text-text-lighter">United Kingdom</p>
-                  </div>
-                </button>
-              ))}
-            {UK_CITIES.filter(city => city.toLowerCase().includes(inputValue.toLowerCase())).length === 0 && (
-              <p className="text-sm text-text-light p-3">No cities found. Try a different search.</p>
-            )}
-          </div>
-          
           <button
             type="button"
             onClick={useCurrentLocation}
@@ -472,14 +384,14 @@ const AddressAutocomplete = ({
             )}
             <div className="flex-1 min-w-0">
               <p className={`text-sm font-medium ${selectedAddress.isFallback ? 'text-amber-700' : 'text-green-700'}`}>
-                {selectedAddress.isFallback ? 'Approximate Location' : 'Selected Address'}
+                {selectedAddress.isFallback ? '📍 City/Area Selected' : '✅ Address Selected'}
               </p>
               <p className={`text-xs truncate ${selectedAddress.isFallback ? 'text-amber-600' : 'text-green-600'}`}>
                 {selectedAddress.displayName || selectedAddress.city || 'Address selected'}
               </p>
               {selectedAddress.isFallback && (
                 <p className="text-xs text-amber-500 mt-0.5">
-                  ⚠️ Using approximate location (city centre)
+                  Using city centre for approximate location
                 </p>
               )}
               {selectedAddress.postcode && (

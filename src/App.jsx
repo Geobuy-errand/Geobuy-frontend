@@ -96,6 +96,7 @@ import CustomerConnections from "./pages/customer/CustomerConnections";
 import ConnectLanding from "./pages/ConnectLanding";
 import ConnectDashboard from "./pages/customer/ConnectDashboard";
 import AdminConnectionPosts from "./pages/admin/AdminConnectionPosts";
+import ServiceHistory from "./pages/customer/ServiceHistory";
 
 
 function App() {
@@ -152,7 +153,7 @@ function App() {
           <Route index element={<CustomerDashboard />} />
           <Route path="dashboard" element={<CustomerDashboard />} />
           <Route path="connect-dashboard" element={<ConnectDashboard />} />
-          <Route path="create-booking" element={<CreateBooking />} />
+          <Route path="create-errand" element={<CreateBooking />} />
           <Route path="bookings" element={<BookingHistory />} />
           <Route path="booking/:id" element={<BookingDetails />} />
           <Route path="messages" element={<CustomerMessages />} />
@@ -169,6 +170,10 @@ function App() {
           <Route
             path="service-request/:id"
             element={<ServiceRequestDetail />}
+          />
+          <Route
+            path="service-history"
+            element={<ServiceHistory />}
           />
           <Route path="quote-comparison/:id" element={<QuoteComparison />} />
           <Route path="/customer/chat-support" element={<ChatSupport />} />

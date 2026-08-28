@@ -22,8 +22,8 @@ const AdminConnectionPosts = () => {
   })
 
   const [createPost, { isLoading: isCreating }] = useCreatePostMutation()
-  const [updatePost, { isLoading: isUpdating }] = useUpdatePostMutation()
-  const [deletePost, { isLoading: isDeleting }] = useDeletePostMutation()
+  const [updatePost, { isLoading: isUpdating }] = useAdminUpdatePostMutation()
+  const [deletePost, { isLoading: isDeleting }] = useAdminDeletePostMutation()
 
   const posts = data?.data || []
   const stats = data?.stats || {}

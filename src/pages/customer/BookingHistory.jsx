@@ -31,7 +31,7 @@ const BookingHistory = () => {
     <div>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-text">Booking History</h1>
-        <Link to="/customer/create-booking" className="btn-primary text-sm py-2 mt-4 md:mt-0">
+        <Link to="/customer/create-errand" className="btn-primary text-sm py-2 mt-4 md:mt-0">
           New Booking
         </Link>
       </div>
@@ -77,7 +77,7 @@ const BookingHistory = () => {
       ) : filteredBookings?.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-text-light">No bookings found.</p>
-          <Link to="/customer/create-booking" className="text-primary hover:underline mt-2 inline-block">
+          <Link to="/customer/create-errand" className="text-primary hover:underline mt-2 inline-block">
             Create your first booking
           </Link>
         </div>
