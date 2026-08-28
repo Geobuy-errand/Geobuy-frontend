@@ -14,7 +14,8 @@ import {
   FaUser, FaEnvelope, FaPhone, 
   FaClock, FaSpinner, FaCheckCircle,
   FaCreditCard, FaLock, FaInfoCircle,
-  FaHeart, FaStar
+  FaHeart, FaStar,
+  FaCalendar
 } from 'react-icons/fa'
 
 const Connect = () => {
