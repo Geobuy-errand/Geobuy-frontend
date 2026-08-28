@@ -456,11 +456,11 @@ const CreateBooking = () => {
                         {service.name}
                       </h3>
                       <p className="text-xs text-text-light">{service.description}</p>
-                      {service.basePrice && (
+                      {/* {service.basePrice && (
                         <p className="text-xs text-primary font-medium mt-1">
                           From £{service.basePrice}
                         </p>
-                      )}
+                      )} */}
                     </div>
                   </div>
                 </button>
@@ -474,7 +474,7 @@ const CreateBooking = () => {
           <h2 className="text-lg font-semibold text-text mb-4">Pickup Location</h2>
           <div className="space-y-4">
             <AddressAutocomplete
-              label="Full Address *"
+              label="Full Address"
               placeholder="Start typing your pickup address..."
               value={formData.pickup.address}
               onSelect={(suggestion) => handleAddressSelect('pickup', suggestion)}

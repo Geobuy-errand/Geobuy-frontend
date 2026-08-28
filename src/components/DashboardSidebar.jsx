@@ -28,7 +28,8 @@ import {
   FaHistory,
   FaTags,
   FaLink,
-  FaUnlink
+  FaUnlink,
+  FaNewspaper
 } from "react-icons/fa";
 
 const DashboardSidebar = ({ open, onClose }) => {
@@ -163,8 +164,13 @@ const DashboardSidebar = ({ open, onClose }) => {
           title: 'Connections',
           icon: FaLink,
           path: '/admin/connections',
-          roles: ['admin'],
         },
+        {
+          title: 'Connection Posts',
+          icon: FaNewspaper,
+          path: '/admin/connection-posts',
+        },
+        
         { to: '/admin/business-settings', icon: FaCog, label: 'Business Settings' },
         { to: "/admin/analytics", icon: FaChartBar, label: "Analytics" },
         { to: "/admin/support", icon: FaQuestionCircle, label: "Support" },

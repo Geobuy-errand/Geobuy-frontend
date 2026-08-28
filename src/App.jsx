@@ -95,6 +95,7 @@ import Connect from "./pages/customer/Connect";
 import CustomerConnections from "./pages/customer/CustomerConnections";
 import ConnectLanding from "./pages/ConnectLanding";
 import ConnectDashboard from "./pages/customer/ConnectDashboard";
+import AdminConnectionPosts from "./pages/admin/AdminConnectionPosts";
 
 
 function App() {
@@ -251,6 +252,7 @@ function App() {
           <Route path="service-definitions" element={<ServiceDefinitions />} />
           <Route path="service-providers" element={<ServiceProvidersManagement />} />
           <Route path="connections" element={<AdminConnections />} />
+          <Route path="connection-posts" element={<AdminConnectionPosts />} />
         </Route>
         <Route
           path="customer/subscriptions"

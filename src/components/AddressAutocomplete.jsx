@@ -91,6 +91,7 @@ const AddressAutocomplete = ({
         `bounded=1&` +
         `viewbox=-10.0,60.0,2.0,49.0` // UK bounding box
       )
+      console.log({response})
 
       if (!response.ok) throw new Error('Failed to fetch suggestions')
 
