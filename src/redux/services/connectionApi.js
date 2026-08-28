@@ -51,6 +51,10 @@ export const connectionApi = baseApi.injectEndpoints({
       query: () => '/connections/status',
       providesTags: ['Connection'],
     }),
+    getConnectionFee: builder.query({
+      query: () => '/connections/connection-fee',
+      providesTags: ['Connection'],
+    }),
     getMyConnections: builder.query({
       query: (params) => `/connections/my-connections?${new URLSearchParams(params)}`,
       providesTags: ['Connection'],
@@ -119,5 +123,6 @@ export const {
   useRateConnectionMutation,
   useAdminGetConnectionsQuery,
   useAdminUpdateConnectionMutation,
-  useGetConnectionStatusQuery
+  useGetConnectionStatusQuery,
+  useGetConnectionFeeQuery
 } = connectionApi

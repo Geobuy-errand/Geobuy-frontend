@@ -6,14 +6,15 @@ import {
   useCreateCheckoutSessionMutation,
   useCheckPaymentStatusQuery,
   useGetConnectionStatusQuery,
+  useGetConnectionFeeQuery,
 } from '../../redux/services/connectionApi'
 import { toast } from 'react-hot-toast'
 import UKStatesDropdown from '../../components/utils/UKStatesDropdown'
 import { 
-  FaUser, FaEnvelope, FaPhone, FaMapMarkerAlt, FaCalendar, 
-  FaClock, FaTag, FaSpinner, FaCheckCircle, FaArrowRight,
-  FaCreditCard, FaLink, FaLock, FaCheck, FaInfoCircle,
-  FaHeart, FaUsers, FaStar
+  FaUser, FaEnvelope, FaPhone, 
+  FaClock, FaSpinner, FaCheckCircle,
+  FaCreditCard, FaLock, FaInfoCircle,
+  FaHeart, FaStar
 } from 'react-icons/fa'
 
 const Connect = () => {
@@ -23,6 +24,7 @@ const Connect = () => {
   // ✅ Check if user already connected
   const { data: statusData, isLoading: statusLoading } = useGetConnectionStatusQuery()
   const { data: paymentStatus, refetch: refetchPaymentStatus } = useCheckPaymentStatusQuery()
+  const { data: connectionFee, refetch: refetchConnectionnFee } = useGetConnectionFeeQuery()
   const [createCheckoutSession, { isLoading: isCreatingSession }] = useCreateCheckoutSessionMutation()
   const [createConnection, { isLoading: isCreating }] = useCreateConnectionMutation()
   
@@ -228,7 +230,7 @@ const Connect = () => {
     }
   }
 
-  const CONNECTION_FEE = 1.99
+  const CONNECTION_FEE = connectionFee?.connectionFee
 
   // If user is not logged in, redirect
   useEffect(() => {
@@ -249,6 +251,7 @@ const Connect = () => {
   if (hasConnected) {
     return null // Will redirect via useEffect
   }
+
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -313,6 +316,7 @@ const Connect = () => {
           </div>
         )}
 
+        {hasPaid &&
         <div className="card">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Personal Info */}
@@ -604,6 +608,7 @@ const Connect = () => {
             </button>
           </form>
         </div>
+        }
 
         {/* Help Section */}
         <div className="mt-6 card bg-gray-50">
