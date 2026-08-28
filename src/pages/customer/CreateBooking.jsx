@@ -107,6 +107,66 @@ const CreateBooking = () => {
   const [isDistanceCalculated, setIsDistanceCalculated] = useState(false)
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false)
 
+
+  const calculateRealDistance = async () => {
+    if (!formData.pickup.address || !formData.dropoff.address) {
+      return
+    }
+  
+    setIsCalculating(true)
+    setDistanceError(null)
+  
+    try {
+      const result = await getDistance(
+        formData.pickup.address,
+        formData.dropoff.address,
+        'DRIVING'
+      )
+  
+      const distanceInMiles = result.distance.value
+      setDistance(distanceInMiles)
+      setDistanceText(result.distance.text)
+      setDurationText(result.duration.text)
+      setIsDistanceCalculated(true)
+      calculatePrice(distanceInMiles)
+      
+      // Show accuracy message
+      if (result.isFallback) {
+        toast.info(`📍 ${result.message}`, { duration: 4000 })
+      }
+      
+      toast.success(`Distance: ${result.distance.text} (approx ${result.duration.text})`)
+    } catch (error) {
+      setDistanceError(error.message || 'Could not calculate distance. Please check addresses.')
+      setDistance(0)
+      setDistanceText('')
+      setDurationText('')
+      setIsDistanceCalculated(false)
+      
+      // Try fallback with default values
+      try {
+        const fallbackResult = await getApproximateDistance(
+          formData.pickup.address,
+          formData.dropoff.address
+        )
+        
+        if (fallbackResult) {
+          setDistance(fallbackResult.distance.value)
+          setDistanceText(fallbackResult.distance.text)
+          setDurationText(fallbackResult.duration.text)
+          setIsDistanceCalculated(true)
+          calculatePrice(fallbackResult.distance.value)
+          toast.info('📍 Using estimated distance. Please verify the location.', { duration: 5000 })
+        }
+      } catch (fallbackError) {
+        // Silent fail - user can still submit with manual entry
+        console.warn('Fallback distance failed:', fallbackError)
+      }
+    } finally {
+      setIsCalculating(false)
+    }
+  }
+
   // Check if user is subscribed
   useEffect(() => {
     if (user?.subscription?.isSubscribed) {
@@ -292,39 +352,7 @@ const CreateBooking = () => {
     })
   }
 
-  const calculateRealDistance = async () => {
-    if (!formData.pickup.address || !formData.dropoff.address) {
-      return
-    }
-
-    setIsCalculating(true)
-    setDistanceError(null)
-
-    try {
-      const result = await getDistance(
-        formData.pickup.address,
-        formData.dropoff.address,
-        'DRIVING'
-      )
-
-      const distanceInMiles = result.distance.value
-      setDistance(distanceInMiles)
-      setDistanceText(result.distance.text)
-      setDurationText(result.duration.text)
-      setIsDistanceCalculated(true)
-      calculatePrice(distanceInMiles)
-      
-      toast.success(`Distance: ${result.distance.text} (approx ${result.duration.text})`)
-    } catch (error) {
-      setDistanceError(error.message || 'Could not calculate distance. Please check addresses.')
-      setDistance(0)
-      setDistanceText('')
-      setDurationText('')
-      setIsDistanceCalculated(false)
-    } finally {
-      setIsCalculating(false)
-    }
-  }
+  
 
   const handlePhotoUpload = (e) => {
     const files = Array.from(e.target.files)

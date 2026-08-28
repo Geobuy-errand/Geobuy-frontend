@@ -59,11 +59,6 @@ const DashboardSidebar = ({ open, onClose }) => {
           icon: FaLink,
           to: '/customer/connect',
         },
-        {
-          label: 'My Connections',
-          icon: FaUnlink,
-          to: '/customer/connections',
-        },
         { to: "/customer/payments", icon: FaCreditCard, label: "Payments" },
         { to: "/customer/reviews", icon: FaStar, label: "Reviews" },
         { to: "/customer/profile", icon: FaUser, label: "Profile" },

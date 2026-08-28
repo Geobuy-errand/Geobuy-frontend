@@ -103,10 +103,12 @@ const FindServices = () => {
           console.error('Location error:', error)
           setIsGettingLocation(false)
           toast.error('Could not get your location. Please enter your address manually.')
+          // Default to London
           setUserLocation({
             lat: 51.5074,
             lng: -0.1276,
           })
+          toast.info('📍 Using default location (London) as fallback')
         }
       )
     } else {

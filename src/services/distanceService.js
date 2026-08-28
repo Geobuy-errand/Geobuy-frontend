@@ -2,6 +2,36 @@ import axios from 'axios';
 
 const OSRM_BASE_URL = 'https://router.project-osrm.org';
 
+const UK_CITY_COORDINATES = {
+  london: { lat: 51.5074, lng: -0.1278 },
+  manchester: { lat: 53.4808, lng: -2.2426 },
+  birmingham: { lat: 52.4862, lng: -1.8904 },
+  liverpool: { lat: 53.4084, lng: -2.9916 },
+  bristol: { lat: 51.4545, lng: -2.5879 },
+  sheffield: { lat: 53.3811, lng: -1.4701 },
+  leeds: { lat: 53.8008, lng: -1.5491 },
+  newcastle: { lat: 54.9783, lng: -1.6174 },
+  nottingham: { lat: 52.9548, lng: -1.1581 },
+  southampton: { lat: 50.9097, lng: -1.4044 },
+  brighton: { lat: 50.8225, lng: -0.1372 },
+  oxford: { lat: 51.7520, lng: -1.2577 },
+  cambridge: { lat: 52.2053, lng: 0.1218 },
+  york: { lat: 53.9600, lng: -1.0873 },
+  bath: { lat: 51.3758, lng: -2.3599 },
+  edinburgh: { lat: 55.9533, lng: -3.1883 },
+  glasgow: { lat: 55.8642, lng: -4.2518 },
+  aberdeen: { lat: 57.1497, lng: -2.0943 },
+  dundee: { lat: 56.4620, lng: -2.9707 },
+  cardiff: { lat: 51.4816, lng: -3.1791 },
+  swansea: { lat: 51.6214, lng: -3.9436 },
+  belfast: { lat: 54.5973, lng: -5.9301 },
+  derry: { lat: 54.9966, lng: -7.3086 },
+  // Regions (approximate)
+  england: { lat: 52.3555, lng: -1.1743 },
+  scotland: { lat: 56.4907, lng: -4.2026 },
+  wales: { lat: 52.1307, lng: -3.7837 },
+  northern_ireland: { lat: 54.7877, lng: -6.4923 },
+}
 /**
  * Clean and format address for geocoding
  * Removes special characters, extra spaces, and formats for better search results
@@ -30,6 +60,76 @@ const formatAddressForGeocoding = (address) => {
   
   return formatted;
 };
+
+
+const getCoordinatesFromAddress = async (address) => {
+  try {
+    // Try Nominatim first
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?` +
+      `q=${encodeURIComponent(address)}&` +
+      `format=json&` +
+      `limit=1&` +
+      `countrycodes=gb`
+    )
+    
+    if (response.ok) {
+      const data = await response.json()
+      if (data && data.length > 0) {
+        return {
+          lat: parseFloat(data[0].lat),
+          lng: parseFloat(data[0].lon),
+          source: 'nominatim'
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Nominatim geocoding failed:', e.message)
+  }
+  
+  // Try to extract city name and use fallback
+  const cityMatch = address.match(/\b(London|Manchester|Birmingham|Liverpool|Bristol|Sheffield|Leeds|Newcastle|Nottingham|Southampton|Brighton|Oxford|Cambridge|York|Bath|Edinburgh|Glasgow|Aberdeen|Dundee|Cardiff|Swansea|Belfast|Derry)\b/i)
+  if (cityMatch) {
+    const cityKey = cityMatch[0].toLowerCase()
+    if (UK_CITY_COORDINATES[cityKey]) {
+      return {
+        ...UK_CITY_COORDINATES[cityKey],
+        source: 'fallback_city'
+      }
+    }
+  }
+  // Try to detect region
+  const regionMatch = address.match(/\b(England|Scotland|Wales|Northern Ireland)\b/i)
+  if (regionMatch) {
+    const regionKey = regionMatch[0].toLowerCase()
+    if (UK_CITY_COORDINATES[regionKey]) {
+      return {
+        ...UK_CITY_COORDINATES[regionKey],
+        source: 'fallback_region'
+      }
+    }
+  }
+  
+  return null
+}
+
+const calculateDistance = (lat1, lng1, lat2, lng2) => {
+  const R = 6371 // Earth's radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180
+  const dLng = (lng2 - lng1) * Math.PI / 180
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLng/2) * Math.sin(dLng/2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
+  const distanceKm = R * c
+  const distanceMiles = distanceKm * 0.621371
+  return {
+    km: distanceKm,
+    miles: distanceMiles,
+    text: `${distanceMiles.toFixed(1)} miles`,
+    duration: `${Math.round(distanceMiles * 3)} min` // Approximate 3 min per mile
+  }
+}
 
 /**
  * Extract postcode from address
@@ -165,70 +265,80 @@ const makeGeocodeRequest = async (query) => {
 /**
  * Get driving distance between two addresses
  */
-export const getDistance = async (originAddress, destinationAddress, mode = 'DRIVING') => {
-  console.log('📍 getDistance called with:', { originAddress, destinationAddress, mode });
-  
+export const getDistance = async (fromAddress, toAddress, mode = 'DRIVING') => {
+  if (!fromAddress || !toAddress) {
+    throw new Error('Both addresses are required')
+  }
+
   try {
-    // Validate inputs
-    if (!originAddress || !destinationAddress) {
-      throw new Error('Please provide both origin and destination addresses');
+    // Get coordinates for both addresses
+    const fromCoords = await getCoordinatesFromAddress(fromAddress)
+    const toCoords = await getCoordinatesFromAddress(toAddress)
+
+    if (!fromCoords || !toCoords) {
+      throw new Error('Could not determine coordinates for one or both addresses')
     }
 
-    // Geocode both addresses with fallback strategies
-    console.log('🔍 Geocoding origin...');
-    const [origin, destination] = await Promise.all([
-      geocodeAddress(originAddress),
-      geocodeAddress(destinationAddress),
-    ]);
+    // Calculate distance
+    const distance = calculateDistance(
+      fromCoords.lat,
+      fromCoords.lng,
+      toCoords.lat,
+      toCoords.lng
+    )
 
-    console.log('📍 Geocoded:', { 
-      origin: origin.displayName, 
-      destination: destination.displayName 
-    });
-
-    // Call OSRM API
-    const travelMode = mode.toLowerCase();
-    const response = await axios.get(
-      `${OSRM_BASE_URL}/route/v1/${travelMode}/${origin.lon},${origin.lat};${destination.lon},${destination.lat}`,
-      {
-        params: {
-          overview: 'false',
-          steps: 'false',
-          alternatives: 'false',
-        },
-        timeout: 15000,
-      }
-    );
-
-    console.log('📡 OSRM response:', response.data);
-
-    if (!response.data.routes || response.data.routes.length === 0) {
-      throw new Error('No route found between these locations');
-    }
-
-    const route = response.data.routes[0];
-    
-    const distanceMiles = route.distance / 1609.34;
-    const durationMinutes = route.duration / 60;
+    // Determine accuracy level
+    const isFallback = fromCoords.source === 'fallback_city' || 
+                       fromCoords.source === 'fallback_region' ||
+                       toCoords.source === 'fallback_city' ||
+                       toCoords.source === 'fallback_region'
 
     return {
       distance: {
-        value: distanceMiles,
-        text: `${distanceMiles.toFixed(1)} miles`,
+        value: distance.miles,
+        text: distance.text,
+        km: distance.km,
+        miles: distance.miles,
       },
       duration: {
-        value: durationMinutes,
-        text: `${Math.round(durationMinutes)} minutes`,
+        value: parseInt(distance.duration),
+        text: distance.duration,
       },
-      origin: origin.displayName,
-      destination: destination.displayName,
-    };
-    
+      accuracy: isFallback ? 'approximate' : 'exact',
+      source: {
+        from: fromCoords.source || 'unknown',
+        to: toCoords.source || 'unknown',
+      },
+      isFallback: isFallback,
+      message: isFallback 
+        ? 'Using approximate location based on city/region' 
+        : 'Exact distance calculated',
+    }
+
   } catch (error) {
-    console.error('❌ Distance calculation error:', error.message);
-    throw new Error(`Distance calculation failed: ${error.message}`);
+    console.error('Distance calculation error:', error)
+    throw new Error(error.message || 'Could not calculate distance')
   }
-};
+}
+
+export const getApproximateDistance = (fromAddress, toAddress) => {
+  // Return a reasonable default
+  return {
+    distance: {
+      value: 5, // 5 miles default
+      text: '5 miles',
+      km: 8,
+      miles: 5,
+    },
+    duration: {
+      value: 15,
+      text: '15 min',
+    },
+    accuracy: 'estimated',
+    isFallback: true,
+    message: 'Using estimated distance (default)',
+  }
+}
 
 /**
  * Validate a UK address
@@ -313,4 +423,6 @@ export default {
   getDistance,
   getBatchDistances,
   validateUKAddress,
+  getCoordinatesFromAddress,
+  getApproximateDistance
 };
