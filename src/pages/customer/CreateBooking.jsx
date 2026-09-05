@@ -23,40 +23,9 @@ import {
   FaCheckCircle,
   FaClock as FaClockIcon,
   FaDollarSign,
-  FaCity,
-  FaMapMarkerAlt,
+  FaEdit,
+  FaSave,
 } from "react-icons/fa";
-
-// UK City Coordinates for fallback
-const UK_CITY_COORDINATES = {
-  aberdeen: { lat: 57.1497, lng: -2.0943 },
-  bath: { lat: 51.3758, lng: -2.3599 },
-  belfast: { lat: 54.5973, lng: -5.9301 },
-  birmingham: { lat: 52.4862, lng: -1.8904 },
-  brighton: { lat: 50.8225, lng: -0.1372 },
-  bristol: { lat: 51.4545, lng: -2.5879 },
-  cambridge: { lat: 52.2053, lng: 0.1218 },
-  cardiff: { lat: 51.4816, lng: -3.1791 },
-  derry: { lat: 54.9966, lng: -7.3086 },
-  dundee: { lat: 56.4620, lng: -2.9707 },
-  edinburgh: { lat: 55.9533, lng: -3.1883 },
-  glasgow: { lat: 55.8642, lng: -4.2518 },
-  leeds: { lat: 53.8008, lng: -1.5491 },
-  leicester: { lat: 52.6369, lng: -1.1398 },
-  liverpool: { lat: 53.4084, lng: -2.9916 },
-  london: { lat: 51.5074, lng: -0.1278 },
-  manchester: { lat: 53.4808, lng: -2.2426 },
-  newcastle: { lat: 54.9783, lng: -1.6174 },
-  norwich: { lat: 52.6309, lng: 1.2974 },
-  nottingham: { lat: 52.9548, lng: -1.1581 },
-  oxford: { lat: 51.7520, lng: -1.2577 },
-  plymouth: { lat: 50.3755, lng: -4.1427 },
-  portsmouth: { lat: 50.8198, lng: -1.0880 },
-  sheffield: { lat: 53.3811, lng: -1.4701 },
-  southampton: { lat: 50.9097, lng: -1.4044 },
-  swansea: { lat: 51.6214, lng: -3.9436 },
-  york: { lat: 53.9600, lng: -1.0873 },
-};
 
 const CreateBooking = () => {
   const navigate = useNavigate();
@@ -112,7 +81,7 @@ const CreateBooking = () => {
     waitTimeMinutes: 0,
   });
 
-  const [hasDropoff, setHasDropoff] = useState(false);
+  const [hasDropoff, setHasDropoff] = useState(true);
   const [photos, setPhotos] = useState([]);
   const [distance, setDistance] = useState(0);
   const [distanceText, setDistanceText] = useState("");
@@ -140,39 +109,33 @@ const CreateBooking = () => {
   });
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isDistanceCalculated, setIsDistanceCalculated] = useState(false);
-  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
-  
-  // City & State selections
+  const [showAdvancedOptions, setShowAdvancedOptions] = useState(true);
+
+  // City & State selections - PURELY FOR FALLBACK, DO NOT MODIFY ADDRESS
   const [selectedPickupCity, setSelectedPickupCity] = useState("");
   const [selectedDropoffCity, setSelectedDropoffCity] = useState("");
   const [selectedPickupState, setSelectedPickupState] = useState("");
   const [selectedDropoffState, setSelectedDropoffState] = useState("");
 
-  // ============================================================
+  // Manual distance edit
+  const [isEditingDistance, setIsEditingDistance] = useState(false);
+  const [manualDistance, setManualDistance] = useState("");
+
+  // BASE DISTANCE FOR SAME LOCATION
+  const BASE_SAME_LOCATION_MILES = 0.5;
+
   // DISTANCE CALCULATION FUNCTION
-  // ============================================================
   const calculateRealDistance = async () => {
     // Check if we have enough data to calculate
-    const hasPickupData = formData.pickup.address || selectedPickupCity || selectedPickupState;
-    const hasDropoffData = formData.dropoff.address || selectedDropoffCity || selectedDropoffState;
-    
-    if (!hasPickupData || !hasDropoffData) {
-      console.log('⏳ Waiting for both pickup and dropoff data...');
-      return;
-    }
+    const hasPickupData =
+      formData.pickup.address || selectedPickupCity || selectedPickupState;
+    const hasDropoffData =
+      formData.dropoff.address || selectedDropoffCity || selectedDropoffState;
 
     setIsCalculating(true);
     setDistanceError(null);
 
     try {
-      console.log('📍 Calculating distance with:', {
-        pickupAddress: formData.pickup.address,
-        pickupCity: selectedPickupCity,
-        pickupState: selectedPickupState,
-        dropoffAddress: formData.dropoff.address,
-        dropoffCity: selectedDropoffCity,
-        dropoffState: selectedDropoffState,
-      });
 
       const result = await getDistance(
         formData.pickup.address || "",
@@ -184,29 +147,65 @@ const CreateBooking = () => {
         "DRIVING"
       );
 
-      console.log('📊 Distance result:', result);
 
-      const distanceInMiles = result.distance.value;
+      let distanceInMiles = result.distance.value;
+
+      // If distance is 0 or very small, set a base distance
+      if (distanceInMiles < 0.1) {
+        const isSameCity =
+          selectedPickupCity &&
+          selectedDropoffCity &&
+          selectedPickupCity === selectedDropoffCity;
+        const isSameState =
+          selectedPickupState &&
+          selectedDropoffState &&
+          selectedPickupState === selectedDropoffState;
+
+        if (isSameCity || isSameState) {
+          distanceInMiles = BASE_SAME_LOCATION_MILES;
+        } else {
+          distanceInMiles = 0.5;
+        }
+      }
+
       setDistance(distanceInMiles);
-      setDistanceText(result.distance.text);
-      setDurationText(result.duration.text);
+      setDistanceText(result.distance.text || `${distanceInMiles} miles`);
+      setDurationText(
+        result.duration.text || `${Math.round(distanceInMiles * 3)} min`
+      );
       setIsDistanceCalculated(true);
       calculatePrice(distanceInMiles);
 
+      // ✅ Mark addresses as valid if we have data
+      if (
+        formData.pickup.address ||
+        selectedPickupCity ||
+        selectedPickupState
+      ) {
+        setAddressesValid((prev) => ({ ...prev, pickup: true }));
+      }
+      if (
+        formData.dropoff.address ||
+        selectedDropoffCity ||
+        selectedDropoffState
+      ) {
+        setAddressesValid((prev) => ({ ...prev, dropoff: true }));
+      }
+
       // Show toast based on accuracy
       if (result.isFallback && distanceInMiles > 20) {
-        toast.info(`📍 Approximate distance: ${result.distance.text}`, { duration: 3000 });
+        toast.info(`📍 Approximate distance: ${result.distance.text}`, {
+          duration: 3000,
+        });
       } else if (!result.isFallback) {
         toast.success(`✅ ${result.distance.text}`, { duration: 2000 });
       } else {
-        // For short distances or minor fallbacks, show minimal toast
         toast.success(`📍 ${result.distance.text}`, { duration: 2000 });
       }
-
     } catch (error) {
-      console.warn('Distance calculation fallback:', error);
-      
-      // Always have a fallback - never show an error
+      console.warn("Distance calculation fallback:", error);
+
+      // Always have a fallback
       const fallbackResult = getApproximateDistance(
         formData.pickup.address || "",
         formData.dropoff.address || "",
@@ -216,55 +215,89 @@ const CreateBooking = () => {
         selectedDropoffState || null
       );
 
-      if (fallbackResult) {
-        setDistance(fallbackResult.distance.value);
-        setDistanceText(fallbackResult.distance.text);
-        setDurationText(fallbackResult.duration.text);
-        setIsDistanceCalculated(true);
-        calculatePrice(fallbackResult.distance.value);
-        
-        if (fallbackResult.distance.value > 10) {
-          toast.info(`📍 Estimated distance: ${fallbackResult.distance.text}`, { duration: 3000 });
-        } else {
-          toast.success(`📍 ${fallbackResult.distance.text}`, { duration: 2000 });
-        }
-        setDistanceError(null);
-      } else {
-        // Ultimate fallback - 5 miles
-        setDistance(5);
-        setDistanceText("5.0 miles");
-        setDurationText("15 min");
-        setIsDistanceCalculated(true);
-        calculatePrice(5);
-        toast.info("📍 Using estimated distance (5 miles)", { duration: 3000 });
-        setDistanceError(null);
+      let fallbackDistance =
+        fallbackResult?.distance?.value || BASE_SAME_LOCATION_MILES;
+
+      if (fallbackDistance < 0.1) {
+        fallbackDistance = BASE_SAME_LOCATION_MILES;
       }
+
+      setDistance(fallbackDistance);
+      setDistanceText(`${fallbackDistance} miles`);
+      setDurationText(`${Math.round(fallbackDistance * 3)} min`);
+      setIsDistanceCalculated(true);
+      calculatePrice(fallbackDistance);
+
+      // ✅ Mark addresses as valid even with fallback
+      if (
+        formData.pickup.address ||
+        selectedPickupCity ||
+        selectedPickupState
+      ) {
+        setAddressesValid((prev) => ({ ...prev, pickup: true }));
+      }
+      if (
+        formData.dropoff.address ||
+        selectedDropoffCity ||
+        selectedDropoffState
+      ) {
+        setAddressesValid((prev) => ({ ...prev, dropoff: true }));
+      }
+
+      if (fallbackDistance > 10) {
+        toast.info(`📍 Estimated distance: ${fallbackDistance} miles`, {
+          duration: 3000,
+        });
+      } else {
+        toast.success(`📍 ${fallbackDistance} miles`, { duration: 2000 });
+      }
+      setDistanceError(null);
     } finally {
       setIsCalculating(false);
     }
   };
 
-  // ============================================================
+  // MANUAL DISTANCE UPDATE
+  const handleManualDistanceUpdate = () => {
+    const miles = parseFloat(manualDistance);
+    if (isNaN(miles) || miles <= 0) {
+      toast.error("Please enter a valid distance in miles");
+      return;
+    }
+
+    setDistance(miles);
+    setDistanceText(`${miles} miles`);
+    setDurationText(`${Math.round(miles * 3)} min`);
+    setIsDistanceCalculated(true);
+    calculatePrice(miles);
+    setIsEditingDistance(false);
+    toast.success(`✅ Distance updated to ${miles} miles`);
+  };
+
   // EFFECTS - Auto-calculate when data changes
-  // ============================================================
-  
-  // Check if user is subscribed
+
   useEffect(() => {
     if (user?.subscription?.isSubscribed) {
       setIsSubscribed(true);
     }
   }, [user]);
 
-  // Auto-calculate when pickup data changes
+  // Auto-calculate when ANY location data changes
   useEffect(() => {
-    const hasPickupData = formData.pickup.address || selectedPickupCity || selectedPickupState;
-    const hasDropoffData = formData.dropoff.address || selectedDropoffCity || selectedDropoffState;
-    
+    const hasPickupData =
+      formData.pickup.address || selectedPickupCity || selectedPickupState;
+    const hasDropoffData =
+      formData.dropoff.address || selectedDropoffCity || selectedDropoffState;
+
     if (hasPickupData && hasDropoffData) {
-      const timer = setTimeout(() => {
+      if (window.distanceTimer) {
+        clearTimeout(window.distanceTimer);
+      }
+
+      window.distanceTimer = setTimeout(() => {
         calculateRealDistance();
-      }, 500);
-      return () => clearTimeout(timer);
+      }, 600);
+      return () => clearTimeout(window.distanceTimer);
     }
   }, [
     formData.pickup.address,
@@ -289,32 +322,34 @@ const CreateBooking = () => {
     formData.waitTimeMinutes,
   ]);
 
-  // ============================================================
-  // HANDLERS
-  // ============================================================
-  
+  // HANDLERS - FIXED FOR BOTH AUTOSELECT AND MANUAL TYPING
+
+  // ✅ For when user selects from autocomplete (gets suggestion object)
   const handleAddressSelect = (type, suggestion) => {
     const addressField = type === "pickup" ? "pickup" : "dropoff";
-    const addressParts = suggestion.displayName?.split(",") || [];
+
+    // Get the full address from the suggestion
+    const fullAddress =
+      suggestion.displayName || suggestion.address?.road || "";
+    const addressParts = fullAddress.split(",") || [];
     const street = addressParts[0]?.trim() || "";
     const town = addressParts[1]?.trim() || "";
     const postcode =
-      suggestion.postcode || addressParts[addressParts.length - 2]?.trim() || "";
+      suggestion.postcode ||
+      addressParts[addressParts.length - 2]?.trim() ||
+      "";
 
     setFormData((prev) => ({
       ...prev,
       [addressField]: {
         ...prev[addressField],
-        address: suggestion.displayName || "",
+        address: fullAddress,
         street: street,
         town: town,
         postcode: postcode,
         coordinates:
           suggestion.lat && suggestion.lon
-            ? {
-                lat: suggestion.lat,
-                lng: suggestion.lon,
-              }
+            ? { lat: suggestion.lat, lng: suggestion.lon }
             : null,
       },
     }));
@@ -323,77 +358,98 @@ const CreateBooking = () => {
       ...prev,
       [type]: true,
     }));
+
+    // Trigger distance calculation after state update
+    setTimeout(() => {
+      if (formData.pickup.address || formData.dropoff.address) {
+        calculateRealDistance();
+      }
+    }, 500);
   };
 
-  const handleAddressChange = (type, e) => {
-    const addressField = type === "pickup" ? "pickup" : "dropoff";
-    const value = e.target.value;
+  // ✅ For when user types manually (gets event object)
+  // ✅ Make sure this handler is correctly set up
+const handleAddressChange = (type, e) => {
+  const addressField = type === "pickup" ? "pickup" : "dropoff";
+  
+  // Get the value from the event
+  const value = e?.target?.value || e || '';
+  
 
-    setFormData((prev) => ({
-      ...prev,
-      [addressField]: {
-        ...prev[addressField],
-        address: value,
-        coordinates: null,
-      },
-    }));
+  setFormData((prev) => ({
+    ...prev,
+    [addressField]: {
+      ...prev[addressField],
+      address: value,
+      coordinates: null,
+    },
+  }));
 
+  // If address is cleared, mark as invalid
+  if (!value || value.trim() === '') {
     setAddressesValid((prev) => ({
       ...prev,
       [type]: false,
     }));
-  };
+    setIsDistanceCalculated(false);
+    setDistance(0);
+  } else {
+    setAddressesValid((prev) => ({
+      ...prev,
+      [type]: true,
+    }));
+  }
 
-  // Handle city selection
+  setIsDistanceCalculated(false);
+  setDistance(0);
+  setDistanceText('');
+  setDurationText('');
+  setDistanceError(null);
+};
+
+  // CITY & STATE HANDLERS - DO NOT MODIFY ADDRESS FIELD
+
+  // ✅ FIX: Handle city selection - ONLY update city dropdown, NOT the address
   const handlePickupCitySelect = (cityKey) => {
     setSelectedPickupCity(cityKey);
-    if (cityKey && UK_CITY_COORDINATES[cityKey]) {
-      const cityName = cityKey.charAt(0).toUpperCase() + cityKey.slice(1);
-      const address = `${cityName}, United Kingdom`;
-      
-      setFormData((prev) => ({
-        ...prev,
-        pickup: {
-          ...prev.pickup,
-          address: address,
-          street: cityName,
-          town: cityName,
-          coordinates: { lat: UK_CITY_COORDINATES[cityKey].lat, lng: UK_CITY_COORDINATES[cityKey].lng },
-        },
-      }));
-      
-      setAddressesValid((prev) => ({ ...prev, pickup: true }));
+    // ✅ DO NOT populate address field
+    // ✅ ONLY use for fallback distance calculation
+    if (
+      formData.dropoff.address ||
+      selectedDropoffCity ||
+      selectedDropoffState
+    ) {
+      setTimeout(() => calculateRealDistance(), 300);
     }
   };
 
   const handleDropoffCitySelect = (cityKey) => {
     setSelectedDropoffCity(cityKey);
-    if (cityKey && UK_CITY_COORDINATES[cityKey]) {
-      const cityName = cityKey.charAt(0).toUpperCase() + cityKey.slice(1);
-      const address = `${cityName}, United Kingdom`;
-      
-      setFormData((prev) => ({
-        ...prev,
-        dropoff: {
-          ...prev.dropoff,
-          address: address,
-          street: cityName,
-          town: cityName,
-          coordinates: { lat: UK_CITY_COORDINATES[cityKey].lat, lng: UK_CITY_COORDINATES[cityKey].lng },
-        },
-      }));
-      
-      setAddressesValid((prev) => ({ ...prev, dropoff: true }));
+    // ✅ DO NOT populate address field
+    if (formData.pickup.address || selectedPickupCity || selectedPickupState) {
+      setTimeout(() => calculateRealDistance(), 300);
     }
   };
 
-  // Handle state selection
+  // ✅ FIX: Handle state selection - ONLY update state dropdown, NOT the address
   const handlePickupStateSelect = (stateKey) => {
     setSelectedPickupState(stateKey);
+    // ✅ DO NOT populate address field
+    if (
+      formData.dropoff.address ||
+      selectedDropoffCity ||
+      selectedDropoffState
+    ) {
+      setTimeout(() => calculateRealDistance(), 300);
+    }
   };
 
   const handleDropoffStateSelect = (stateKey) => {
     setSelectedDropoffState(stateKey);
+    // ✅ DO NOT populate address field
+    if (formData.pickup.address || selectedPickupCity || selectedPickupState) {
+      setTimeout(() => calculateRealDistance(), 300);
+    }
   };
 
   const handleServiceSelect = (serviceId) => {
@@ -443,7 +499,8 @@ const CreateBooking = () => {
     let waitTimeFee = 0;
     if (formData.waitTimeMinutes > WAIT_TIME_FREE_MIN) {
       const extraMinutes = formData.waitTimeMinutes - WAIT_TIME_FREE_MIN;
-      waitTimeFee = Math.round(extraMinutes * WAIT_TIME_FEE_PER_MIN * 100) / 100;
+      waitTimeFee =
+        Math.round(extraMinutes * WAIT_TIME_FEE_PER_MIN * 100) / 100;
       subtotal += waitTimeFee;
     }
 
@@ -455,7 +512,8 @@ const CreateBooking = () => {
 
     let extraStopsFee = 0;
     if (formData.extraStopsCount > 0) {
-      extraStopsFee = Math.round(formData.extraStopsCount * EXTRA_STOP_FEE * 100) / 100;
+      extraStopsFee =
+        Math.round(formData.extraStopsCount * EXTRA_STOP_FEE * 100) / 100;
       subtotal += extraStopsFee;
     }
 
@@ -467,7 +525,8 @@ const CreateBooking = () => {
 
     if (isSubscribed) {
       discountPercentage = SUBSCRIPTION_DISCOUNT;
-      discountAmount = Math.round(((subtotal * SUBSCRIPTION_DISCOUNT) / 100) * 100) / 100;
+      discountAmount =
+        Math.round(((subtotal * SUBSCRIPTION_DISCOUNT) / 100) * 100) / 100;
       total = Math.round((subtotal - discountAmount) * 100) / 100;
     }
 
@@ -539,19 +598,26 @@ const CreateBooking = () => {
     }
   };
 
+  // ✅ FIXED: isFormReady checks all required conditions
   const isFormReady = () => {
+    const hasService = !!formData.serviceId;
+    const hasPickupAddress = !!formData.pickup.address;
+    const hasDropoffAddress = !!formData.dropoff.address;
+    const hasDate = !!formData.preferredDate;
+    const hasTime = !!formData.preferredTime;
+    const hasDistance = distance > 0 && isDistanceCalculated;
+    const notLoading = !isLoading && !isCalculating;
+    const addressesAreValid = addressesValid.pickup && addressesValid.dropoff;
+
     return (
-      !isLoading &&
-      !isCalculating &&
-      distance > 0 &&
-      isDistanceCalculated &&
-      addressesValid.pickup &&
-      addressesValid.dropoff &&
-      formData.serviceId &&
-      formData.pickup.address &&
-      formData.dropoff.address &&
-      formData.preferredDate &&
-      formData.preferredTime
+      notLoading &&
+      hasService &&
+      hasPickupAddress &&
+      hasDropoffAddress &&
+      hasDate &&
+      hasTime &&
+      hasDistance &&
+      addressesAreValid
     );
   };
 
@@ -649,9 +715,9 @@ const CreateBooking = () => {
           <h2 className="text-lg font-semibold text-text mb-4">
             Pickup Location
           </h2>
-          
+
           <AddressAutocomplete
-            label="Full Address"
+            label="Full Address *"
             placeholder="Start typing your pickup address..."
             value={formData.pickup.address}
             onSelect={(suggestion) => handleAddressSelect("pickup", suggestion)}
@@ -668,11 +734,11 @@ const CreateBooking = () => {
             </div>
           )}
 
-          {/* City & State Selection - Pickup */}
+          {/* City & State Selection - Pickup (Fallback only - DOES NOT MODIFY ADDRESS) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
             <div>
               <label className="block text-sm font-medium text-text-light mb-1">
-                Pickup City (Optional)
+                Pickup City (Fallback)
               </label>
               <UKCitiesDropdown
                 value={selectedPickupCity}
@@ -681,12 +747,12 @@ const CreateBooking = () => {
                 className="bg-white"
               />
               <p className="text-xs text-text-lighter mt-1">
-                Used as fallback if address search fails
+                Used for distance calculation if address fails
               </p>
             </div>
             <div>
               <label className="block text-sm font-medium text-text-light mb-1">
-                Pickup State (Optional)
+                Pickup State (Fallback)
               </label>
               <UKStatesDropdown
                 value={selectedPickupState}
@@ -695,7 +761,7 @@ const CreateBooking = () => {
                 className="bg-white"
               />
               <p className="text-xs text-text-lighter mt-1">
-                Used as fallback if address and city fail
+                Used for distance calculation if address fails
               </p>
             </div>
           </div>
@@ -752,7 +818,9 @@ const CreateBooking = () => {
                 label="Destination Address *"
                 placeholder="Start typing your dropoff address..."
                 value={formData.dropoff.address}
-                onSelect={(suggestion) => handleAddressSelect("dropoff", suggestion)}
+                onSelect={(suggestion) =>
+                  handleAddressSelect("dropoff", suggestion)
+                }
                 onChange={(e) => handleAddressChange("dropoff", e)}
                 required
                 country="gb"
@@ -766,11 +834,11 @@ const CreateBooking = () => {
                 </div>
               )}
 
-              {/* City & State Selection - Dropoff */}
+              {/* City & State Selection - Dropoff (Fallback only - DOES NOT MODIFY ADDRESS) */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                 <div>
                   <label className="block text-sm font-medium text-text-light mb-1">
-                    Dropoff City (Optional)
+                    Dropoff City (Fallback)
                   </label>
                   <UKCitiesDropdown
                     value={selectedDropoffCity}
@@ -779,12 +847,12 @@ const CreateBooking = () => {
                     className="bg-white"
                   />
                   <p className="text-xs text-text-lighter mt-1">
-                    Used as fallback if address search fails
+                    Used for distance calculation if address fails
                   </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-text-light mb-1">
-                    Dropoff State (Optional)
+                    Dropoff State (Fallback)
                   </label>
                   <UKStatesDropdown
                     value={selectedDropoffState}
@@ -793,7 +861,7 @@ const CreateBooking = () => {
                     className="bg-white"
                   />
                   <p className="text-xs text-text-lighter mt-1">
-                    Used as fallback if address and city fail
+                    Used for distance calculation if address fails
                   </p>
                 </div>
               </div>
@@ -984,9 +1052,22 @@ const CreateBooking = () => {
 
         {/* Price Estimate */}
         <div className="card">
-          <h2 className="text-lg font-semibold text-text mb-4">
-            Price Estimate
-          </h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-text">Price Estimate</h2>
+            {isDistanceCalculated && distance > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsEditingDistance(true);
+                  setManualDistance(distance.toString());
+                }}
+                className="text-sm text-primary hover:underline flex items-center gap-1"
+              >
+                <FaEdit className="text-xs" />
+                Edit Distance
+              </button>
+            )}
+          </div>
 
           <div className="space-y-4">
             {isCalculating ? (
@@ -1008,133 +1089,186 @@ const CreateBooking = () => {
               </div>
             ) : distance > 0 && isDistanceCalculated ? (
               <>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-gray-50 rounded-xl p-3">
-                    <div className="flex items-center space-x-2">
-                      <FaRuler className="text-primary" />
-                      <span className="text-sm text-text-light">Distance</span>
+                {/* Manual Distance Edit Mode */}
+                {isEditingDistance ? (
+                  <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1">
+                        <label className="block text-sm font-medium text-text-light mb-1">
+                          Enter Distance (miles)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="0.1"
+                          value={manualDistance}
+                          onChange={(e) => setManualDistance(e.target.value)}
+                          className="input-field bg-white"
+                          placeholder="e.g., 5.5"
+                        />
+                      </div>
+                      <div className="flex gap-2 mt-6">
+                        <button
+                          type="button"
+                          onClick={handleManualDistanceUpdate}
+                          className="btn-primary text-sm py-2 px-4 flex items-center gap-1"
+                        >
+                          <FaSave className="text-xs" /> Update
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingDistance(false)}
+                          className="btn-outline text-sm py-2 px-4"
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </div>
-                    <span className="text-lg font-bold text-text">
-                      {distanceText}
-                    </span>
-                    <p className="text-xs text-text-lighter">
-                      Rate: £{priceEstimate.distanceRate.toFixed(2)}/mile
+                    <p className="text-xs text-text-lighter mt-2">
+                      Enter the distance in miles. Price will update
+                      automatically.
                     </p>
                   </div>
-                  <div className="bg-gray-50 rounded-xl p-3">
-                    <div className="flex items-center space-x-2">
-                      <FaClockIcon className="text-primary" />
-                      <span className="text-sm text-text-light">
-                        Travel Time
-                      </span>
-                    </div>
-                    <span className="text-lg font-bold text-text">
-                      {durationText}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="bg-gray-50 rounded-xl p-4 space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-text-light">Base Fee</span>
-                    <span className="font-medium">
-                      £{priceEstimate.baseFee.toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-text-light">
-                      Distance Fee ({distance.toFixed(1)} miles × £
-                      {priceEstimate.distanceRate.toFixed(2)})
-                    </span>
-                    <span className="font-medium">
-                      £{priceEstimate.distanceFee.toFixed(2)}
-                    </span>
-                  </div>
-
-                  {formData.isHeavyItem && (
-                    <div className="flex justify-between text-orange-600">
-                      <span>Heavy Item Fee</span>
-                      <span>+£{priceEstimate.heavyItemFee.toFixed(2)}</span>
-                    </div>
-                  )}
-                  {formData.waitTimeMinutes > 5 && (
-                    <div className="flex justify-between text-orange-600">
-                      <span>
-                        Wait Time ({formData.waitTimeMinutes - 5} extra mins)
-                      </span>
-                      <span>+£{priceEstimate.waitTimeFee.toFixed(2)}</span>
-                    </div>
-                  )}
-                  {formData.isPeakUrgent && (
-                    <div className="flex justify-between text-orange-600">
-                      <span>Peak/Urgent Fee</span>
-                      <span>+£{priceEstimate.peakUrgentFee.toFixed(2)}</span>
-                    </div>
-                  )}
-                  {formData.extraStopsCount > 0 && (
-                    <div className="flex justify-between text-orange-600">
-                      <span>Extra Stops ({formData.extraStopsCount})</span>
-                      <span>+£{priceEstimate.extraStopsFee.toFixed(2)}</span>
-                    </div>
-                  )}
-
-                  <div className="flex justify-between pt-2 border-t border-gray-200">
-                    <span className="font-medium text-text">Subtotal</span>
-                    <span className="font-semibold text-text">
-                      £{priceEstimate.subtotal.toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-
-                {isSubscribed && (
-                  <div className="bg-green-50 rounded-xl p-4 border border-green-200">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <span className="font-medium text-green-700">
-                          🎉 Subscription Discount
+                ) : (
+                  <>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-gray-50 rounded-xl p-3">
+                        <div className="flex items-center space-x-2">
+                          <FaRuler className="text-primary" />
+                          <span className="text-sm text-text-light">
+                            Distance
+                          </span>
+                        </div>
+                        <span className="text-lg font-bold text-text">
+                          {distanceText}
                         </span>
-                        <p className="text-xs text-green-600">20% off</p>
+                        <p className="text-xs text-text-lighter">
+                          Rate: £{priceEstimate.distanceRate.toFixed(2)}/mile
+                        </p>
                       </div>
-                      <span className="font-bold text-green-700">
-                        -£{priceEstimate.discountAmount.toFixed(2)}
-                      </span>
+                      <div className="bg-gray-50 rounded-xl p-3">
+                        <div className="flex items-center space-x-2">
+                          <FaClockIcon className="text-primary" />
+                          <span className="text-sm text-text-light">
+                            Travel Time
+                          </span>
+                        </div>
+                        <span className="text-lg font-bold text-text">
+                          {durationText}
+                        </span>
+                      </div>
                     </div>
-                  </div>
+
+                    <div className="bg-gray-50 rounded-xl p-4 space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-text-light">Base Fee</span>
+                        <span className="font-medium">
+                          £{priceEstimate.baseFee.toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-text-light">
+                          Distance Fee ({distance.toFixed(1)} miles × £
+                          {priceEstimate.distanceRate.toFixed(2)})
+                        </span>
+                        <span className="font-medium">
+                          £{priceEstimate.distanceFee.toFixed(2)}
+                        </span>
+                      </div>
+
+                      {formData.isHeavyItem && (
+                        <div className="flex justify-between text-orange-600">
+                          <span>Heavy Item Fee</span>
+                          <span>+£{priceEstimate.heavyItemFee.toFixed(2)}</span>
+                        </div>
+                      )}
+                      {formData.waitTimeMinutes > 5 && (
+                        <div className="flex justify-between text-orange-600">
+                          <span>
+                            Wait Time ({formData.waitTimeMinutes - 5} extra
+                            mins)
+                          </span>
+                          <span>+£{priceEstimate.waitTimeFee.toFixed(2)}</span>
+                        </div>
+                      )}
+                      {formData.isPeakUrgent && (
+                        <div className="flex justify-between text-orange-600">
+                          <span>Peak/Urgent Fee</span>
+                          <span>
+                            +£{priceEstimate.peakUrgentFee.toFixed(2)}
+                          </span>
+                        </div>
+                      )}
+                      {formData.extraStopsCount > 0 && (
+                        <div className="flex justify-between text-orange-600">
+                          <span>Extra Stops ({formData.extraStopsCount})</span>
+                          <span>
+                            +£{priceEstimate.extraStopsFee.toFixed(2)}
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="flex justify-between pt-2 border-t border-gray-200">
+                        <span className="font-medium text-text">Subtotal</span>
+                        <span className="font-semibold text-text">
+                          £{priceEstimate.subtotal.toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {isSubscribed && (
+                      <div className="bg-green-50 rounded-xl p-4 border border-green-200">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <span className="font-medium text-green-700">
+                              🎉 Subscription Discount
+                            </span>
+                            <p className="text-xs text-green-600">20% off</p>
+                          </div>
+                          <span className="font-bold text-green-700">
+                            -£{priceEstimate.discountAmount.toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="bg-primary/5 rounded-xl p-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-lg font-semibold text-text">
+                          Total
+                        </span>
+                        <span className="text-2xl font-bold text-primary">
+                          £{priceEstimate.total.toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+                      <h4 className="font-semibold text-text mb-2 flex items-center">
+                        <FaDollarSign className="mr-2 text-blue-600" />
+                        How It's Split
+                      </h4>
+                      <div className="space-y-1 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-text-light">
+                            GEOBUY Fee (20%)
+                          </span>
+                          <span className="font-medium text-blue-600">
+                            £{priceEstimate.platformFee.toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-text-light">
+                            Provider Amount (80%)
+                          </span>
+                          <span className="font-medium text-primary">
+                            £{priceEstimate.providerAmount.toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </>
                 )}
-
-                <div className="bg-primary/5 rounded-xl p-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-lg font-semibold text-text">
-                      Total
-                    </span>
-                    <span className="text-2xl font-bold text-primary">
-                      £{priceEstimate.total.toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
-                  <h4 className="font-semibold text-text mb-2 flex items-center">
-                    <FaDollarSign className="mr-2 text-blue-600" />
-                    How It's Split
-                  </h4>
-                  <div className="space-y-1 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-text-light">GEOBUY Fee (20%)</span>
-                      <span className="font-medium text-blue-600">
-                        £{priceEstimate.platformFee.toFixed(2)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-text-light">
-                        Provider Amount (80%)
-                      </span>
-                      <span className="font-medium text-primary">
-                        £{priceEstimate.providerAmount.toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
               </>
             ) : (
               <div className="text-center py-8 text-text-light">
@@ -1234,7 +1368,9 @@ const CreateBooking = () => {
         <button
           type="submit"
           disabled={!isFormReady()}
-          className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+          className={`w-full btn-primary flex items-center justify-center space-x-2 ${
+            !isFormReady() ? "opacity-50 cursor-not-allowed" : ""
+          }`}
         >
           <span>{isLoading ? "Creating..." : "Create Errand"}</span>
           <FaArrowRight />

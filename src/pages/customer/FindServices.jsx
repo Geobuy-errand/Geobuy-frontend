@@ -12,7 +12,6 @@ import {
   FaSearch, FaStar, FaMapMarkerAlt, FaClock, FaShieldAlt, FaCheckCircle, 
   FaUserCheck, FaHeart, FaTools, FaBriefcase, FaUser, FaPlus, 
   FaArrowRight, FaSpinner, FaLocationArrow, FaRuler, FaCheck,
-  FaFilter, FaTimes, FaUsers, FaEnvelope, FaPhone, FaInfoCircle,
   FaPaperPlane
 } from 'react-icons/fa'
 
@@ -70,18 +69,6 @@ const FindServices = () => {
     skip: !selectedCategory,
   })
 
-  useEffect(() => {
-    if (categories) {
-      console.log('📂 Categories fetched:', categories)
-      console.log('📂 Categories count:', categories.length)
-      if (categories.length > 0) {
-        console.log('📂 First category:', categories[0])
-        console.log('📂 Category names:', categories.map(c => c.name))
-        console.log('📂 Category labels:', categories.map(c => c.label))
-      }
-    }
-  }, [categories])
-
 
   const [createServiceRequest, { isLoading: isCreating }] = useCreateServiceRequestMutation()
 
@@ -100,7 +87,6 @@ const FindServices = () => {
           refetchProviders()
         },
         (error) => {
-          console.error('Location error:', error)
           setIsGettingLocation(false)
           toast.error('Could not get your location. Please enter your address manually.')
           // Default to London
@@ -216,6 +202,8 @@ const FindServices = () => {
 
   const displayProviders = sortedProviders()
   const hasProviders = displayProviders && displayProviders.length > 0
+
+  console.log({displayProviders})
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">

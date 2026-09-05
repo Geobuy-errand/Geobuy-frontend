@@ -1,5 +1,33 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { FaMapMarkerAlt, FaSpinner, FaTimes, FaSearch, FaCity, FaLocationArrow } from 'react-icons/fa'
+import { FaCheckCircle } from 'react-icons/fa'
+
+// UK City Coordinates for fallback
+const UK_CITY_COORDINATES = {
+  london: { lat: 51.5074, lng: -0.1278 },
+  manchester: { lat: 53.4808, lng: -2.2426 },
+  birmingham: { lat: 52.4862, lng: -1.8904 },
+  liverpool: { lat: 53.4084, lng: -2.9916 },
+  bristol: { lat: 51.4545, lng: -2.5879 },
+  sheffield: { lat: 53.3811, lng: -1.4701 },
+  leeds: { lat: 53.8008, lng: -1.5491 },
+  newcastle: { lat: 54.9783, lng: -1.6174 },
+  nottingham: { lat: 52.9548, lng: -1.1581 },
+  southampton: { lat: 50.9097, lng: -1.4044 },
+  brighton: { lat: 50.8225, lng: -0.1372 },
+  oxford: { lat: 51.7520, lng: -1.2577 },
+  cambridge: { lat: 52.2053, lng: 0.1218 },
+  york: { lat: 53.9600, lng: -1.0873 },
+  bath: { lat: 51.3758, lng: -2.3599 },
+  edinburgh: { lat: 55.9533, lng: -3.1883 },
+  glasgow: { lat: 55.8642, lng: -4.2518 },
+  aberdeen: { lat: 57.1497, lng: -2.0943 },
+  dundee: { lat: 56.4620, lng: -2.9707 },
+  cardiff: { lat: 51.4816, lng: -3.1791 },
+  swansea: { lat: 51.6214, lng: -3.9436 },
+  belfast: { lat: 54.5973, lng: -5.9301 },
+  derry: { lat: 54.9966, lng: -7.3086 },
+}
 
 const AddressAutocomplete = ({
   value,
@@ -21,6 +49,7 @@ const AddressAutocomplete = ({
   const wrapperRef = useRef(null)
   const inputRef = useRef(null)
   const debounceTimer = useRef(null)
+  const isSelectingRef = useRef(false) // ✅ Track if we're selecting from dropdown
 
   // UK Cities for fallback
   const UK_CITIES = [
@@ -41,12 +70,14 @@ const AddressAutocomplete = ({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  // ✅ FIX: Only update inputValue from props when NOT selecting
   useEffect(() => {
-    if (value !== inputValue && !selectedAddress) {
+    if (!isSelectingRef.current && value !== inputValue) {
       setInputValue(value || '')
     }
   }, [value])
 
+  // ✅ FIX: Fetch suggestions with better error handling
   const fetchSuggestions = async (query) => {
     if (!query || query.length < minChars) {
       setSuggestions([])
@@ -57,66 +88,131 @@ const AddressAutocomplete = ({
     setIsLoading(true)
     
     try {
-      // Try Nominatim first
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?` +
-        `q=${encodeURIComponent(query)}&` +
-        `format=json&` +
-        `addressdetails=1&` +
-        `limit=10&` +
-        `countrycodes=gb&` +
-        `accept-language=en&` +
-        `bounded=1&` +
-        `viewbox=-10.0,60.0,2.0,49.0`
-      )
-
       let results = []
-      if (response.ok) {
-        const data = await response.json()
-        results = data
-          .filter(item => {
-            const isUK = item.display_name?.includes('United Kingdom') ||
-                        item.display_name?.includes('UK') ||
-                        item.address?.country_code === 'gb'
-            return isUK
-          })
-          .map(item => ({
-            displayName: item.display_name || '',
-            lat: parseFloat(item.lat) || 0,
-            lon: parseFloat(item.lon) || 0,
-            address: item.address || {},
-            importance: item.importance || 0,
-            type: item.type || 'address',
-            class: item.class || 'place',
-            houseNumber: item.address?.house_number || '',
-            road: item.address?.road || item.address?.street || '',
-            suburb: item.address?.suburb || '',
-            city: item.address?.city || item.address?.town || item.address?.village || '',
-            county: item.address?.county || item.address?.state || '',
-            postcode: item.address?.postcode || '',
-            country: item.address?.country || 'United Kingdom',
-            region: item.address?.region || '',
-          }))
+
+      // Try Nominatim with timeout
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+        
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/search?` +
+          `q=${encodeURIComponent(query)}&` +
+          `format=json&` +
+          `addressdetails=1&` +
+          `limit=5&` +
+          `countrycodes=gb&` +
+          `accept-language=en`,
+          { signal: controller.signal }
+        )
+        
+        clearTimeout(timeoutId)
+        
+        if (response.ok) {
+          const data = await response.json()
+          results = data
+            .filter(item => {
+              const isUK = item.display_name?.includes('United Kingdom') ||
+                          item.display_name?.includes('UK') ||
+                          item.address?.country_code === 'gb'
+              return isUK
+            })
+            .map(item => ({
+              displayName: item.display_name || '',
+              lat: parseFloat(item.lat) || 0,
+              lon: parseFloat(item.lon) || 0,
+              address: item.address || {},
+              importance: item.importance || 0,
+              type: item.type || 'address',
+              class: item.class || 'place',
+              houseNumber: item.address?.house_number || '',
+              road: item.address?.road || item.address?.street || '',
+              suburb: item.address?.suburb || '',
+              city: item.address?.city || item.address?.town || item.address?.village || '',
+              county: item.address?.county || item.address?.state || '',
+              postcode: item.address?.postcode || '',
+              country: item.address?.country || 'United Kingdom',
+              region: item.address?.region || '',
+            }))
+        }
+      } catch (e) {
+        console.warn('Nominatim fetch failed, using local fallback:', e.message)
       }
 
-      // If few results, add city suggestions
-      if (results.length < 3) {
+      // ✅ FALLBACK: If Nominatim fails or returns few results, use city matching
+      if (results.length < 2) {
         const lowerQuery = query.toLowerCase()
-        const matchedCities = UK_CITIES
-          .filter(city => city.toLowerCase().includes(lowerQuery))
-          .map(city => ({
-            displayName: `${city}, United Kingdom`,
-            lat: 0,
-            lon: 0,
-            address: { city: city, country: 'United Kingdom' },
+        
+        // First try exact city match
+        let matchedCity = UK_CITIES.find(city => 
+          city.toLowerCase() === lowerQuery || 
+          city.toLowerCase().includes(lowerQuery)
+        )
+        
+        if (matchedCity) {
+          const cityKey = matchedCity.toLowerCase()
+          const coords = UK_CITY_COORDINATES[cityKey]
+          results.push({
+            displayName: `${matchedCity}, United Kingdom`,
+            lat: coords?.lat || 51.5074,
+            lon: coords?.lng || -0.1278,
+            address: { city: matchedCity, country: 'United Kingdom' },
             type: 'city',
             class: 'place',
-            city: city,
+            city: matchedCity,
             country: 'United Kingdom',
             isFallback: true
-          }))
+          })
+        }
         
-        results = [...results, ...matchedCities]
+        // Then try partial matches
+        if (results.length < 3) {
+          const matchedCities = UK_CITIES
+            .filter(city => city.toLowerCase().includes(lowerQuery) && city !== matchedCity)
+            .slice(0, 3)
+            .map(city => {
+              const cityKey = city.toLowerCase()
+              const coords = UK_CITY_COORDINATES[cityKey]
+              return {
+                displayName: `${city}, United Kingdom`,
+                lat: coords?.lat || 51.5074,
+                lon: coords?.lng || -0.1278,
+                address: { city: city, country: 'United Kingdom' },
+                type: 'city',
+                class: 'place',
+                city: city,
+                country: 'United Kingdom',
+                isFallback: true
+              }
+            })
+          results = [...results, ...matchedCities]
+        }
+      }
+
+      // If still no results, try to extract city from the query
+      if (results.length === 0) {
+        const words = query.split(' ')
+        for (const word of words) {
+          const foundCity = UK_CITIES.find(city => 
+            city.toLowerCase().includes(word.toLowerCase()) && word.length > 2
+          )
+          if (foundCity) {
+            const cityKey = foundCity.toLowerCase()
+            const coords = UK_CITY_COORDINATES[cityKey]
+            results.push({
+              displayName: `${foundCity}, United Kingdom`,
+              lat: coords?.lat || 51.5074,
+              lon: coords?.lng || -0.1278,
+              address: { city: foundCity, country: 'United Kingdom' },
+              type: 'city',
+              class: 'place',
+              city: foundCity,
+              country: 'United Kingdom',
+              isFallback: true
+            })
+            break
+          }
+        }
       }
 
       setSuggestions(results)
@@ -129,10 +225,22 @@ const AddressAutocomplete = ({
     }
   }
 
+  // ✅ FIX: Handle input change - always update inputValue
   const handleInputChange = (e) => {
     const val = e.target.value
     setInputValue(val)
     setSelectedAddress(null)
+    isSelectingRef.current = false
+    
+    // ✅ Pass the raw input value to parent immediately
+    if (onChange) {
+      onChange({
+        target: {
+          name: 'address',
+          value: val
+        }
+      })
+    }
     
     if (debounceTimer.current) {
       clearTimeout(debounceTimer.current)
@@ -140,60 +248,31 @@ const AddressAutocomplete = ({
 
     debounceTimer.current = setTimeout(() => {
       fetchSuggestions(val)
-    }, 300)
+    }, 400)
   }
 
+  // ✅ FIX: Handle selection - only update when user explicitly selects
   const handleSelect = (suggestion) => {
     const fullAddress = suggestion.displayName || 
-                       (suggestion.city ? `${suggestion.city}, United Kingdom` : '')
+                       (suggestion.city ? `${suggestion.city}, United Kingdom` : inputValue)
     
+    isSelectingRef.current = true
     setInputValue(fullAddress)
     setSelectedAddress(suggestion)
     setSuggestions([])
     setIsOpen(false)
     
+    // ✅ Call onChange with the selected full address
     if (onChange) {
       onChange({
         target: {
           name: 'address',
-          value: fullAddress,
+          value: fullAddress
         }
       })
     }
     
-    if (onSelect) {
-      onSelect(suggestion)
-    }
-  }
-
-  const handleCitySelect = (city) => {
-    const fullAddress = `${city}, United Kingdom`
-    const suggestion = {
-      displayName: fullAddress,
-      lat: 0,
-      lon: 0,
-      address: { city: city, country: 'United Kingdom' },
-      type: 'city',
-      class: 'place',
-      city: city,
-      country: 'United Kingdom',
-      isFallback: true
-    }
-    
-    setInputValue(fullAddress)
-    setSelectedAddress(suggestion)
-    setSuggestions([])
-    setIsOpen(false)
-    
-    if (onChange) {
-      onChange({
-        target: {
-          name: 'address',
-          value: fullAddress,
-        }
-      })
-    }
-    
+    // ✅ Call onSelect with the suggestion
     if (onSelect) {
       onSelect(suggestion)
     }
@@ -204,6 +283,8 @@ const AddressAutocomplete = ({
     setSelectedAddress(null)
     setSuggestions([])
     setIsOpen(false)
+    isSelectingRef.current = false
+    
     if (onChange) {
       onChange({
         target: {
@@ -231,6 +312,7 @@ const AddressAutocomplete = ({
             class: 'place',
             isFallback: true
           }
+          isSelectingRef.current = true
           setInputValue(`Current Location (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`)
           setSelectedAddress(suggestion)
           setIsOpen(false)
@@ -315,13 +397,16 @@ const AddressAutocomplete = ({
         </div>
       </div>
 
-      {/* Suggestions Dropdown - Without Error Messages */}
+      {/* Suggestions Dropdown */}
       {isOpen && suggestions.length > 0 && (
         <div className="absolute z-50 w-full mt-1 bg-white rounded-xl shadow-large border border-gray-200 max-h-72 overflow-y-auto">
           <div className="p-2 border-b border-gray-100 sticky top-0 bg-white flex justify-between items-center">
             <p className="text-xs text-text-lighter">
               {suggestions.length} address{suggestions.length > 1 ? 'es' : ''} found
             </p>
+            {suggestions.some(s => s.isFallback) && (
+              <span className="text-xs text-amber-600">Using local database</span>
+            )}
           </div>
           {suggestions.map((suggestion, index) => {
             const displayAddress = getFormattedAddress(suggestion)
@@ -356,6 +441,11 @@ const AddressAutocomplete = ({
                     {suggestion.postcode && ` • ${suggestion.postcode}`}
                     {isFallback && ' • City centre approximate'}
                   </p>
+                  {isFallback && (
+                    <p className="text-[10px] text-amber-500 mt-0.5">
+                      ⚠️ Using approximate location
+                    </p>
+                  )}
                 </div>
               </button>
             )
@@ -404,8 +494,5 @@ const AddressAutocomplete = ({
     </div>
   )
 }
-
-// Add missing import
-import { FaCheckCircle } from 'react-icons/fa'
 
 export default AddressAutocomplete

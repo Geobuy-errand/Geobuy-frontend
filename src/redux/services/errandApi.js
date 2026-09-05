@@ -1,4 +1,3 @@
-
 import { baseApi } from './api'
 
 export const errandApi = baseApi.injectEndpoints({
@@ -38,6 +37,25 @@ export const errandApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['Errand'],
     }),
+    // ✅ ADD: Get errand by status
+    getErrandsByStatus: builder.query({
+      query: (status) => `/errands/status/${status}`,
+      providesTags: ['Errand'],
+    }),
+    // ✅ ADD: Get errand stats
+    getErrandStats: builder.query({
+      query: () => '/errands/stats',
+      providesTags: ['Errand'],
+    }),
+    // ✅ ADD: Submit offer for errand
+    submitOffer: builder.mutation({
+      query: (data) => ({
+        url: '/errands/offer',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: ['Errand'],
+    }),
   }),
   overrideExisting: false,
 })
@@ -49,4 +67,7 @@ export const {
   useCreateErrandMutation,
   useAcceptErrandMutation,
   useUpdateErrandStatusMutation,
+  useGetErrandsByStatusQuery,
+  useGetErrandStatsQuery,
+  useSubmitOfferMutation,
 } = errandApi

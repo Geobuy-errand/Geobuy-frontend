@@ -114,76 +114,41 @@ const extractStateFromAddress = (address) => {
 }
 
 export const getCoordinatesFromAddress = async (address, city = null, state = null) => {
-  // Try to build the best possible search query
-  let searchQuery = address || ''
-  if (city) searchQuery += `, ${city}`
-  if (state) searchQuery += `, ${state}`
+  // ✅ If we have city, use it IMMEDIATELY as primary source
+  if (city && UK_CITY_COORDINATES[city]) {
+    return {
+      ...UK_CITY_COORDINATES[city],
+      source: 'city_primary'
+    };
+  }
   
-  if (!searchQuery.trim()) {
-    // If absolutely nothing, use London
-    return { lat: 51.5074, lng: -0.1278, source: 'default' }
+  // ✅ If we have state, use it as secondary
+  if (state && UK_REGIONS[state]) {
+    return {
+      ...UK_REGIONS[state],
+      source: 'state_primary'
+    };
   }
-
-  // Try 1: Nominatim API
-  try {
-    const response = await fetch(
-      `https://nominatim.openstreetmap.org/search?` +
-      `q=${encodeURIComponent(searchQuery)}&` +
-      `format=json&` +
-      `limit=1&` +
-      `countrycodes=gb&` +
-      `accept-language=en`
-    )
-    
-    if (response.ok) {
-      const data = await response.json()
-      if (data && data.length > 0) {
-        const lat = parseFloat(data[0].lat)
-        const lng = parseFloat(data[0].lon)
-        if (!isNaN(lat) && !isNaN(lng)) {
-          return { lat, lng, source: 'nominatim' }
-        }
-      }
-    }
-  } catch (e) {
-    // Silent fail - continue to fallback
-  }
-
-  // Try 2: Extract city from address or use provided city
-  const cityKey = city || extractCityFromAddress(address)
+  
+  // If no city/state, try to extract from address
+  const cityKey = extractCityFromAddress(address);
   if (cityKey && UK_CITY_COORDINATES[cityKey]) {
     return {
       ...UK_CITY_COORDINATES[cityKey],
-      source: 'city_fallback'
-    }
+      source: 'city_extracted'
+    };
   }
-
-  // Try 3: Extract state from address or use provided state
-  const stateKey = state || extractStateFromAddress(address)
+  
+  const stateKey = extractStateFromAddress(address);
   if (stateKey && UK_REGIONS[stateKey]) {
     return {
       ...UK_REGIONS[stateKey],
-      source: 'state_fallback'
-    }
+      source: 'state_extracted'
+    };
   }
-
-  // Try 4: Look for any UK city mention in the address
-  const lowerAddress = (address || '').toLowerCase()
-  for (const [cityKey, coords] of Object.entries(UK_CITY_COORDINATES)) {
-    if (lowerAddress.includes(cityKey)) {
-      return { ...coords, source: 'city_mentioned' }
-    }
-  }
-
-  // Try 5: Look for any UK state mention in the address
-  for (const [stateKey, coords] of Object.entries(UK_REGIONS)) {
-    if (lowerAddress.includes(stateKey)) {
-      return { ...coords, source: 'state_mentioned' }
-    }
-  }
-
+  
   // Final fallback: London
-  return { lat: 51.5074, lng: -0.1278, source: 'default' }
+  return { lat: 51.5074, lng: -0.1278, source: 'default' };
 }
 /**
  * Clean and format address for geocoding

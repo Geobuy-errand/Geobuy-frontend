@@ -23,7 +23,7 @@ const Login = () => {
     const dashboards = {
       admin: "/admin/dashboard",
       provider: "/provider/dashboard",
-      errand_runner: "/runner/dashboard",
+      errand_runner: "/errand-runner/dashboard",
       customer: "/customer/dashboard",
     };
     return dashboards[role] || "/customer/dashboard";

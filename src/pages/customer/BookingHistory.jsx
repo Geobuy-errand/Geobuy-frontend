@@ -7,7 +7,6 @@ const BookingHistory = () => {
   const { data: bookings, isLoading } = useGetBookingsQuery()
   const [filter, setFilter] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
-  console.log({bookings})
 
   const filteredBookings = bookings?.filter(booking => {
     const matchesStatus = filter === 'all' || booking.status === filter
@@ -101,15 +100,15 @@ const BookingHistory = () => {
                     {booking.pickup?.address}
                   </p>
                   <p className="text-sm text-text-light">
-                    {new Date(booking.date).toLocaleDateString()} at {booking.time}
+                    {new Date(booking.preferredDate).toLocaleDateString()} at {booking.preferredTime}
                   </p>
                 </div>
                 <div className="flex items-center space-x-4 mt-4 md:mt-0">
                   <span className="text-lg font-bold text-primary">
-                    £{booking.estimatedPrice?.toFixed(2)}
+                    £{booking.subtotal?.toFixed(2)}
                   </span>
                   <span className="text-sm text-text-light">
-                    #{booking.bookingId}
+                    #{booking.errandId}
                   </span>
                 </div>
               </div>

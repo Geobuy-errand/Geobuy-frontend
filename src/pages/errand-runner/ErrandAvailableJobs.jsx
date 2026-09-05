@@ -3,7 +3,10 @@ import { Link } from 'react-router-dom'
 import { useGetAvailableErrandsQuery, useAcceptErrandMutation } from '../../redux/services/errandApi'
 import { useGetErrandRunnerProfileQuery } from '../../redux/services/errandRunnerApi'
 import { toast } from 'react-hot-toast'
-import { FaMapMarkerAlt, FaDollarSign, FaClock, FaCheck, FaSearch, FaRuler, FaSpinner, FaArrowRight } from 'react-icons/fa'
+import { 
+  FaMapMarkerAlt, FaDollarSign, FaClock, FaCheck, FaSearch, 
+  FaRuler, FaSpinner, FaArrowRight, FaCreditCard, FaTimes 
+} from 'react-icons/fa'
 import socketService from '../../redux/services/socketService'
 
 const ErrandAvailableJobs = () => {
@@ -62,6 +65,9 @@ const ErrandAvailableJobs = () => {
   })
 
   const serviceTypes = [...new Set(jobs?.map(j => j.serviceType) || [])]
+
+  // ✅ Check if payment is required (paymentStatus === 'pending')
+  const isPaymentPending = (job) => job.paymentStatus === 'pending' || job.paymentStatus === 'pending'
 
   return (
     <div className="p-4 md:p-6">
@@ -130,94 +136,125 @@ const ErrandAvailableJobs = () => {
         </div>
       ) : (
         <div className="space-y-4">
-          {sortedJobs?.map((job) => (
-            <div key={job._id} className="card hover:shadow-medium transition-shadow p-4 md:p-6">
-              <div className="flex flex-col gap-4">
-                {/* Header: Service Type, Distance, Urgent */}
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="text-base md:text-lg font-semibold text-text">
-                    {job.serviceType?.replace('_', ' ')}
-                  </h3>
-                  {job.distance && (
-                    <span className="flex items-center text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
-                      <FaRuler className="mr-1 text-xs" />
-                      {job.distance.toFixed(1)} miles
-                    </span>
-                  )}
-                  {job.isUrgent && (
-                    <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full">
-                      🔴 Urgent
-                    </span>
-                  )}
-                </div>
-
-                {/* Location Details */}
-                <div className="space-y-1">
-                  <div className="flex items-start text-sm text-text-light">
-                    <FaMapMarkerAlt className="mr-1.5 mt-0.5 flex-shrink-0 text-primary" />
-                    <span className="break-words">{job.pickup?.address}</span>
+          {sortedJobs?.map((job) => {
+            const isPaid = job.paymentStatus === 'paid' || job.paymentStatus === 'released'
+            const paymentPending = job.paymentStatus === 'pending'
+            
+            return (
+              <div key={job._id} className="card hover:shadow-medium transition-shadow p-4 md:p-6">
+                <div className="flex flex-col gap-4">
+                  {/* Header: Service Type, Distance, Payment Status */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-base md:text-lg font-semibold text-text">
+                      {job.serviceType?.replace('_', ' ')}
+                    </h3>
+                    {job.distance && (
+                      <span className="flex items-center text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                        <FaRuler className="mr-1 text-xs" />
+                        {job.distance.toFixed(1)} miles
+                      </span>
+                    )}
+                    {job.isUrgent && (
+                      <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full">
+                        🔴 Urgent
+                      </span>
+                    )}
+                    {/* ✅ Payment Status Badge */}
+                    {isPaid ? (
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full flex items-center gap-1">
+                        <FaCheck className="text-xs" />
+                        Paid
+                      </span>
+                    ) : paymentPending ? (
+                      <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full flex items-center gap-1">
+                        <FaCreditCard className="text-xs" />
+                        Payment Pending
+                      </span>
+                    ) : (
+                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                        Payment Required
+                      </span>
+                    )}
                   </div>
-                  {job.dropoff?.address && (
+
+                  {/* Location Details */}
+                  <div className="space-y-1">
                     <div className="flex items-start text-sm text-text-light">
-                      <FaMapMarkerAlt className="mr-1.5 mt-0.5 flex-shrink-0 text-secondary" />
-                      <span className="break-words">{job.dropoff.address}</span>
+                      <FaMapMarkerAlt className="mr-1.5 mt-0.5 flex-shrink-0 text-primary" />
+                      <span className="break-words">{job.pickup?.address}</span>
                     </div>
+                    {job.dropoff?.address && (
+                      <div className="flex items-start text-sm text-text-light">
+                        <FaMapMarkerAlt className="mr-1.5 mt-0.5 flex-shrink-0 text-secondary" />
+                        <span className="break-words">{job.dropoff.address}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Date/Time and Price */}
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center text-sm text-text-light">
+                      <FaClock className="mr-1.5 flex-shrink-0" />
+                      {new Date(job.preferredDate || job.date).toLocaleDateString()} at {job.preferredTime || job.time}
+                    </div>
+                    <div className="flex items-center text-base md:text-lg font-bold text-primary">
+                      <FaDollarSign className="text-sm md:text-base" />
+                      £{job.total?.toFixed(2) || job.estimatedPrice?.toFixed(2)}
+                    </div>
+                  </div>
+
+                  {/* Task Details (if any) */}
+                  {job.taskDetails && (
+                    <p className="text-sm text-text-light line-clamp-2">{job.taskDetails}</p>
                   )}
-                </div>
 
-                {/* Date/Time and Price */}
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center text-sm text-text-light">
-                    <FaClock className="mr-1.5 flex-shrink-0" />
-                    {new Date(job.preferredDate || job.date).toLocaleDateString()} at {job.preferredTime || job.time}
-                  </div>
-                  <div className="flex items-center text-base md:text-lg font-bold text-primary">
-                    <FaDollarSign className="text-sm md:text-base" />
-                    £{job.total?.toFixed(2) || job.estimatedPrice?.toFixed(2)}
-                  </div>
-                </div>
-
-                {/* Task Details (if any) */}
-                {job.taskDetails && (
-                  <p className="text-sm text-text-light line-clamp-2">{job.taskDetails}</p>
-                )}
-
-                {/* Action Button - Full width on mobile */}
-                <div className="pt-3 border-t border-gray-100">
-                  {isVerified ? (
-                    <button
-                      onClick={() => handleAccept(job._id)}
-                      disabled={isAccepting}
-                      className="w-full btn-primary text-sm md:text-base py-2.5 md:py-3 px-4 flex items-center justify-center space-x-2 disabled:opacity-50 rounded-xl"
-                    >
-                      {isAccepting ? (
-                        <>
-                          <FaSpinner className="animate-spin" />
-                          <span>Accepting...</span>
-                        </>
-                      ) : (
-                        <>
-                          <FaCheck />
-                          <span>Accept Errand</span>
-                          <FaArrowRight className="text-xs" />
-                        </>
-                      )}
-                    </button>
-                  ) : (
-                    <div className="text-center">
-                      <p className="text-xs text-red-500 mb-2">Complete verification to accept errands</p>
-                      <Link
-                        to="/errand-runner/verification"
-                        className="btn-secondary text-sm py-2 px-4 inline-block w-full md:w-auto text-center"
+                  {/* Action Button - Full width on mobile */}
+                  <div className="pt-3 border-t border-gray-100">
+                    {!isVerified ? (
+                      <div className="text-center">
+                        <p className="text-xs text-red-500 mb-2">Complete verification to accept errands</p>
+                        <Link
+                          to="/errand-runner/verification"
+                          className="btn-secondary text-sm py-2 px-4 inline-block w-full md:w-auto text-center"
+                        >
+                          Complete Verification
+                        </Link>
+                      </div>
+                    ) : paymentPending ? (
+                      // ✅ Show payment pending message
+                      <div className="w-full bg-yellow-50 border border-yellow-200 rounded-xl p-3 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <FaCreditCard className="text-yellow-600" />
+                          <p className="text-sm text-yellow-700 font-medium">Waiting for customer payment</p>
+                        </div>
+                        <p className="text-xs text-yellow-600 mt-1">You will be notified once payment is confirmed</p>
+                      </div>
+                    ) : (
+                      // ✅ Show accept button (only if paid)
+                      <button
+                        onClick={() => handleAccept(job._id)}
+                        disabled={isAccepting}
+                        className="w-full btn-primary text-sm md:text-base py-2.5 md:py-3 px-4 flex items-center justify-center space-x-2 disabled:opacity-50 rounded-xl"
                       >
-                        Complete Verification
-                      </Link>
-                    </div>
-                  )}
+                        {isAccepting ? (
+                          <>
+                            <FaSpinner className="animate-spin" />
+                            <span>Accepting...</span>
+                          </>
+                        ) : (
+                          <>
+                            <FaCheck />
+                            <span>Accept Errand</span>
+                            <FaArrowRight className="text-xs" />
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>
