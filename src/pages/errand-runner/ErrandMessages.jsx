@@ -140,10 +140,10 @@ const ErrandRunnerMessages = () => {
                             <FaUser className="text-primary text-sm flex-shrink-0" />
                             {customerName}
                           </p>
-                          <p className="text-sm text-text-light truncate flex items-center gap-2">
+                          {/* <p className="text-sm text-text-light truncate flex items-center gap-2">
                             <FaBox className="text-xs flex-shrink-0" />
                             {errand.serviceType?.replace('_', ' ')}
-                          </p>
+                          </p> */}
                           <div className="flex items-center gap-2 mt-1">
                             <span className={`text-xs px-2 py-0.5 rounded-full ${getStatusBadge(errand.status)}`}>
                               {errand.status.replace('_', ' ')}
@@ -179,9 +179,9 @@ const ErrandRunnerMessages = () => {
                     <p className="font-medium text-text truncate">
                       {selectedErrand.customerId?.fullName}
                     </p>
-                    <p className="text-xs text-text-light truncate">
+                    {/* <p className="text-xs text-text-light truncate">
                       {selectedErrand.serviceType?.replace('_', ' ')} #{selectedErrand.errandId}
-                    </p>
+                    </p> */}
                   </div>
                 </div>
                 <Link

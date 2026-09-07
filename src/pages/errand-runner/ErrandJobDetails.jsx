@@ -355,12 +355,12 @@ const ErrandJobDetails = () => {
               Errand Details
             </h2>
             <div className="space-y-3">
-              <div className="flex justify-between">
+              {/* <div className="flex justify-between">
                 <span className="text-text-light">Service Type</span>
                 <span className="font-medium text-text">
                   {errand.serviceType?.replace("_", " ")}
                 </span>
-              </div>
+              </div> */}
               {errand.taskDetails && (
                 <div>
                   <span className="text-text-light">Description</span>

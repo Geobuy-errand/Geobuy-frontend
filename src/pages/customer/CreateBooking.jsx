@@ -2,13 +2,10 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { useCreateErrandMutation } from "../../redux/services/errandApi";
-import { useGetServicesQuery } from "../../redux/services/serviceApi";
 import {
   getDistance,
   getApproximateDistance,
 } from "../../services/distanceService";
-import UKCitiesDropdown from "../../components/utils/UKCitiesDropdown";
-import UKStatesDropdown from "../../components/utils/UKStatesDropdown";
 import AddressAutocomplete from "../../components/AddressAutocomplete";
 import { toast } from "react-hot-toast";
 import {
@@ -33,9 +30,6 @@ const CreateBooking = () => {
   const { user } = useSelector((state) => state.auth);
   const [createErrand, { isLoading }] = useCreateErrandMutation();
 
-  // ✅ Fetch services from API
-  const { data: services, isLoading: servicesLoading } = useGetServicesQuery();
-
   // Pricing constants
   const BASE_FEE = 3.99;
   const SUBSCRIPTION_DISCOUNT = 20;
@@ -53,8 +47,6 @@ const CreateBooking = () => {
   };
 
   const [formData, setFormData] = useState({
-    serviceType: "",
-    serviceId: "",
     pickup: {
       address: "",
       street: "",
@@ -111,12 +103,6 @@ const CreateBooking = () => {
   const [isDistanceCalculated, setIsDistanceCalculated] = useState(false);
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(true);
 
-  // City & State selections - PURELY FOR FALLBACK, DO NOT MODIFY ADDRESS
-  const [selectedPickupCity, setSelectedPickupCity] = useState("");
-  const [selectedDropoffCity, setSelectedDropoffCity] = useState("");
-  const [selectedPickupState, setSelectedPickupState] = useState("");
-  const [selectedDropoffState, setSelectedDropoffState] = useState("");
-
   // Manual distance edit
   const [isEditingDistance, setIsEditingDistance] = useState(false);
   const [manualDistance, setManualDistance] = useState("");
@@ -127,45 +113,29 @@ const CreateBooking = () => {
   // DISTANCE CALCULATION FUNCTION
   const calculateRealDistance = async () => {
     // Check if we have enough data to calculate
-    const hasPickupData =
-      formData.pickup.address || selectedPickupCity || selectedPickupState;
-    const hasDropoffData =
-      formData.dropoff.address || selectedDropoffCity || selectedDropoffState;
+    const hasPickupData = formData.pickup.address;
+    const hasDropoffData = formData.dropoff.address;
+
+    if (!hasPickupData || !hasDropoffData) {
+      console.log("⏳ Waiting for both pickup and dropoff data...");
+      return;
+    }
 
     setIsCalculating(true);
     setDistanceError(null);
 
     try {
-
       const result = await getDistance(
         formData.pickup.address || "",
         formData.dropoff.address || "",
-        selectedPickupCity || null,
-        selectedDropoffCity || null,
-        selectedPickupState || null,
-        selectedDropoffState || null,
         "DRIVING"
       );
-
 
       let distanceInMiles = result.distance.value;
 
       // If distance is 0 or very small, set a base distance
       if (distanceInMiles < 0.1) {
-        const isSameCity =
-          selectedPickupCity &&
-          selectedDropoffCity &&
-          selectedPickupCity === selectedDropoffCity;
-        const isSameState =
-          selectedPickupState &&
-          selectedDropoffState &&
-          selectedPickupState === selectedDropoffState;
-
-        if (isSameCity || isSameState) {
-          distanceInMiles = BASE_SAME_LOCATION_MILES;
-        } else {
-          distanceInMiles = 0.5;
-        }
+        distanceInMiles = BASE_SAME_LOCATION_MILES;
       }
 
       setDistance(distanceInMiles);
@@ -176,19 +146,11 @@ const CreateBooking = () => {
       setIsDistanceCalculated(true);
       calculatePrice(distanceInMiles);
 
-      // ✅ Mark addresses as valid if we have data
-      if (
-        formData.pickup.address ||
-        selectedPickupCity ||
-        selectedPickupState
-      ) {
+      // Mark addresses as valid
+      if (formData.pickup.address) {
         setAddressesValid((prev) => ({ ...prev, pickup: true }));
       }
-      if (
-        formData.dropoff.address ||
-        selectedDropoffCity ||
-        selectedDropoffState
-      ) {
+      if (formData.dropoff.address) {
         setAddressesValid((prev) => ({ ...prev, dropoff: true }));
       }
 
@@ -208,11 +170,7 @@ const CreateBooking = () => {
       // Always have a fallback
       const fallbackResult = getApproximateDistance(
         formData.pickup.address || "",
-        formData.dropoff.address || "",
-        selectedPickupCity || null,
-        selectedDropoffCity || null,
-        selectedPickupState || null,
-        selectedDropoffState || null
+        formData.dropoff.address || ""
       );
 
       let fallbackDistance =
@@ -228,19 +186,11 @@ const CreateBooking = () => {
       setIsDistanceCalculated(true);
       calculatePrice(fallbackDistance);
 
-      // ✅ Mark addresses as valid even with fallback
-      if (
-        formData.pickup.address ||
-        selectedPickupCity ||
-        selectedPickupState
-      ) {
+      // Mark addresses as valid even with fallback
+      if (formData.pickup.address) {
         setAddressesValid((prev) => ({ ...prev, pickup: true }));
       }
-      if (
-        formData.dropoff.address ||
-        selectedDropoffCity ||
-        selectedDropoffState
-      ) {
+      if (formData.dropoff.address) {
         setAddressesValid((prev) => ({ ...prev, dropoff: true }));
       }
 
@@ -275,7 +225,6 @@ const CreateBooking = () => {
   };
 
   // EFFECTS - Auto-calculate when data changes
-
   useEffect(() => {
     if (user?.subscription?.isSubscribed) {
       setIsSubscribed(true);
@@ -284,10 +233,8 @@ const CreateBooking = () => {
 
   // Auto-calculate when ANY location data changes
   useEffect(() => {
-    const hasPickupData =
-      formData.pickup.address || selectedPickupCity || selectedPickupState;
-    const hasDropoffData =
-      formData.dropoff.address || selectedDropoffCity || selectedDropoffState;
+    const hasPickupData = formData.pickup.address;
+    const hasDropoffData = formData.dropoff.address;
 
     if (hasPickupData && hasDropoffData) {
       if (window.distanceTimer) {
@@ -299,14 +246,7 @@ const CreateBooking = () => {
       }, 600);
       return () => clearTimeout(window.distanceTimer);
     }
-  }, [
-    formData.pickup.address,
-    selectedPickupCity,
-    selectedPickupState,
-    formData.dropoff.address,
-    selectedDropoffCity,
-    selectedDropoffState,
-  ]);
+  }, [formData.pickup.address, formData.dropoff.address]);
 
   // Recalculate price when any pricing option changes
   useEffect(() => {
@@ -322,13 +262,10 @@ const CreateBooking = () => {
     formData.waitTimeMinutes,
   ]);
 
-  // HANDLERS - FIXED FOR BOTH AUTOSELECT AND MANUAL TYPING
-
-  // ✅ For when user selects from autocomplete (gets suggestion object)
+  // HANDLERS
   const handleAddressSelect = (type, suggestion) => {
     const addressField = type === "pickup" ? "pickup" : "dropoff";
 
-    // Get the full address from the suggestion
     const fullAddress =
       suggestion.displayName || suggestion.address?.road || "";
     const addressParts = fullAddress.split(",") || [];
@@ -359,108 +296,62 @@ const CreateBooking = () => {
       [type]: true,
     }));
 
-    // Trigger distance calculation after state update
     setTimeout(() => {
-      if (formData.pickup.address || formData.dropoff.address) {
+      if (formData.pickup.address && formData.dropoff.address) {
         calculateRealDistance();
       }
     }, 500);
   };
 
-  // ✅ For when user types manually (gets event object)
-  // ✅ Make sure this handler is correctly set up
-const handleAddressChange = (type, e) => {
-  const addressField = type === "pickup" ? "pickup" : "dropoff";
-  
-  // Get the value from the event
-  const value = e?.target?.value || e || '';
-  
+  // ✅ FIXED: Handle both event objects and direct string values
+  const handleAddressChange = (type, valueOrEvent) => {
+    const addressField = type === "pickup" ? "pickup" : "dropoff";
 
-  setFormData((prev) => ({
-    ...prev,
-    [addressField]: {
-      ...prev[addressField],
-      address: value,
-      coordinates: null,
-    },
-  }));
+    // Handle different input types
+    let value = "";
+    if (typeof valueOrEvent === "string") {
+      value = valueOrEvent;
+    } else if (valueOrEvent?.target?.value !== undefined) {
+      value = valueOrEvent.target.value;
+    } else if (valueOrEvent?.value !== undefined) {
+      value = valueOrEvent.value;
+    } else {
+      value = String(valueOrEvent || "");
+    }
 
-  // If address is cleared, mark as invalid
-  if (!value || value.trim() === '') {
-    setAddressesValid((prev) => ({
+    // If value is [object Object], clear it
+    if (value === "[object Object]" || value === "object Object") {
+      value = "";
+    }
+
+    setFormData((prev) => ({
       ...prev,
-      [type]: false,
+      [addressField]: {
+        ...prev[addressField],
+        address: value,
+        coordinates: null,
+      },
     }));
-    setIsDistanceCalculated(false);
-    setDistance(0);
-  } else {
-    setAddressesValid((prev) => ({
-      ...prev,
-      [type]: true,
-    }));
-  }
 
-  setIsDistanceCalculated(false);
-  setDistance(0);
-  setDistanceText('');
-  setDurationText('');
-  setDistanceError(null);
-};
-
-  // CITY & STATE HANDLERS - DO NOT MODIFY ADDRESS FIELD
-
-  // ✅ FIX: Handle city selection - ONLY update city dropdown, NOT the address
-  const handlePickupCitySelect = (cityKey) => {
-    setSelectedPickupCity(cityKey);
-    // ✅ DO NOT populate address field
-    // ✅ ONLY use for fallback distance calculation
-    if (
-      formData.dropoff.address ||
-      selectedDropoffCity ||
-      selectedDropoffState
-    ) {
-      setTimeout(() => calculateRealDistance(), 300);
-    }
-  };
-
-  const handleDropoffCitySelect = (cityKey) => {
-    setSelectedDropoffCity(cityKey);
-    // ✅ DO NOT populate address field
-    if (formData.pickup.address || selectedPickupCity || selectedPickupState) {
-      setTimeout(() => calculateRealDistance(), 300);
-    }
-  };
-
-  // ✅ FIX: Handle state selection - ONLY update state dropdown, NOT the address
-  const handlePickupStateSelect = (stateKey) => {
-    setSelectedPickupState(stateKey);
-    // ✅ DO NOT populate address field
-    if (
-      formData.dropoff.address ||
-      selectedDropoffCity ||
-      selectedDropoffState
-    ) {
-      setTimeout(() => calculateRealDistance(), 300);
-    }
-  };
-
-  const handleDropoffStateSelect = (stateKey) => {
-    setSelectedDropoffState(stateKey);
-    // ✅ DO NOT populate address field
-    if (formData.pickup.address || selectedPickupCity || selectedPickupState) {
-      setTimeout(() => calculateRealDistance(), 300);
-    }
-  };
-
-  const handleServiceSelect = (serviceId) => {
-    const selectedService = services?.find((s) => s._id === serviceId);
-    if (selectedService) {
-      setFormData((prev) => ({
+    if (!value || value.trim() === "") {
+      setAddressesValid((prev) => ({
         ...prev,
-        serviceId,
-        serviceType: selectedService.category || selectedService.name,
+        [type]: false,
+      }));
+      setIsDistanceCalculated(false);
+      setDistance(0);
+    } else {
+      setAddressesValid((prev) => ({
+        ...prev,
+        [type]: true,
       }));
     }
+
+    setIsDistanceCalculated(false);
+    setDistance(0);
+    setDistanceText("");
+    setDurationText("");
+    setDistanceError(null);
   };
 
   const calculatePrice = (dist) => {
@@ -559,10 +450,6 @@ const handleAddressChange = (type, e) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.serviceId) {
-      toast.error("Please select a service");
-      return;
-    }
     if (!formData.pickup.address) {
       toast.error("Please select a pickup address");
       return;
@@ -598,9 +485,7 @@ const handleAddressChange = (type, e) => {
     }
   };
 
-  // ✅ FIXED: isFormReady checks all required conditions
   const isFormReady = () => {
-    const hasService = !!formData.serviceId;
     const hasPickupAddress = !!formData.pickup.address;
     const hasDropoffAddress = !!formData.dropoff.address;
     const hasDate = !!formData.preferredDate;
@@ -611,7 +496,6 @@ const handleAddressChange = (type, e) => {
 
     return (
       notLoading &&
-      hasService &&
       hasPickupAddress &&
       hasDropoffAddress &&
       hasDate &&
@@ -621,30 +505,7 @@ const handleAddressChange = (type, e) => {
     );
   };
 
-  const getServiceIcon = (category) => {
-    const icons = {
-      shopping: "🛍️",
-      groceries: "🛒",
-      pharmacy: "💊",
-      retail: "🏪",
-      food_pickup: "🍕",
-      parcel_delivery: "📦",
-      document_delivery: "📄",
-      dry_cleaning: "👔",
-      key_collection: "🔑",
-      bill_payments: "💳",
-      queue_standing: "👥",
-      school_pickup: "🏫",
-      pet_assistance: "🐕",
-      elderly_shopping: "👴",
-      appointment_assistance: "📋",
-      business_deliveries: "🏢",
-      custom: "📌",
-    };
-    return icons[category] || "📋";
-  };
-
-  if (servicesLoading) {
+  if (false) {
     return (
       <div className="flex items-center justify-center h-64">
         <FaSpinner className="animate-spin text-primary text-3xl" />
@@ -659,57 +520,6 @@ const handleAddressChange = (type, e) => {
       </h1>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Service Selection */}
-        <div className="card">
-          <h2 className="text-lg font-semibold text-text mb-4">
-            What do you need?
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {services?.map((service) => {
-              const isSelected = formData.serviceId === service._id;
-              const icon = service.icon || getServiceIcon(service.category);
-              return (
-                <button
-                  key={service._id}
-                  type="button"
-                  onClick={() => handleServiceSelect(service._id)}
-                  className={`p-4 rounded-xl border-2 text-left transition-all duration-200
-                    ${
-                      isSelected
-                        ? "border-primary bg-primary/5 ring-2 ring-primary/20"
-                        : "border-gray-200 hover:border-primary/50"
-                    }`}
-                >
-                  <div className="flex items-start space-x-3">
-                    <div
-                      className={`w-10 h-10 rounded-full flex items-center justify-center
-                      ${
-                        isSelected
-                          ? "bg-primary text-white"
-                          : "bg-primary/10 text-primary"
-                      }`}
-                    >
-                      <span className="text-lg">{icon}</span>
-                    </div>
-                    <div>
-                      <h3
-                        className={`font-medium ${
-                          isSelected ? "text-primary" : "text-text"
-                        }`}
-                      >
-                        {service.name}
-                      </h3>
-                      <p className="text-xs text-text-light">
-                        {service.description}
-                      </p>
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
         {/* Pickup Location */}
         <div className="card">
           <h2 className="text-lg font-semibold text-text mb-4">
@@ -733,38 +543,6 @@ const handleAddressChange = (type, e) => {
               <span>Address verified in UK</span>
             </div>
           )}
-
-          {/* City & State Selection - Pickup (Fallback only - DOES NOT MODIFY ADDRESS) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-            <div>
-              <label className="block text-sm font-medium text-text-light mb-1">
-                Pickup City (Fallback)
-              </label>
-              <UKCitiesDropdown
-                value={selectedPickupCity}
-                onChange={(e) => handlePickupCitySelect(e.target.value)}
-                placeholder="Select a city..."
-                className="bg-white"
-              />
-              <p className="text-xs text-text-lighter mt-1">
-                Used for distance calculation if address fails
-              </p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-text-light mb-1">
-                Pickup State (Fallback)
-              </label>
-              <UKStatesDropdown
-                value={selectedPickupState}
-                onChange={(e) => handlePickupStateSelect(e.target.value)}
-                placeholder="Select a state..."
-                className="bg-white"
-              />
-              <p className="text-xs text-text-lighter mt-1">
-                Used for distance calculation if address fails
-              </p>
-            </div>
-          </div>
 
           <div className="mt-4">
             <label className="block text-sm font-medium text-text-light mb-1">
@@ -833,38 +611,6 @@ const handleAddressChange = (type, e) => {
                   <span>Address verified in UK</span>
                 </div>
               )}
-
-              {/* City & State Selection - Dropoff (Fallback only - DOES NOT MODIFY ADDRESS) */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                <div>
-                  <label className="block text-sm font-medium text-text-light mb-1">
-                    Dropoff City (Fallback)
-                  </label>
-                  <UKCitiesDropdown
-                    value={selectedDropoffCity}
-                    onChange={(e) => handleDropoffCitySelect(e.target.value)}
-                    placeholder="Select a city..."
-                    className="bg-white"
-                  />
-                  <p className="text-xs text-text-lighter mt-1">
-                    Used for distance calculation if address fails
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-text-light mb-1">
-                    Dropoff State (Fallback)
-                  </label>
-                  <UKStatesDropdown
-                    value={selectedDropoffState}
-                    onChange={(e) => handleDropoffStateSelect(e.target.value)}
-                    placeholder="Select a state..."
-                    className="bg-white"
-                  />
-                  <p className="text-xs text-text-lighter mt-1">
-                    Used for distance calculation if address fails
-                  </p>
-                </div>
-              </div>
 
               <div className="mt-4">
                 <label className="block text-sm font-medium text-text-light mb-1">
@@ -1274,7 +1020,7 @@ const handleAddressChange = (type, e) => {
               <div className="text-center py-8 text-text-light">
                 <p>Select both pickup and dropoff locations</p>
                 <p className="text-xs text-text-lighter mt-2">
-                  Enter an address or select a city/state above
+                  Enter an address for both locations
                 </p>
               </div>
             )}

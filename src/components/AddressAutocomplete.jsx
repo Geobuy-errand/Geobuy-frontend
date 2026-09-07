@@ -27,6 +27,44 @@ const UK_CITY_COORDINATES = {
   swansea: { lat: 51.6214, lng: -3.9436 },
   belfast: { lat: 54.5973, lng: -5.9301 },
   derry: { lat: 54.9966, lng: -7.3086 },
+  reading: { lat: 51.4543, lng: -0.9781 },
+}
+
+// Expanded UK Cities for better matching
+const UK_CITIES = [
+  'London', 'Manchester', 'Birmingham', 'Liverpool', 'Bristol',
+  'Sheffield', 'Leeds', 'Newcastle', 'Nottingham', 'Southampton',
+  'Brighton', 'Oxford', 'Cambridge', 'York', 'Bath',
+  'Edinburgh', 'Glasgow', 'Aberdeen', 'Dundee', 'Cardiff',
+  'Swansea', 'Belfast', 'Derry', 'Reading', 'Milton Keynes',
+  'Leicester', 'Coventry', 'Stoke', 'Wolverhampton', 'Plymouth',
+  'Exeter', 'Bournemouth', 'Portsmouth', 'Canterbury', 'Dover',
+  'Norwich', 'Peterborough', 'Chelmsford', 'Colchester', 'St Albans'
+]
+
+// City aliases for better matching
+const CITY_ALIASES = {
+  london: ['london', 'greater london', 'city of london'],
+  manchester: ['manchester', 'greater manchester'],
+  birmingham: ['birmingham', 'brum', 'west midlands'],
+  liverpool: ['liverpool', 'merseyside'],
+  leeds: ['leeds', 'west yorkshire'],
+  sheffield: ['sheffield', 'south yorkshire'],
+  bristol: ['bristol', 'avon'],
+  newcastle: ['newcastle', 'newcastle upon tyne', 'tyne and wear'],
+  nottingham: ['nottingham', 'nottinghamshire'],
+  southampton: ['southampton', 'hampshire'],
+  brighton: ['brighton', 'brighton and hove'],
+  oxford: ['oxford', 'oxfordshire'],
+  cambridge: ['cambridge', 'cambridgeshire'],
+  york: ['york', 'north yorkshire'],
+  bath: ['bath', 'somerset'],
+  edinburgh: ['edinburgh', 'midlothian'],
+  glasgow: ['glasgow', 'strathclyde'],
+  cardiff: ['cardiff', 'south glamorgan'],
+  swansea: ['swansea', 'west glamorgan'],
+  belfast: ['belfast', 'county antrim'],
+  reading: ['reading', 'berkshire'],
 }
 
 const AddressAutocomplete = ({
@@ -39,7 +77,7 @@ const AddressAutocomplete = ({
   className = '',
   disabled = false,
   country = 'gb',
-  minChars = 2,
+  minChars = 1, // ✅ Changed to 1 for better UX
 }) => {
   const [suggestions, setSuggestions] = useState([])
   const [isLoading, setIsLoading] = useState(false)
@@ -49,16 +87,7 @@ const AddressAutocomplete = ({
   const wrapperRef = useRef(null)
   const inputRef = useRef(null)
   const debounceTimer = useRef(null)
-  const isSelectingRef = useRef(false) // ✅ Track if we're selecting from dropdown
-
-  // UK Cities for fallback
-  const UK_CITIES = [
-    'London', 'Manchester', 'Birmingham', 'Liverpool', 'Bristol',
-    'Sheffield', 'Leeds', 'Newcastle', 'Nottingham', 'Southampton',
-    'Brighton', 'Oxford', 'Cambridge', 'York', 'Bath',
-    'Edinburgh', 'Glasgow', 'Aberdeen', 'Dundee', 'Cardiff',
-    'Swansea', 'Belfast', 'Derry', 'Reading', 'Milton Keynes',
-  ]
+  const isSelectingRef = useRef(false)
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -70,14 +99,67 @@ const AddressAutocomplete = ({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // ✅ FIX: Only update inputValue from props when NOT selecting
   useEffect(() => {
     if (!isSelectingRef.current && value !== inputValue) {
       setInputValue(value || '')
     }
   }, [value])
 
-  // ✅ FIX: Fetch suggestions with better error handling
+  // ✅ Get city suggestions from local database (instant, no API call)
+  const getLocalCitySuggestions = (query) => {
+    const lowerQuery = query.toLowerCase().trim()
+    if (!lowerQuery) return []
+
+    const results = []
+    
+    // First try exact matches
+    for (const city of UK_CITIES) {
+      if (city.toLowerCase() === lowerQuery) {
+        results.push(city)
+      }
+    }
+    
+    // Then try partial matches
+    for (const city of UK_CITIES) {
+      if (city.toLowerCase().includes(lowerQuery) && !results.includes(city)) {
+        results.push(city)
+      }
+    }
+    
+    // Then try alias matches
+    for (const [cityKey, aliases] of Object.entries(CITY_ALIASES)) {
+      for (const alias of aliases) {
+        if (alias.includes(lowerQuery) || lowerQuery.includes(alias)) {
+          const cityName = cityKey.charAt(0).toUpperCase() + cityKey.slice(1)
+          if (!results.includes(cityName)) {
+            results.push(cityName)
+          }
+        }
+      }
+    }
+    
+    return results.slice(0, 10) // Limit to 10 results
+  }
+
+  // ✅ Build suggestion objects from city names
+  const buildSuggestions = (cityNames) => {
+    return cityNames.map(city => {
+      const cityKey = city.toLowerCase()
+      const coords = UK_CITY_COORDINATES[cityKey]
+      return {
+        displayName: `${city}, United Kingdom`,
+        lat: coords?.lat || 51.5074,
+        lon: coords?.lng || -0.1278,
+        address: { city: city, country: 'United Kingdom' },
+        type: 'city',
+        class: 'place',
+        city: city,
+        country: 'United Kingdom',
+        isFallback: true
+      }
+    })
+  }
+
   const fetchSuggestions = async (query) => {
     if (!query || query.length < minChars) {
       setSuggestions([])
@@ -90,17 +172,17 @@ const AddressAutocomplete = ({
     try {
       let results = []
 
-      // Try Nominatim with timeout
+      // ✅ Try Nominatim with timeout - but don't rely on it
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000);
+        const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 second timeout
         
         const response = await fetch(
           `https://nominatim.openstreetmap.org/search?` +
           `q=${encodeURIComponent(query)}&` +
           `format=json&` +
           `addressdetails=1&` +
-          `limit=5&` +
+          `limit=3&` +
           `countrycodes=gb&` +
           `accept-language=en`,
           { signal: controller.signal }
@@ -136,122 +218,66 @@ const AddressAutocomplete = ({
             }))
         }
       } catch (e) {
-        console.warn('Nominatim fetch failed, using local fallback:', e.message)
+        console.warn('Nominatim fetch failed, using local database:', e.message)
       }
 
-      // ✅ FALLBACK: If Nominatim fails or returns few results, use city matching
-      if (results.length < 2) {
-        const lowerQuery = query.toLowerCase()
-        
-        // First try exact city match
-        let matchedCity = UK_CITIES.find(city => 
-          city.toLowerCase() === lowerQuery || 
-          city.toLowerCase().includes(lowerQuery)
+      // ✅ ALWAYS get local city suggestions (instant, no API call)
+      const localCities = getLocalCitySuggestions(query)
+      const localSuggestions = buildSuggestions(localCities)
+      
+      // ✅ Combine results: Nominatim first, then local cities
+      // Filter out duplicates by displayName
+      const combinedResults = [...results]
+      for (const localSuggestion of localSuggestions) {
+        const exists = combinedResults.some(r => 
+          r.displayName === localSuggestion.displayName ||
+          (r.city && localSuggestion.city && r.city.toLowerCase() === localSuggestion.city.toLowerCase())
         )
-        
-        if (matchedCity) {
-          const cityKey = matchedCity.toLowerCase()
-          const coords = UK_CITY_COORDINATES[cityKey]
-          results.push({
-            displayName: `${matchedCity}, United Kingdom`,
-            lat: coords?.lat || 51.5074,
-            lon: coords?.lng || -0.1278,
-            address: { city: matchedCity, country: 'United Kingdom' },
-            type: 'city',
-            class: 'place',
-            city: matchedCity,
-            country: 'United Kingdom',
-            isFallback: true
-          })
-        }
-        
-        // Then try partial matches
-        if (results.length < 3) {
-          const matchedCities = UK_CITIES
-            .filter(city => city.toLowerCase().includes(lowerQuery) && city !== matchedCity)
-            .slice(0, 3)
-            .map(city => {
-              const cityKey = city.toLowerCase()
-              const coords = UK_CITY_COORDINATES[cityKey]
-              return {
-                displayName: `${city}, United Kingdom`,
-                lat: coords?.lat || 51.5074,
-                lon: coords?.lng || -0.1278,
-                address: { city: city, country: 'United Kingdom' },
-                type: 'city',
-                class: 'place',
-                city: city,
-                country: 'United Kingdom',
-                isFallback: true
-              }
-            })
-          results = [...results, ...matchedCities]
+        if (!exists) {
+          combinedResults.push(localSuggestion)
         }
       }
 
-      // If still no results, try to extract city from the query
-      if (results.length === 0) {
-        const words = query.split(' ')
-        for (const word of words) {
-          const foundCity = UK_CITIES.find(city => 
-            city.toLowerCase().includes(word.toLowerCase()) && word.length > 2
-          )
-          if (foundCity) {
-            const cityKey = foundCity.toLowerCase()
-            const coords = UK_CITY_COORDINATES[cityKey]
-            results.push({
-              displayName: `${foundCity}, United Kingdom`,
-              lat: coords?.lat || 51.5074,
-              lon: coords?.lng || -0.1278,
-              address: { city: foundCity, country: 'United Kingdom' },
-              type: 'city',
-              class: 'place',
-              city: foundCity,
-              country: 'United Kingdom',
-              isFallback: true
-            })
-            break
-          }
-        }
-      }
-
-      setSuggestions(results)
-      setIsOpen(results.length > 0)
+      setSuggestions(combinedResults)
+      setIsOpen(combinedResults.length > 0)
     } catch (error) {
       console.warn('Address search error:', error)
-      setSuggestions([])
+      
+      // ✅ Even if everything fails, show local city suggestions
+      const localCities = getLocalCitySuggestions(query)
+      const localSuggestions = buildSuggestions(localCities)
+      setSuggestions(localSuggestions)
+      setIsOpen(localSuggestions.length > 0)
     } finally {
       setIsLoading(false)
     }
   }
 
-  // ✅ FIX: Handle input change - always update inputValue
   const handleInputChange = (e) => {
     const val = e.target.value
     setInputValue(val)
     setSelectedAddress(null)
     isSelectingRef.current = false
     
-    // ✅ Pass the raw input value to parent immediately
     if (onChange) {
-      onChange({
-        target: {
-          name: 'address',
-          value: val
-        }
-      })
+      onChange(val)
     }
     
     if (debounceTimer.current) {
       clearTimeout(debounceTimer.current)
     }
 
-    debounceTimer.current = setTimeout(() => {
-      fetchSuggestions(val)
-    }, 400)
+    // ✅ Show suggestions immediately for local matches
+    if (val.length >= minChars) {
+      debounceTimer.current = setTimeout(() => {
+        fetchSuggestions(val)
+      }, 150) // Faster response
+    } else {
+      setSuggestions([])
+      setIsOpen(false)
+    }
   }
 
-  // ✅ FIX: Handle selection - only update when user explicitly selects
   const handleSelect = (suggestion) => {
     const fullAddress = suggestion.displayName || 
                        (suggestion.city ? `${suggestion.city}, United Kingdom` : inputValue)
@@ -262,17 +288,10 @@ const AddressAutocomplete = ({
     setSuggestions([])
     setIsOpen(false)
     
-    // ✅ Call onChange with the selected full address
     if (onChange) {
-      onChange({
-        target: {
-          name: 'address',
-          value: fullAddress
-        }
-      })
+      onChange(fullAddress)
     }
     
-    // ✅ Call onSelect with the suggestion
     if (onSelect) {
       onSelect(suggestion)
     }
@@ -286,12 +305,7 @@ const AddressAutocomplete = ({
     isSelectingRef.current = false
     
     if (onChange) {
-      onChange({
-        target: {
-          name: 'address',
-          value: '',
-        }
-      })
+      onChange('')
     }
     if (inputRef.current) {
       inputRef.current.focus()
@@ -402,10 +416,10 @@ const AddressAutocomplete = ({
         <div className="absolute z-50 w-full mt-1 bg-white rounded-xl shadow-large border border-gray-200 max-h-72 overflow-y-auto">
           <div className="p-2 border-b border-gray-100 sticky top-0 bg-white flex justify-between items-center">
             <p className="text-xs text-text-lighter">
-              {suggestions.length} address{suggestions.length > 1 ? 'es' : ''} found
+              {suggestions.length} location{suggestions.length > 1 ? 's' : ''} found
             </p>
             {suggestions.some(s => s.isFallback) && (
-              <span className="text-xs text-amber-600">Using local database</span>
+              <span className="text-xs text-amber-600">📍 UK Cities</span>
             )}
           </div>
           {suggestions.map((suggestion, index) => {
@@ -439,11 +453,11 @@ const AddressAutocomplete = ({
                   <p className="text-xs text-text-lighter truncate mt-0.5">
                     {suggestion.city || suggestion.county || suggestion.region || 'United Kingdom'}
                     {suggestion.postcode && ` • ${suggestion.postcode}`}
-                    {isFallback && ' • City centre approximate'}
+                    {isFallback && ' • City centre'}
                   </p>
                   {isFallback && (
                     <p className="text-[10px] text-amber-500 mt-0.5">
-                      ⚠️ Using approximate location
+                      ⚠️ Using city centre (UK database)
                     </p>
                   )}
                 </div>
@@ -474,14 +488,14 @@ const AddressAutocomplete = ({
             )}
             <div className="flex-1 min-w-0">
               <p className={`text-sm font-medium ${selectedAddress.isFallback ? 'text-amber-700' : 'text-green-700'}`}>
-                {selectedAddress.isFallback ? '📍 City/Area Selected' : '✅ Address Selected'}
+                {selectedAddress.isFallback ? '📍 City Selected' : '✅ Address Selected'}
               </p>
               <p className={`text-xs truncate ${selectedAddress.isFallback ? 'text-amber-600' : 'text-green-600'}`}>
                 {selectedAddress.displayName || selectedAddress.city || 'Address selected'}
               </p>
               {selectedAddress.isFallback && (
                 <p className="text-xs text-amber-500 mt-0.5">
-                  Using city centre for approximate location
+                  Using city centre from UK database
                 </p>
               )}
               {selectedAddress.postcode && (

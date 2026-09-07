@@ -88,22 +88,7 @@ const ErrandTracking = () => {
   }, [errand]);
 
   const getServiceIcon = (type) => {
-    switch (type) {
-      case "parcel_delivery":
-        return FaBox;
-      case "document_delivery":
-        return FaFileAlt;
-      case "prescription_pickup":
-        return FaPills;
-      case "dry_cleaning_pickup":
-        return FaTshirt;
-      case "queue_waiting":
-        return FaUsers;
-      case "shopping":
-        return FaShoppingBag;
-      default:
-        return FaBox;
-    }
+      return FaBox;
   };
 
   const statusSteps = [
@@ -429,7 +414,7 @@ const ErrandTracking = () => {
     );
   }
 
-  const ServiceIcon = getServiceIcon(errand.serviceType);
+  const ServiceIcon = getServiceIcon('');
   const currentStep = getCurrentStepIndex();
 
   return (
@@ -508,9 +493,9 @@ const ErrandTracking = () => {
               <h1 className="text-2xl font-bold text-text">
                 Errand #{errand.errandId}
               </h1>
-              <p className="text-text-light capitalize">
+              {/* <p className="text-text-light capitalize">
                 {errand.serviceType.replace("_", " ")}
-              </p>
+              </p> */}
             </div>
           </div>
           <span

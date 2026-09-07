@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { 
@@ -12,16 +12,18 @@ import { format, formatDistanceToNow } from 'date-fns'
 import { toast } from 'react-hot-toast'
 import UKStatesDropdown from '../../components/utils/UKStatesDropdown'
 import { 
-  FaUser, FaEnvelope, FaPhone, FaClock, FaSpinner, FaCheckCircle,
+  FaUser, FaEnvelope, FaPhone, FaSpinner, FaCheckCircle,
   FaCreditCard, FaLock, FaInfoCircle, FaHeart, FaStar, FaCalendar,
   FaMapMarkerAlt, FaUsers, FaEye, FaNewspaper, FaBullhorn, 
-  FaArrowRight, FaLocationArrow
+  FaArrowRight, FaLocationArrow, FaClock, FaArrowUp
 } from 'react-icons/fa'
 import { useGetUserPostsQuery } from '../../redux/services/connectPostApi'
 
 const Connect = () => {
   const navigate = useNavigate()
   const { user } = useSelector((state) => state.auth)
+  const paymentBannerRef = useRef(null)
+  const formRef = useRef(null)
   
   // ============================================================
   // API HOOKS
@@ -42,10 +44,10 @@ const Connect = () => {
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [isProcessingPayment, setIsProcessingPayment] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [selectedPost, setSelectedPost] = useState(null)
+  const [showScrollToTop, setShowScrollToTop] = useState(false)
 
   // ============================================================
-  // FORM STATE
+  // FORM STATE - Simplified (No interests, no date/time)
   // ============================================================
   const [formData, setFormData] = useState({
     fullName: user?.fullName || '',
@@ -54,15 +56,8 @@ const Connect = () => {
     state: '',
     purpose: '',
     customPurpose: '',
-    interests: [],
-    availability: {
-      preferredDays: [],
-      preferredTimeSlot: 'anytime',
-    },
     message: '',
     meetingType: 'virtual',
-    connectionDate: '',
-    connectionTime: '',
   })
 
   // ============================================================
@@ -80,23 +75,6 @@ const Connect = () => {
     { value: 'ready_for_commitment', label: '💍 Ready for commitment', description: 'Looking for my person' },
   ]
 
-  const interestOptions = [
-    'technology', 'business', 'healthcare', 'education', 'arts',
-    'finance', 'legal', 'real_estate', 'hospitality', 'retail',
-    'manufacturing', 'non_profit', 'government', 'other'
-  ]
-
-  const dayOptions = [
-    { value: 'sunday', label: 'Sunday ✨', special: true },
-    { value: 'monday', label: 'Monday' },
-    { value: 'tuesday', label: 'Tuesday' },
-    { value: 'wednesday', label: 'Wednesday' },
-    { value: 'thursday', label: 'Thursday' },
-    { value: 'friday', label: 'Friday' },
-    { value: 'saturday', label: 'Saturday' },
-  ]
-
-  const timeSlotOptions = ['morning', 'afternoon', 'evening', 'anytime']
   const meetingTypeOptions = ['virtual', 'in_person', 'phone']
 
   // ============================================================
@@ -136,6 +114,19 @@ const Connect = () => {
       navigate('/login')
     }
   }, [user, navigate])
+
+  // Scroll to top button visibility
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 300) {
+        setShowScrollToTop(true)
+      } else {
+        setShowScrollToTop(false)
+      }
+    }
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   // ============================================================
   // FUNCTIONS
@@ -182,45 +173,55 @@ const Connect = () => {
           [child]: value,
         },
       }))
-    } else if (type === 'checkbox') {
-      if (name === 'interests') {
-        setFormData(prev => ({
-          ...prev,
-          interests: checked 
-            ? [...prev.interests, value]
-            : prev.interests.filter(i => i !== value)
-        }))
-      } else if (name === 'preferredDays') {
-        setFormData(prev => ({
-          ...prev,
-          availability: {
-            ...prev.availability,
-            preferredDays: checked
-              ? [...prev.availability.preferredDays, value]
-              : prev.availability.preferredDays.filter(d => d !== value)
-          }
-        }))
-      }
     } else {
-      setFormData(prev => ({ ...prev, [name]: value }))
+      setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }))
     }
   }
 
+  // ✅ Updated: Handle form submission with scroll to payment if not paid
   const handleSubmit = async (e) => {
     e.preventDefault()
     
+    // ✅ If not paid, scroll to payment banner and show message
     if (!hasPaid) {
-      setShowPaymentModal(true)
+      toast.error('Please pay the one-time fee first to create your connection profile')
+      // Scroll to payment banner
+      if (paymentBannerRef.current) {
+        paymentBannerRef.current.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center' 
+        })
+        // Highlight the payment banner
+        paymentBannerRef.current.style.transition = 'box-shadow 0.3s ease'
+        paymentBannerRef.current.style.boxShadow = '0 0 0 3px #F57C00, 0 0 20px rgba(245, 124, 0, 0.3)'
+        setTimeout(() => {
+          if (paymentBannerRef.current) {
+            paymentBannerRef.current.style.boxShadow = ''
+          }
+        }, 2000)
+      }
       return
     }
 
     if (!formData.state) {
-      toast.error('Please select your state')
+      toast.error('Please select your state or city')
+      // Scroll to state dropdown
+      const stateDropdown = document.querySelector('select[name="state"]')
+      if (stateDropdown) {
+        stateDropdown.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        stateDropdown.focus()
+      }
       return
     }
 
     if (!formData.purpose) {
       toast.error('Please select what you\'re looking for')
+      // Scroll to purpose dropdown
+      const purposeDropdown = document.querySelector('select[name="purpose"]')
+      if (purposeDropdown) {
+        purposeDropdown.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        purposeDropdown.focus()
+      }
       return
     }
 
@@ -235,11 +236,25 @@ const Connect = () => {
       if (error.data?.requiresPayment) {
         setShowPaymentModal(true)
         toast.error('Please pay the connection fee first')
+        // Scroll to payment banner
+        if (paymentBannerRef.current) {
+          paymentBannerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
       } else {
         toast.error(error.data?.message || 'Failed to create connection')
       }
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const scrollToForm = () => {
+    if (formRef.current) {
+      formRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
   }
 
@@ -310,7 +325,7 @@ const Connect = () => {
               <div className="flex items-center gap-4">
                 <span className="text-sm bg-primary/10 text-primary px-4 py-2 rounded-full flex items-center gap-2">
                   <FaMapMarkerAlt />
-                  {connection?.state || 'Your State'}
+                  {connection?.state || 'Your City'}
                 </span>
                 <span className="text-sm bg-green-100 text-green-700 px-4 py-2 rounded-full flex items-center gap-2">
                   <FaHeart />
@@ -319,6 +334,38 @@ const Connect = () => {
               </div>
             </div>
             
+            {/* ✅ Scheduled Meetup Details - Shows admin-scheduled meetup */}
+            {connection?.connectionDate && (
+              <div className="mt-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-4 border border-green-200">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                    <FaCalendar className="text-green-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-green-800">📅 Your Scheduled Meetup</p>
+                    <p className="text-sm text-text-light">
+                      {format(new Date(connection.connectionDate), 'EEEE, dd MMMM yyyy')}
+                      {connection.connectionTime && ` at ${connection.connectionTime}`}
+                    </p>
+                    {connection.venue?.name && (
+                      <p className="text-sm text-text-light mt-1">
+                        📍 {connection.venue.name}
+                        {connection.venue.address && `, ${connection.venue.address}`}
+                      </p>
+                    )}
+                    {connection.adminNotes && (
+                      <p className="text-xs text-text-lighter mt-1">
+                        ℹ️ {connection.adminNotes}
+                      </p>
+                    )}
+                    <p className="text-xs text-green-600 mt-1">
+                      ✅ Your meetup has been scheduled by the admin
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Sunday Highlight */}
             <div className="mt-4 bg-gradient-to-r from-primary/5 to-secondary/5 rounded-xl p-4 border border-primary/20">
               <div className="flex items-center gap-3">
@@ -508,36 +555,37 @@ const Connect = () => {
           </div>
         </div>
 
-        {/* Payment Banner */}
-        {!hasPaid && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6 flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <FaLock className="text-yellow-600 text-xl" />
-              <div>
-                <p className="font-medium text-yellow-800">One-time Payment Required</p>
-                <p className="text-sm text-yellow-700">
-                  Pay £{CONNECTION_FEE} once to unlock unlimited connections
-                </p>
-              </div>
+        {/* ✅ Payment Banner with ref */}
+        <div 
+          ref={paymentBannerRef}
+          className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6 flex items-center justify-between transition-all duration-300"
+        >
+          <div className="flex items-center space-x-3">
+            <FaLock className="text-yellow-600 text-xl" />
+            <div>
+              <p className="font-medium text-yellow-800">One-time Payment Required</p>
+              <p className="text-sm text-yellow-700">
+                Pay £{CONNECTION_FEE} once to unlock unlimited connections
+              </p>
             </div>
-            <button
-              onClick={handlePayWithStripe}
-              disabled={isCreatingSession || isProcessingPayment}
-              className="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition-colors flex items-center space-x-2 disabled:opacity-50"
-            >
-              {isCreatingSession || isProcessingPayment ? (
-                <FaSpinner className="animate-spin" />
-              ) : (
-                <FaCreditCard />
-              )}
-              <span>{isCreatingSession || isProcessingPayment ? 'Processing...' : 'Pay Now'}</span>
-            </button>
           </div>
-        )}
+          <button
+            onClick={handlePayWithStripe}
+            disabled={isCreatingSession || isProcessingPayment}
+            className="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition-colors flex items-center space-x-2 disabled:opacity-50"
+          >
+            {isCreatingSession || isProcessingPayment ? (
+              <FaSpinner className="animate-spin" />
+            ) : (
+              <FaCreditCard />
+            )}
+            <span>{isCreatingSession || isProcessingPayment ? 'Processing...' : 'Pay Now'}</span>
+          </button>
+        </div>
 
         {/* Form - Only show if not connected */}
         {!hasConnected && (
-          <div className="card">
+          <div className="card" ref={formRef}>
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Personal Info */}
               <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
@@ -620,15 +668,15 @@ const Connect = () => {
                 </div>
               </div>
 
-              {/* UK State Dropdown */}
+              {/* ✅ UK State/City Dropdown - Now shows all cities */}
               <div>
                 <label className="block text-sm font-medium text-text-light mb-1">
-                  Your State / Region *
+                  Your State or City *
                 </label>
                 <UKStatesDropdown
                   value={formData.state}
                   onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                  placeholder="Select your state..."
+                  placeholder="Select your state or city..."
                   required
                   className="bg-white"
                 />
@@ -663,125 +711,6 @@ const Connect = () => {
                 )}
               </div>
 
-              {/* Interests */}
-              <div>
-                <label className="block text-sm font-medium text-text-light mb-2">
-                  Your Interests (Select all that apply)
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {interestOptions.map(interest => (
-                    <label
-                      key={interest}
-                      className={`px-3 py-1 rounded-full text-sm cursor-pointer transition-colors ${
-                        formData.interests.includes(interest)
-                          ? 'bg-primary text-white'
-                          : 'bg-gray-100 text-text-light hover:bg-gray-200'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        name="interests"
-                        value={interest}
-                        checked={formData.interests.includes(interest)}
-                        onChange={handleChange}
-                        className="hidden"
-                      />
-                      {interest.replace('_', ' ').toUpperCase()}
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* Availability */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-text-light mb-2">
-                    Preferred Days
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {dayOptions.map(day => (
-                      <label
-                        key={day.value}
-                        className={`px-2 py-1 rounded text-xs cursor-pointer transition-colors ${
-                          formData.availability.preferredDays.includes(day.value)
-                            ? day.special 
-                              ? 'bg-primary text-white' 
-                              : 'bg-primary text-white'
-                            : day.special
-                              ? 'bg-primary/10 text-primary border border-primary/30 hover:bg-primary/20'
-                              : 'bg-gray-100 text-text-light hover:bg-gray-200'
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          name="preferredDays"
-                          value={day.value}
-                          checked={formData.availability.preferredDays.includes(day.value)}
-                          onChange={handleChange}
-                          className="hidden"
-                        />
-                        {day.label}
-                      </label>
-                    ))}
-                  </div>
-                  <p className="text-xs text-text-lighter mt-1">
-                    ✨ Sunday is our featured group meetup day!
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-text-light mb-1">
-                    Preferred Time
-                  </label>
-                  <select
-                    name="preferredTimeSlot"
-                    value={formData.availability.preferredTimeSlot}
-                    onChange={handleChange}
-                    className="input-field"
-                  >
-                    {timeSlotOptions.map(slot => (
-                      <option key={slot} value={slot}>
-                        {slot.toUpperCase()}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-text-light mb-1">
-                    Preferred Date
-                  </label>
-                  <div className="relative">
-                    <FaCalendar className="absolute left-3 top-1/2 -translate-y-1/2 text-text-lighter" />
-                    <input
-                      type="date"
-                      name="connectionDate"
-                      value={formData.connectionDate}
-                      onChange={handleChange}
-                      className="input-field pl-10"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-text-light mb-1">
-                    Preferred Time
-                  </label>
-                  <div className="relative">
-                    <FaClock className="absolute left-3 top-1/2 -translate-y-1/2 text-text-lighter" />
-                    <input
-                      type="time"
-                      name="connectionTime"
-                      value={formData.connectionTime}
-                      onChange={handleChange}
-                      className="input-field pl-10"
-                    />
-                  </div>
-                </div>
-              </div>
-
               {/* Message */}
               <div>
                 <label className="block text-sm font-medium text-text-light mb-1">
@@ -807,10 +736,11 @@ const Connect = () => {
                 </div>
               )}
 
+              {/* ✅ Updated Submit Button - Always clickable, scrolls to payment if not paid */}
               <button
                 type="submit"
-                disabled={isSubmitting || (!hasPaid && !showPaymentModal)}
-                className="w-full btn-primary flex items-center justify-center space-x-2"
+                disabled={isSubmitting}
+                className={`w-full btn-primary flex items-center justify-center space-x-2 ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {isSubmitting ? (
                   <FaSpinner className="animate-spin" />
@@ -826,6 +756,14 @@ const Connect = () => {
                   }
                 </span>
               </button>
+
+              {/* ✅ Show payment required message below button */}
+              {!hasPaid && (
+                <p className="text-center text-xs text-yellow-600 flex items-center justify-center gap-1">
+                  <FaLock className="text-xs" />
+                  Payment required to create profile. Click the button above to pay.
+                </p>
+              )}
             </form>
           </div>
         )}
@@ -840,10 +778,9 @@ const Connect = () => {
               <h4 className="font-medium text-text">How GEOBUY Connect Works</h4>
               <p className="text-sm text-text-light mt-1">
                 1. Pay the one-time fee of £{CONNECTION_FEE}<br />
-                2. Select your state and tell us what you're looking for<br />
+                2. Select your city and tell us what you're looking for<br />
                 3. Get weekly Sunday group meetup spots in your area<br />
-                4. Or schedule individual meetups any day of the week<br />
-                5. Show up, mingle, and make meaningful connections!
+                4. Show up, mingle, and make meaningful connections!
               </p>
               <p className="text-xs text-text-lighter mt-2">
                 ✨ Sunday is our featured group date day — don't miss it!
@@ -852,6 +789,17 @@ const Connect = () => {
           </div>
         </div>
       </div>
+
+      {/* Scroll to Top Button */}
+      {showScrollToTop && (
+        <button
+          onClick={scrollToTop}
+          className="fixed bottom-8 right-8 bg-primary text-white p-3 rounded-full shadow-lg hover:bg-primary/90 transition-all duration-300 z-50 hover:scale-110"
+          aria-label="Scroll to top"
+        >
+          <FaArrowUp className="text-xl" />
+        </button>
+      )}
     </div>
   )
 }

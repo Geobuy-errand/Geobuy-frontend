@@ -10,9 +10,8 @@ import { toast } from 'react-hot-toast'
 import AddressAutocomplete from '../../components/AddressAutocomplete'
 import { 
   FaSearch, FaStar, FaMapMarkerAlt, FaClock, FaShieldAlt, FaCheckCircle, 
-  FaUserCheck, FaHeart, FaTools, FaBriefcase, FaUser, FaPlus, 
-  FaArrowRight, FaSpinner, FaLocationArrow, FaRuler, FaCheck,
-  FaPaperPlane
+  FaUserCheck, FaSpinner, FaLocationArrow, FaRuler, FaCheck,
+  FaPaperPlane, FaInfoCircle
 } from 'react-icons/fa'
 
 const FindServices = () => {
@@ -33,7 +32,6 @@ const FindServices = () => {
   const [userLocation, setUserLocation] = useState(null)
   const [isGettingLocation, setIsGettingLocation] = useState(false)
   const [showRequestForm, setShowRequestForm] = useState(false)
-  const [showProviderSelection, setShowProviderSelection] = useState(false)
   
   // Request form state
   const [serviceRequest, setServiceRequest] = useState({
@@ -54,21 +52,24 @@ const FindServices = () => {
     requiresCertification: false,
   })
 
-  // API hooks
-  const { data: categories, isLoading: categoriesLoading } = useGetServiceCategoriesQuery()
+  // API hooks - ✅ Only fetch provider type categories (not errand_runner)
+  const { data: allCategories, isLoading: categoriesLoading } = useGetServiceCategoriesQuery()
+  
+  // Filter out errand_runner categories - only keep 'provider' type
+  const categories = allCategories?.filter(cat => cat.type === 'provider') || []
+
   const { data: providers, isLoading: providersLoading, refetch: refetchProviders } = useGetServiceProvidersQuery({
     category: selectedCategory,
     dbsChecked: filters.dbsChecked,
     insured: filters.insured,
     rated: filters.rated,
-    lat: userLocation?.lat || null,  // Send null instead of undefined
-    lng: userLocation?.lng || null,  // Send null instead of undefined
+    lat: userLocation?.lat || null,
+    lng: userLocation?.lng || null,
     radius: filters.maxDistance,
     limit: 50,
   }, {
     skip: !selectedCategory,
   })
-
 
   const [createServiceRequest, { isLoading: isCreating }] = useCreateServiceRequestMutation()
 
@@ -89,7 +90,6 @@ const FindServices = () => {
         (error) => {
           setIsGettingLocation(false)
           toast.error('Could not get your location. Please enter your address manually.')
-          // Default to London
           setUserLocation({
             lat: 51.5074,
             lng: -0.1276,
@@ -112,7 +112,6 @@ const FindServices = () => {
     setSelectedProviders([])
     setServiceRequest(prev => ({ ...prev, category: category.name }))
     setShowRequestForm(true)
-    setShowProviderSelection(true)
   }
 
   const handleRequestChange = (e) => {
@@ -159,7 +158,6 @@ const FindServices = () => {
   }
 
   const handleCreateRequest = async () => {
-    // Validate form
     if (!serviceRequest.serviceType) {
       toast.error('Please select a service type')
       return
@@ -203,8 +201,6 @@ const FindServices = () => {
   const displayProviders = sortedProviders()
   const hasProviders = displayProviders && displayProviders.length > 0
 
-  console.log({displayProviders})
-
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container-custom">
@@ -213,7 +209,7 @@ const FindServices = () => {
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-text">Find Local Services</h1>
             <p className="text-text-light mt-2">
-              Browse providers, select who you want to work with, and create a service request
+              Browse professional service providers, select who you want to work with, and create a service request
             </p>
           </div>
 
@@ -294,7 +290,7 @@ const FindServices = () => {
             </div>
           </div>
 
-          {/* Categories - Dynamic from Database */}
+          {/* Categories - Only Provider Types */}
           <div className="mb-8">
             <h2 className="text-lg font-semibold text-text mb-4">Service Categories</h2>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -318,7 +314,7 @@ const FindServices = () => {
                         <p className="font-medium text-sm">{category.label}</p>
                         {category.subCategories && category.subCategories.length > 0 && (
                           <p className="text-xs opacity-70 mt-1">
-                            {category.subCategories.length} sub-categories
+                            {category.subCategories.length} services
                           </p>
                         )}
                       </button>
@@ -497,7 +493,7 @@ const FindServices = () => {
               </div>
 
               <form onSubmit={(e) => { e.preventDefault(); handleCreateRequest(); }} className="space-y-4">
-                {/* Service Type Dropdown - Dynamic from selected category's subcategories */}
+                {/* Service Type Dropdown */}
                 <div>
                   <label className="block text-sm font-medium text-text-light mb-1">
                     Service Type *
