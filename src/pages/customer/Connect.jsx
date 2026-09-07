@@ -25,9 +25,7 @@ const Connect = () => {
   const paymentBannerRef = useRef(null)
   const formRef = useRef(null)
   
-  // ============================================================
   // API HOOKS
-  // ============================================================
   const { data: statusData, isLoading: statusLoading, refetch: refetchStatus } = useGetConnectionStatusQuery()
   const { data: paymentStatus, refetch: refetchPaymentStatus } = useCheckPaymentStatusQuery()
   const { data: connectionFee } = useGetConnectionFeeQuery()
@@ -36,9 +34,7 @@ const Connect = () => {
   const [createCheckoutSession, { isLoading: isCreatingSession }] = useCreateCheckoutSessionMutation()
   const [createConnection, { isLoading: isCreating }] = useCreateConnectionMutation()
   
-  // ============================================================
-  // STATE
-  // ============================================================
+
   const [hasPaid, setHasPaid] = useState(false)
   const [hasConnected, setHasConnected] = useState(false)
   const [showPaymentModal, setShowPaymentModal] = useState(false)
@@ -46,9 +42,8 @@ const Connect = () => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showScrollToTop, setShowScrollToTop] = useState(false)
 
-  // ============================================================
+
   // FORM STATE - Simplified (No interests, no date/time)
-  // ============================================================
   const [formData, setFormData] = useState({
     fullName: user?.fullName || '',
     email: user?.email || '',
@@ -60,9 +55,8 @@ const Connect = () => {
     meetingType: 'virtual',
   })
 
-  // ============================================================
+
   // OPTIONS
-  // ============================================================
   const purposeOptions = [
     { value: 'casual_date', label: '😊 Casual date', description: 'Relaxed, fun, no pressure' },
     { value: 'flirting_fun', label: '🔥 Flirting & fun', description: 'Lighthearted chats, good vibes' },
@@ -77,9 +71,8 @@ const Connect = () => {
 
   const meetingTypeOptions = ['virtual', 'in_person', 'phone']
 
-  // ============================================================
+
   // EFFECTS
-  // ============================================================
   useEffect(() => {
     if (statusData?.hasConnected) {
       setHasConnected(true)
@@ -556,7 +549,7 @@ const Connect = () => {
         </div>
 
         {/* ✅ Payment Banner with ref */}
-        {hasPaid &&
+        {!hasPaid &&
         <div 
           ref={paymentBannerRef}
           className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6 flex items-center justify-between transition-all duration-300"
