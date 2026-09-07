@@ -556,6 +556,7 @@ const Connect = () => {
         </div>
 
         {/* ✅ Payment Banner with ref */}
+        {hasPaid &&
         <div 
           ref={paymentBannerRef}
           className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6 flex items-center justify-between transition-all duration-300"
@@ -582,6 +583,7 @@ const Connect = () => {
             <span>{isCreatingSession || isProcessingPayment ? 'Processing...' : 'Pay Now'}</span>
           </button>
         </div>
+        }
 
         {/* Form - Only show if not connected */}
         {!hasConnected && (
