@@ -20,7 +20,7 @@ const PrivacyPolicy = () => {
             <p className="text-text-light mb-2">We collect the following types of information:</p>
             <ul className="list-disc list-inside text-text-light space-y-1">
               <li>Personal identification information (name, email, phone number, address)</li>
-              <li>Payment information (processed securely through Stripe)</li>
+              <li>Payment information (processed securely through Stripe in the UK or Paystack in Nigeria)</li>
               <li>Booking and transaction history</li>
               <li>Communication history with providers and support</li>
               <li>Device and usage information</li>
@@ -47,7 +47,7 @@ const PrivacyPolicy = () => {
             </p>
             <ul className="list-disc list-inside text-text-light space-y-1 mt-2">
               <li>Providers to fulfill your bookings</li>
-              <li>Payment processors (Stripe) for payment processing</li>
+              <li>Payment processors (Stripe and Paystack) for payment processing</li>
               <li>Legal authorities when required by law</li>
               <li>Service providers who assist in our operations</li>
             </ul>
@@ -79,7 +79,7 @@ const PrivacyPolicy = () => {
               <br />
               <strong>Email:</strong> privacy@geobuy.com
               <br />
-              <strong>Address:</strong> London, United Kingdom
+              <strong>Address:</strong> London, United Kingdom · Lagos, Nigeria
             </p>
           </section>
         </div>

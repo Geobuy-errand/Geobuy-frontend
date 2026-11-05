@@ -48,7 +48,7 @@ import ProviderProfile from "./pages/provider/ProviderProfile";
 import ProviderSettings from "./pages/provider/ProviderSettings";
 import ProviderReviews from "./pages/provider/ProviderReviews";
 import ProviderWallet from "./pages/provider/ProviderWallet";
-import ProviderWithdrawals from "./pages/provider/ProviderWallet";
+import ProviderWithdrawals from "./pages/provider/ProviderWithdrawals";
 import ProviderAvailability from "./pages/provider/ProviderAvailability";
 import ProviderVerification from "./pages/provider/ProviderVerification";
 
@@ -62,7 +62,8 @@ import AdminReviews from "./pages/admin/AdminReviews";
 import AdminSupport from "./pages/admin/AdminSupport";
 import AdminReports from "./pages/admin/AdminReports";
 import AdminAnalytics from "./pages/admin/AdminAnalytics";
-import AdminSettings from "./pages/admin/AdminSettings";
+import AdminBusinessSettings from "./pages/admin/AdminBusinessSettings";
+import AdminWithdrawals from "./pages/admin/AdminWithdrawals";
 import AdminVerificationQueue from "./pages/admin/AdminVerificationQueue";
 import ServiceProvidersManagement from "./pages/admin/ServiceProvidersManagement";
 import ServiceDefinitions from "./pages/admin/ServiceDefinitions";
@@ -243,11 +244,14 @@ function App() {
           <Route path="providers" element={<AdminProviders />} />
           <Route path="bookings" element={<AdminBookings />} />
           <Route path="payments" element={<AdminPayments />} />
+          <Route path="withdrawals" element={<AdminWithdrawals />} />
           <Route path="reviews" element={<AdminReviews />} />
           <Route path="support" element={<AdminSupport />} />
           <Route path="reports" element={<AdminReports />} />
           <Route path="analytics" element={<AdminAnalytics />} />
-          <Route path="settings" element={<AdminSettings />} />
+          {/* Real, saved settings (UK + Nigeria pricing). The old AdminSettings page only simulated saving. */}
+          <Route path="settings" element={<AdminBusinessSettings />} />
+          <Route path="business-settings" element={<AdminBusinessSettings />} />
           <Route path="verification" element={<AdminVerificationQueue />} />
           <Route path="chat-support" element={<ChatSupport />} />
           <Route path="categories" element={<ServiceCategories />} />

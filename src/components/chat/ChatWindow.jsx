@@ -16,7 +16,7 @@ import {
   FaVideo,
   FaInfoCircle,
 } from 'react-icons/fa'
-import axios from 'axios'
+import http, { SOCKET_URL } from '../../services/http'
 
 const ChatWindow = ({ chatId, onClose, onBack }) => {
   const { user } = useSelector((state) => state.auth)
@@ -33,7 +33,7 @@ const ChatWindow = ({ chatId, onClose, onBack }) => {
 
   // Socket connection
   useEffect(() => {
-    const newSocket = io(import.meta.env.VITE_API_URL || 'http://localhost:5000', {
+    const newSocket = io(SOCKET_URL, {
       withCredentials: true,
     })
 
@@ -84,12 +84,12 @@ const ChatWindow = ({ chatId, onClose, onBack }) => {
   const loadMessages = async () => {
     setIsLoading(true)
     try {
-      const response = await axios.get(`/api/chats/${chatId}/messages`, {
+      const response = await http.get(`/api/chats/${chatId}/messages`, {
         withCredentials: true,
       })
       setMessages(response.data)
       // Mark all as read
-      await axios.put(`/api/chats/${chatId}/read-all`, {}, {
+      await http.put(`/api/chats/${chatId}/read-all`, {}, {
         withCredentials: true,
       })
     } catch (error) {
@@ -101,7 +101,7 @@ const ChatWindow = ({ chatId, onClose, onBack }) => {
 
   const loadChatInfo = async () => {
     try {
-      const response = await axios.get(`/api/chats`, {
+      const response = await http.get(`/api/chats`, {
         withCredentials: true,
       })
       const chat = response.data.find(c => c._id === chatId)
@@ -116,7 +116,7 @@ const ChatWindow = ({ chatId, onClose, onBack }) => {
 
     setIsSending(true)
     try {
-      const response = await axios.post('/api/chats/send', {
+      const response = await http.post('/api/chats/send', {
         chatId,
         content: newMessage.trim(),
         messageType: 'text',
@@ -153,7 +153,7 @@ const ChatWindow = ({ chatId, onClose, onBack }) => {
       const formData = new FormData()
       formData.append('file', file)
 
-      const uploadResponse = await axios.post('/api/upload/single', formData, {
+      const uploadResponse = await http.post('/api/upload/single', formData, {
         withCredentials: true,
         headers: { 'Content-Type': 'multipart/form-data' },
       })
@@ -161,7 +161,7 @@ const ChatWindow = ({ chatId, onClose, onBack }) => {
       const fileUrl = uploadResponse.data.fileUrl
       const fileType = file.type.startsWith('image/') ? 'image' : 'file'
 
-      const response = await axios.post('/api/chats/send', {
+      const response = await http.post('/api/chats/send', {
         chatId,
         content: file.name,
         messageType: fileType,

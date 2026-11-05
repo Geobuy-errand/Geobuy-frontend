@@ -18,8 +18,11 @@ import {
   FaArrowRight, FaLocationArrow, FaClock, FaArrowUp
 } from 'react-icons/fa'
 import { useGetUserPostsQuery } from '../../redux/services/connectPostApi'
+import useCountry from '../../hooks/useCountry'
+import http from '../../services/http'
 
 const Connect = () => {
+  const { format: money, country: userCountry } = useCountry()
   const navigate = useNavigate()
   const { user } = useSelector((state) => state.auth)
   const paymentBannerRef = useRef(null)
@@ -85,14 +88,14 @@ const Connect = () => {
     }
   }, [paymentStatus])
 
-  // Handle redirect from Stripe
+  // Handle redirect back from Stripe (UK: ?session_id=) or Paystack (Nigeria: ?reference=)
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
     const paymentSuccess = urlParams.get('payment')
-    const sessionId = urlParams.get('session_id')
+    const reference = urlParams.get('reference') || urlParams.get('trxref') || urlParams.get('session_id')
 
-    if (paymentSuccess === 'success' && sessionId) {
-      verifyPayment(sessionId)
+    if (paymentSuccess === 'success' && reference) {
+      verifyPayment(reference)
     }
 
     if (paymentSuccess === 'cancelled') {
@@ -124,15 +127,16 @@ const Connect = () => {
   // ============================================================
   // FUNCTIONS
   // ============================================================
-  const verifyPayment = async (sessionId) => {
+  const verifyPayment = async (reference) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/connections/verify-payment?session_id=${sessionId}`, {
-        credentials: 'include',
-      })
-      const data = await response.json()
+      const { data } = await http.get(`/connections/verify-payment?reference=${encodeURIComponent(reference)}`)
       
       if (data.message === 'Payment verified successfully') {
         toast.success('Payment successful! You can now create your connection.')
+        setHasPaid(true)
+        refetchPaymentStatus()
+        window.history.replaceState({}, document.title, window.location.pathname)
+      } else if (data.alreadyProcessed) {
         setHasPaid(true)
         refetchPaymentStatus()
         window.history.replaceState({}, document.title, window.location.pathname)
@@ -140,7 +144,7 @@ const Connect = () => {
         toast.error('Payment verification failed. Please contact support.')
       }
     } catch (error) {
-      toast.error('Failed to verify payment. Please contact support.')
+      toast.error(error.response?.data?.message || 'Failed to verify payment. Please contact support.')
     }
   }
 
@@ -251,7 +255,7 @@ const Connect = () => {
     }
   }
 
-  const CONNECTION_FEE = connectionFee?.connectionFee || 1.99
+  const CONNECTION_FEE = connectionFee?.connectionFee ?? (userCountry.code === 'NG' ? 1000 : 1.99)
   const posts = postsData?.data || []
   const connection = postsData?.connection
 
@@ -524,7 +528,7 @@ const Connect = () => {
                 You've paid the fee — complete your profile to start connecting!
               </span>
             ) : (
-              <span>Pay a one-time fee of £{CONNECTION_FEE} to unlock weekly group dates and individual meetups</span>
+              <span>Pay a one-time fee of {money(CONNECTION_FEE)} to unlock weekly group dates and individual meetups</span>
             )}
           </p>
         </div>
@@ -559,7 +563,7 @@ const Connect = () => {
             <div>
               <p className="font-medium text-yellow-800">One-time Payment Required</p>
               <p className="text-sm text-yellow-700">
-                Pay £{CONNECTION_FEE} once to unlock unlimited connections
+                Pay {money(CONNECTION_FEE)} once to unlock unlimited connections
               </p>
             </div>
           </div>
@@ -637,7 +641,7 @@ const Connect = () => {
                         value={formData.phoneNumber}
                         onChange={handleChange}
                         className="input-field pl-10 bg-white"
-                        placeholder="07700 900000"
+                        placeholder={userCountry.phonePlaceholder}
                         required
                       />
                     </div>
@@ -663,7 +667,7 @@ const Connect = () => {
                 </div>
               </div>
 
-              {/* ✅ UK State/City Dropdown - Now shows all cities */}
+              {/* State/City dropdown – UK regions or Nigerian states depending on the user's country */}
               <div>
                 <label className="block text-sm font-medium text-text-light mb-1">
                   Your State or City *
@@ -772,7 +776,7 @@ const Connect = () => {
             <div>
               <h4 className="font-medium text-text">How GEOBUY Connect Works</h4>
               <p className="text-sm text-text-light mt-1">
-                1. Pay the one-time fee of £{CONNECTION_FEE}<br />
+                1. Pay the one-time fee of {money(CONNECTION_FEE)}<br />
                 2. Select your city and tell us what you're looking for<br />
                 3. Get weekly Sunday group meetup spots in your area<br />
                 4. Show up, mingle, and make meaningful connections!

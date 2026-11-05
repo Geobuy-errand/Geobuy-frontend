@@ -10,6 +10,7 @@ import {
   FaPlus, FaEdit, FaTrash, FaSearch, FaSpinner, FaToggleOn, FaToggleOff 
 } from 'react-icons/fa'
 import Pagination from '../../components/utils/Pagination'
+import { formatMoney } from '../../utils/money'
 
 const ServiceDefinitions = () => {
   const [searchTerm, setSearchTerm] = useState('')
@@ -25,6 +26,8 @@ const ServiceDefinitions = () => {
     pricePerKm: '0',
     minPrice: '',
     maxPrice: '',
+    countries: ['GB', 'NG'],
+    pricesNG: { basePrice: '', pricePerKm: '', minPrice: '', maxPrice: '' },
     estimatedTime: '',
     icon: '📋',
     isPopular: false,
@@ -73,6 +76,8 @@ const ServiceDefinitions = () => {
         pricePerKm: service.pricePerKm || '0',
         minPrice: service.minPrice || '',
         maxPrice: service.maxPrice || '',
+        countries: service.countries?.length ? service.countries : ['GB', 'NG'],
+        pricesNG: { basePrice: service.pricesNG?.basePrice ?? '', pricePerKm: service.pricesNG?.pricePerKm ?? '', minPrice: service.pricesNG?.minPrice ?? '', maxPrice: service.pricesNG?.maxPrice ?? '' },
         estimatedTime: service.estimatedTime || '',
         icon: service.icon || '📋',
         isPopular: service.isPopular || false,
@@ -89,6 +94,8 @@ const ServiceDefinitions = () => {
         pricePerKm: '0',
         minPrice: '',
         maxPrice: '',
+    countries: ['GB', 'NG'],
+    pricesNG: { basePrice: '', pricePerKm: '', minPrice: '', maxPrice: '' },
         estimatedTime: '',
         icon: '📋',
         isPopular: false,
@@ -109,6 +116,11 @@ const ServiceDefinitions = () => {
         minPrice: formData.minPrice ? parseFloat(formData.minPrice) : undefined,
         maxPrice: formData.maxPrice ? parseFloat(formData.maxPrice) : undefined,
         estimatedTime: parseInt(formData.estimatedTime),
+        pricesNG: Object.fromEntries(
+          Object.entries(formData.pricesNG || {})
+            .filter(([, v]) => v !== '' && v !== null && v !== undefined)
+            .map(([k, v]) => [k, parseFloat(v)])
+        ),
       }
 
       if (editingService) {
@@ -220,7 +232,7 @@ const ServiceDefinitions = () => {
                         )}
                         {service.requiresDBS && (
                           <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
-                            DBS Required
+                            Background check (DBS in UK) required
                           </span>
                         )}
                         <span className={`text-xs px-2 py-0.5 rounded-full ${service.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
@@ -229,11 +241,15 @@ const ServiceDefinitions = () => {
                       </div>
                       <p className="text-sm text-text-light mt-1">{service.description}</p>
                       <div className="flex flex-wrap gap-4 mt-2 text-sm">
-                        <span className="text-text-light">Base: <span className="font-medium text-primary">£{service.basePrice}</span></span>
-                        <span className="text-text-light">Per Km: <span className="font-medium">£{service.pricePerKm}</span></span>
+                        {(service.countries?.length ? service.countries : ['GB', 'NG']).includes('GB') && (
+                          <span className="text-text-light">🇬🇧 Base: <span className="font-medium text-primary">{formatMoney(service.basePrice, 'GBP')}</span> · per km {formatMoney(service.pricePerKm, 'GBP')}</span>
+                        )}
+                        {(service.countries?.length ? service.countries : ['GB', 'NG']).includes('NG') && (
+                          <span className="text-text-light">🇳🇬 Base: <span className="font-medium text-primary">{service.pricesNG?.basePrice != null ? formatMoney(service.pricesNG.basePrice, 'NGN') : 'not set'}</span>{service.pricesNG?.pricePerKm != null ? ` · per km ${formatMoney(service.pricesNG.pricePerKm, 'NGN')}` : ''}</span>
+                        )}
                         <span className="text-text-light">Est. Time: <span className="font-medium">{service.estimatedTime} min</span></span>
-                        {service.minPrice && <span className="text-text-light">Min: £{service.minPrice}</span>}
-                        {service.maxPrice && <span className="text-text-light">Max: £{service.maxPrice}</span>}
+                        {service.minPrice && <span className="text-text-light">Min: {formatMoney(service.minPrice, 'GBP')}</span>}
+                        {service.maxPrice && <span className="text-text-light">Max: {formatMoney(service.maxPrice, 'GBP')}</span>}
                       </div>
                     </div>
                   </div>
@@ -334,7 +350,7 @@ const ServiceDefinitions = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-text-light mb-1">Base Price (£) *</label>
+                  <label className="block text-sm font-medium text-text-light mb-1">UK Base Price (£) *</label>
                   <input
                     type="number"
                     value={formData.basePrice}
@@ -346,7 +362,7 @@ const ServiceDefinitions = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-text-light mb-1">Price Per Km (£)</label>
+                  <label className="block text-sm font-medium text-text-light mb-1">UK Price Per Km (£)</label>
                   <input
                     type="number"
                     value={formData.pricePerKm}
@@ -357,7 +373,7 @@ const ServiceDefinitions = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-text-light mb-1">Min Price (£)</label>
+                  <label className="block text-sm font-medium text-text-light mb-1">UK Min Price (£)</label>
                   <input
                     type="number"
                     value={formData.minPrice}
@@ -368,7 +384,7 @@ const ServiceDefinitions = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-text-light mb-1">Max Price (£)</label>
+                  <label className="block text-sm font-medium text-text-light mb-1">UK Max Price (£)</label>
                   <input
                     type="number"
                     value={formData.maxPrice}
@@ -378,6 +394,42 @@ const ServiceDefinitions = () => {
                     min="0"
                   />
                 </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-text-light mb-1">Offered in</label>
+                  <div className="flex gap-4">
+                    {[['GB', '🇬🇧 United Kingdom'], ['NG', '🇳🇬 Nigeria']].map(([code, label]) => (
+                      <label key={code} className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={(formData.countries || []).includes(code)}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              countries: e.target.checked
+                                ? [...new Set([...(formData.countries || []), code])]
+                                : (formData.countries || []).filter((c) => c !== code),
+                            })
+                          }
+                        />
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                {(formData.countries || []).includes('NG') &&
+                  [['basePrice', 'Nigeria Base Price (₦)'], ['pricePerKm', 'Nigeria Price Per Km (₦)'], ['minPrice', 'Nigeria Min Price (₦)'], ['maxPrice', 'Nigeria Max Price (₦)']].map(([key, label]) => (
+                    <div key={key}>
+                      <label className="block text-sm font-medium text-text-light mb-1">{label}</label>
+                      <input
+                        type="number"
+                        value={formData.pricesNG?.[key] ?? ''}
+                        onChange={(e) => setFormData({ ...formData, pricesNG: { ...(formData.pricesNG || {}), [key]: e.target.value } })}
+                        className="input-field"
+                        step="1"
+                        min="0"
+                      />
+                    </div>
+                  ))}
               </div>
 
               <div>
@@ -416,7 +468,7 @@ const ServiceDefinitions = () => {
                     onChange={(e) => setFormData({ ...formData, requiresDBS: e.target.checked })}
                     className="w-4 h-4 text-primary rounded"
                   />
-                  <span className="text-sm text-text-light">Requires DBS</span>
+                  <span className="text-sm text-text-light">Requires background check (DBS in the UK)</span>
                 </label>
               </div>
 

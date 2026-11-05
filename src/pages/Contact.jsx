@@ -1,8 +1,11 @@
 import React, { useState } from 'react'
 import { toast } from 'react-hot-toast'
 import { FaPhone, FaEnvelope, FaMapMarkerAlt, FaClock } from 'react-icons/fa'
+import usePublicPricing from '../hooks/usePublicPricing'
 
 const Contact = () => {
+  const { contactPhone, contactEmail, isNigeria } = usePublicPricing()
+  const telHref = `tel:${String(contactPhone || '').replace(/[^+\d]/g, '')}`
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -34,19 +37,19 @@ const Contact = () => {
     {
       icon: FaPhone,
       label: 'Phone',
-      value: '+44 20 1234 5678',
+      value: contactPhone,
       description: 'Mon-Fri 9AM-6PM',
     },
     {
       icon: FaEnvelope,
       label: 'Email',
-      value: 'support@geobuy.com',
+      value: contactEmail,
       description: 'We reply within 24 hours',
     },
     {
       icon: FaMapMarkerAlt,
       label: 'Address',
-      value: 'London, United Kingdom',
+      value: isNigeria ? 'Lagos, Nigeria' : 'London, United Kingdom',
       description: 'Visit our office',
     },
     {
@@ -167,7 +170,7 @@ const Contact = () => {
               <p className="text-text-light text-sm mb-3">
                 For urgent issues with an ongoing errand, please call our emergency support line.
               </p>
-              <a href="tel:+442012345678" className="btn-primary text-sm py-2 inline-block">
+              <a href={telHref} className="btn-primary text-sm py-2 inline-block">
                 Call Emergency Support
               </a>
             </div>

@@ -57,7 +57,8 @@ export const adminApi = baseApi.injectEndpoints({
     
     // ✅ ADD THIS - Payment stats
     getPaymentStats: builder.query({
-      query: () => '/payments/admin/stats',
+      // ?currency=GBP|NGN — totals are per currency
+      query: (currency = 'GBP') => `/payments/admin/stats?currency=${currency}`,
       providesTags: ['Admin'],
     }),
     
@@ -94,7 +95,11 @@ export const adminApi = baseApi.injectEndpoints({
 
     // ========== ANALYTICS ==========
     getRevenueAnalytics: builder.query({
-      query: (period) => `/admin/analytics/revenue?period=${period}`,
+      // arg: 'month' or { period, currency }
+      query: (arg) => {
+        const { period = 'month', currency = 'GBP' } = typeof arg === 'string' ? { period: arg } : arg || {}
+        return `/admin/analytics/revenue?period=${period}&currency=${currency}`
+      },
       providesTags: ['Admin'],
     }),
     getBookingAnalytics: builder.query({

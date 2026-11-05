@@ -9,8 +9,10 @@ import {
   FaBriefcase, FaCheckCircle, FaWallet, FaStar, FaClock, 
   FaArrowRight, FaMapMarkerAlt, FaDollarSign, FaTachometerAlt 
 } from 'react-icons/fa'
+import useCountry from '../../hooks/useCountry'
 
 const ErrandRunnerDashboard = () => {
+  const { format, country: userCountry, distanceUnitLabel } = useCountry()
   const { user } = useSelector((state) => state.auth)
   const { data: availableJobs, isLoading: jobsLoading, refetch: refetchAvailable } = useGetAvailableErrandsQuery()
   const { data: allJobs, isLoading: allJobsLoading, refetch: refetchJobs } = useGetErrandsQuery()
@@ -131,7 +133,7 @@ const ErrandRunnerDashboard = () => {
         </div>
         <div className="card">
           <p className="text-sm text-text-light">Balance</p>
-          <p className="text-2xl font-bold text-primary">£{stats.balance.toFixed(2)}</p>
+          <p className="text-2xl font-bold text-primary">{format(stats.balance)}</p>
         </div>
         <div className="card">
           <p className="text-sm text-text-light">Rating</p>
@@ -176,7 +178,7 @@ const ErrandRunnerDashboard = () => {
                         {job.status.replace('_', ' ')}
                       </span>
                       <span className="text-sm font-semibold text-primary">
-                        £{job.total?.toFixed(2) || job.estimatedPrice?.toFixed(2)}
+                        {format(job.total)}
                       </span>
                     </div>
                   </div>
@@ -236,7 +238,7 @@ const ErrandRunnerDashboard = () => {
                       </p>
                     </div>
                     <span className="text-sm font-semibold text-green-600">
-                      £{job.total?.toFixed(2) || job.estimatedPrice?.toFixed(2)}
+                      {format(job.total)}
                     </span>
                   </div>
                 ))}

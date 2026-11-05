@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { FaHeadset, FaClock, FaUser, FaCheckCircle, FaArrowRight } from 'react-icons/fa'
-import axios from 'axios'
+import http from '../../services/http'
 import { toast } from 'react-hot-toast'
 import ChatWindow from '../../components/chat/ChatWindow'
 
@@ -18,7 +18,7 @@ const ChatEscalation = () => {
 
   const loadEscalatedChats = async () => {
     try {
-      const response = await axios.get('/api/chatbot/escalated', {
+      const response = await http.get('/api/chatbot/escalated', {
         withCredentials: true,
       })
       setEscalatedChats(response.data)

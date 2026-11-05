@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useGetDashboardStatsQuery } from '../../redux/services/adminApi'
+import { formatMoney } from '../../utils/money'
 import socketService from '../../redux/services/socketService'
 import { toast } from 'react-hot-toast'
 import { 
@@ -101,14 +102,14 @@ const AdminDashboard = () => {
       setRecentActivity(prev => [
         { 
           type: 'payment', 
-          message: `💰 Payment of £${amount.toFixed(2)} confirmed`,
+          message: `💰 Payment of ${formatMoney(amount, data.currency)} confirmed`,
           data: data,
           timestamp: new Date(),
         },
         ...prev.slice(0, 49),
       ])
       setPendingPayments(prev => [...prev, { ...data, amount }])
-      toast.success(`💰 New payment of £${amount.toFixed(2)}`)
+      toast.success(`💰 New payment of ${formatMoney(amount, data.currency)}`)
       refetch()
     }
     socketService.on('payment-confirmed', handlePaymentConfirmed)
@@ -119,14 +120,14 @@ const AdminDashboard = () => {
       setRecentActivity(prev => [
         { 
           type: 'payment_released', 
-          message: `💸 £${amount.toFixed(2)} released to provider`,
+          message: `💸 ${formatMoney(amount, data.currency)} released to provider`,
           data: data,
           timestamp: new Date(),
         },
         ...prev.slice(0, 49),
       ])
       setPendingPayments(prev => prev.filter(p => p._id !== data.paymentId))
-      toast.success(`💸 Funds released: £${amount.toFixed(2)}`)
+      toast.success(`💸 Funds released: ${formatMoney(amount, data.currency)}`)
       refetch()
     }
     socketService.on('funds-released', handleFundsReleased)
@@ -215,8 +216,13 @@ const AdminDashboard = () => {
     },
     {
       icon: FaMoneyBillWave,
-      label: 'Revenue (Today)',
-      value: `£${(stats?.totalRevenue || 0).toFixed(2)}`,
+      label: 'Total Revenue',
+      // GBP and NGN are shown separately — they can't be added together
+      value: Object.keys(stats?.revenueByCurrency || {}).length
+        ? Object.entries(stats.revenueByCurrency)
+            .map(([cur, r]) => formatMoney(r.total, cur, { decimals: 0 }))
+            .join(' · ')
+        : formatMoney(stats?.totalRevenue || 0, 'GBP'),
       color: 'text-primary',
       bg: 'bg-primary/10',
       link: '/admin/payments',
@@ -323,7 +329,7 @@ const AdminDashboard = () => {
               <div className="space-y-2">
                 {pendingPayments.slice(0, 5).map((payment, index) => (
                   <div key={index} className="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
-                    <span className="text-sm font-medium">£{(payment.amount || 0).toFixed(2)}</span>
+                    <span className="text-sm font-medium">{formatMoney(payment.amount || 0, payment.currency)}</span>
                     <span className="text-xs text-text-lighter">Waiting for release</span>
                   </div>
                 ))}

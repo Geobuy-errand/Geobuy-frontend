@@ -3,8 +3,10 @@ import { Link } from 'react-router-dom'
 import { useGetProviderServiceRequestsQuery, useStartServiceRequestMutation, useCompleteServiceRequestMutation } from '../../redux/services/serviceApi'
 import { toast } from 'react-hot-toast'
 import { FaMapMarkerAlt, FaDollarSign, FaClock, FaPlay, FaCheck, FaUser, FaStar } from 'react-icons/fa'
+import useCountry from '../../hooks/useCountry'
 
 const ServiceProviderAcceptedJobs = () => {
+  const { format, country: userCountry, distanceUnitLabel } = useCountry()
   const { data: requests, isLoading, refetch } = useGetProviderServiceRequestsQuery()
   const [startService] = useStartServiceRequestMutation()
   const [completeService] = useCompleteServiceRequestMutation()
@@ -119,7 +121,7 @@ const ServiceProviderAcceptedJobs = () => {
                   </div>
                   <div className="flex items-center text-sm text-text-light mt-1">
                     <FaDollarSign className="mr-1" />
-                    £{job.finalPrice?.toFixed(2) || 'Negotiating'}
+                    {job.finalPrice != null ? format(job.finalPrice) : 'Negotiating'}
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-2 w-full md:w-auto">

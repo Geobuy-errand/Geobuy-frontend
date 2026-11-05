@@ -9,6 +9,7 @@ import {
   useTogglePlanStatusMutation,
   useSeedPlansMutation,
 } from '../../redux/services/subscriptionPlanApi'
+import { formatMoney } from '../../utils/money'
 
 const SubscriptionPlans = () => {
   const { data: plans, isLoading, refetch } = useGetAllPlansQuery()
@@ -26,6 +27,8 @@ const SubscriptionPlans = () => {
     interval: 'month',
     price: '',
     stripePriceId: '',
+    priceNGN: '',
+    countries: ['GB'],
     isActive: true,
     isPopular: false,
     displayOrder: 0,
@@ -48,6 +51,8 @@ const SubscriptionPlans = () => {
         interval: plan.interval || 'month',
         price: plan.price || '',
         stripePriceId: plan.stripePriceId || '',
+        priceNGN: plan.priceNGN || '',
+        countries: plan.countries?.length ? plan.countries : ['GB'],
         isActive: plan.isActive !== undefined ? plan.isActive : true,
         isPopular: plan.isPopular || false,
         displayOrder: plan.displayOrder || 0,
@@ -68,6 +73,8 @@ const SubscriptionPlans = () => {
         interval: 'month',
         price: '',
         stripePriceId: '',
+        priceNGN: '',
+        countries: ['GB'],
         isActive: true,
         isPopular: false,
         displayOrder: 0,
@@ -92,9 +99,16 @@ const SubscriptionPlans = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
+      const sellsUK = formData.countries.includes('GB')
+      const sellsNG = formData.countries.includes('NG')
+      if (!sellsUK && !sellsNG) return toast.error('Choose at least one country')
+      if (sellsUK && (!formData.price || !formData.stripePriceId)) return toast.error('UK plans need a £ price and Stripe Price ID')
+      if (sellsNG && !(parseFloat(formData.priceNGN) > 0)) return toast.error('Nigeria plans need a ₦ price')
       const submitData = {
         ...formData,
-        price: parseFloat(formData.price),
+        price: sellsUK ? parseFloat(formData.price) : 0,
+        stripePriceId: sellsUK ? formData.stripePriceId : undefined,
+        priceNGN: sellsNG ? parseFloat(formData.priceNGN) : undefined,
         displayOrder: parseInt(formData.displayOrder),
       }
 
@@ -216,11 +230,15 @@ const SubscriptionPlans = () => {
                   </div>
                   <p className="text-sm text-text-light mt-1">{plan.description}</p>
                   <div className="flex items-center space-x-4 mt-2">
-                    <span className="text-xl font-bold text-primary">£{plan.price}</span>
+                    {(plan.countries || ['GB']).includes('GB') && plan.stripePriceId && (
+                      <span className="text-xl font-bold text-primary">🇬🇧 {formatMoney(plan.price, 'GBP')}</span>
+                    )}
+                    {(plan.countries || []).includes('NG') && plan.priceNGN > 0 && (
+                      <span className="text-xl font-bold text-primary">🇳🇬 {formatMoney(plan.priceNGN, 'NGN')}</span>
+                    )}
                     <span className="text-sm text-text-light">/{plan.interval}</span>
-                    <span className="text-sm text-text-light">
-                      Stripe ID: {plan.stripePriceId}
-                    </span>
+                    {plan.stripePriceId && <span className="text-sm text-text-light">Stripe ID: {plan.stripePriceId}</span>}
+                    {plan.paystackPlanCode && <span className="text-sm text-text-light">Paystack: {plan.paystackPlanCode}</span>}
                     <span className="text-sm text-text-light">
                       Order: {plan.displayOrder}
                     </span>
@@ -285,17 +303,58 @@ const SubscriptionPlans = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-text-light mb-1">Price (£) *</label>
-                  <input
-                    type="number"
-                    value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                    className="input-field"
-                    step="0.01"
-                    min="0"
-                    required
-                  />
+                  <label className="block text-sm font-medium text-text-light mb-1">Available in *</label>
+                  <div className="flex gap-4 py-2">
+                    {[
+                      ['GB', '🇬🇧 UK'],
+                      ['NG', '🇳🇬 Nigeria'],
+                    ].map(([code, label]) => (
+                      <label key={code} className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={formData.countries.includes(code)}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              countries: e.target.checked
+                                ? [...new Set([...formData.countries, code])]
+                                : formData.countries.filter((c) => c !== code),
+                            })
+                          }
+                        />
+                        {label}
+                      </label>
+                    ))}
+                  </div>
                 </div>
+                {formData.countries.includes('GB') && (
+                  <div>
+                    <label className="block text-sm font-medium text-text-light mb-1">UK Price (£) *</label>
+                    <input
+                      type="number"
+                      value={formData.price}
+                      onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                      className="input-field"
+                      step="0.01"
+                      min="0"
+                    />
+                  </div>
+                )}
+                {formData.countries.includes('NG') && (
+                  <div>
+                    <label className="block text-sm font-medium text-text-light mb-1">Nigeria Price (₦) *</label>
+                    <input
+                      type="number"
+                      value={formData.priceNGN}
+                      onChange={(e) => setFormData({ ...formData, priceNGN: e.target.value })}
+                      className="input-field"
+                      step="1"
+                      min="0"
+                      placeholder="e.g. 5000"
+                    />
+                    <p className="text-xs text-text-lighter mt-1">The matching Paystack plan is created automatically.</p>
+                  </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-text-light mb-1">Interval *</label>
                   <select
@@ -308,14 +367,16 @@ const SubscriptionPlans = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-text-light mb-1">Stripe Price ID *</label>
+                  <label className="block text-sm font-medium text-text-light mb-1">
+                    Stripe Price ID {formData.countries.includes('GB') ? '*' : '(UK only)'}
+                  </label>
                   <input
                     type="text"
                     value={formData.stripePriceId}
                     onChange={(e) => setFormData({ ...formData, stripePriceId: e.target.value })}
                     className="input-field"
                     placeholder="price_xxxxxxxxxx"
-                    required
+                    disabled={!formData.countries.includes('GB')}
                   />
                 </div>
                 <div>

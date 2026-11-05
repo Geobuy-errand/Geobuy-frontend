@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { FaSearch, FaMoneyBillWave, FaUsers } from 'react-icons/fa'
 import { useGetSubscriptionHistoryQuery } from '../../redux/services/subscriptionApi'
 import { toast } from 'react-hot-toast'
+import { formatMoney } from '../../utils/money'
 
 const AdminSubscriptions = () => {
   const [searchTerm, setSearchTerm] = useState('')
@@ -54,7 +55,11 @@ const AdminSubscriptions = () => {
         </div>
         <div className="card border-primary/10 bg-primary/5">
           <p className="text-sm text-text-light">Monthly Revenue</p>
-          <p className="text-2xl font-bold text-primary">£{stats.revenue?.toFixed(2) || '0.00'}</p>
+          <p className="text-2xl font-bold text-primary">
+            {Object.keys(stats.revenueByCurrency || {}).length
+              ? Object.entries(stats.revenueByCurrency).map(([cur, v]) => formatMoney(v, cur)).join(' · ')
+              : formatMoney(stats.revenue || 0, 'GBP')}
+          </p>
         </div>
       </div>
 
@@ -123,7 +128,7 @@ const AdminSubscriptions = () => {
                     </span>
                   </td>
                   <td className="py-3 px-4 font-medium">
-                    £{sub.plan.price}
+                    {formatMoney(sub.amount ?? (sub.currency === 'NGN' ? sub.plan.priceNGN : sub.plan.price), sub.currency || 'GBP')}
                   </td>
                   <td className="py-3 px-4 text-sm text-text-light">
                     {sub.currentPeriodStart && sub.currentPeriodEnd ? (

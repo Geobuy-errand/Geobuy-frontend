@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { toast } from 'react-hot-toast'
 import { FaHeadset, FaEnvelope, FaPhone, FaClock, FaComment, FaUser, FaPaperPlane, FaCheck } from 'react-icons/fa'
 
 const AdminSupport = () => {
@@ -113,7 +114,8 @@ const AdminSupport = () => {
         <div className="card text-center">
           <FaPhone className="text-2xl text-primary mx-auto mb-2" />
           <h3 className="font-semibold text-text">Phone</h3>
-          <p className="text-sm text-text-light">+44 20 1234 5678</p>
+          <p className="text-sm text-text-light">UK: +44 20 1234 5678</p>
+          <p className="text-sm text-text-light">NG: +234 800 000 0000</p>
           <p className="text-xs text-text-lighter">Mon-Fri 9AM-6PM</p>
         </div>
         <div className="card text-center">

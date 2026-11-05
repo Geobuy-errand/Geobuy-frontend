@@ -23,8 +23,10 @@ import {
   FaCheck,
   FaSpinner,
 } from 'react-icons/fa'
+import useCountry from '../../hooks/useCountry'
 
 const ServiceRequestDetail = () => {
+  const { format, country: userCountry, distanceUnitLabel } = useCountry()
   const { id } = useParams()
   const navigate = useNavigate()
   const { user } = useSelector((state) => state.auth)
@@ -171,11 +173,11 @@ const ServiceRequestDetail = () => {
             </div>
             <div className="flex justify-between">
               <span className="text-text-light">Budget</span>
-              <span className="font-medium text-primary">£{request.budget?.toFixed(2) || 'Negotiable'}</span>
+              <span className="font-medium text-primary">{request.budget != null ? format(request.budget) : 'Negotiable'}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-text-light">Service Fee</span>
-              <span className="font-medium">£{request.serviceFee?.toFixed(2)}</span>
+              <span className="font-medium">{format(request.serviceFee)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-text-light">Urgent</span>
@@ -255,7 +257,7 @@ const ServiceRequestDetail = () => {
                           )}
                           {hasQuoted && (
                             <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
-                              Quoted £{match.quote.amount}
+                              Quoted {format(match.quote.amount)}
                             </span>
                           )}
                         </div>
@@ -271,7 +273,7 @@ const ServiceRequestDetail = () => {
                           </span>
                           {match.distance && (
                             <span className="text-xs text-text-lighter">
-                              • {match.distance.toFixed(1)} miles away
+                              • {match.distanceText || `${match.distance.toFixed(1)} ${distanceUnitLabel}`} away
                             </span>
                           )}
                           {match.matchScore && (
@@ -337,7 +339,7 @@ const ServiceRequestDetail = () => {
                         <p className="font-medium text-text">{provider.fullName}</p>
                         <div className="flex items-center space-x-2 text-sm text-text-light">
                           <span>⭐ {provider.averageRating?.toFixed(1) || 'New'}</span>
-                          <span>• {match.distance?.toFixed(1) || '?'} miles</span>
+                          <span>• {match.distanceText || `${match.distance?.toFixed(1) || '?'} ${distanceUnitLabel}`}</span>
                         </div>
                       </div>
                       <div className={`w-5 h-5 rounded border ${isSelected ? 'bg-primary border-primary' : 'border-gray-300'}`}>

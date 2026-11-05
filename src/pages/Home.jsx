@@ -18,6 +18,7 @@ import {
   FaStar,
 } from "react-icons/fa";
 import SignupModal from "../components/modals/SignupModal";
+import usePublicPricing from '../hooks/usePublicPricing';
 
 const features = [
   {
@@ -28,7 +29,7 @@ const features = [
   {
     icon: FaUserCheck,
     title: "Trusted providers",
-    description: "All helpers are vetted and DBS-checked.",
+    description: "All helpers are ID-verified and background-checked (DBS in the UK).",
   },
   {
     icon: FaRocket,
@@ -93,7 +94,7 @@ const exploreOptions = [
     icon: FaLink,
     title: "Connect with Others",
     description:
-      "Pay a one-time fee of £1.99 to connect with people in your area. Network, collaborate, find mentors, and build meaningful relationships.",
+      "Pay a small one-time fee to connect with people in your area. Network, collaborate, find mentors, and build meaningful relationships.",
     link: "/connect",
     color: "bg-green-50 border-green-200",
     iconColor: "text-green-600",
@@ -102,6 +103,7 @@ const exploreOptions = [
 ];
 
 const Home = () => {
+  const { format, connectionFee } = usePublicPricing();
   const [isSignupModalOpen, setIsSignupModalOpen] = useState(false);
 
   // Connect features for the detailed section
@@ -224,7 +226,7 @@ const Home = () => {
               <p className="text-text-light text-lg max-w-2xl mx-auto">
                 Build meaningful connections with professionals, mentors, and
                 like-minded individuals near you. Pay a small one-time fee of
-                <span className="text-primary font-bold mx-1">£1.99</span> and
+                <span className="text-primary font-bold mx-1">{format(connectionFee)}</span> and
                 start networking today.
               </p>
             </div>
@@ -255,7 +257,7 @@ const Home = () => {
               >
                 <FaLink />
                 <span>Start Connecting</span>
-                <span className="text-sm opacity-75">£1.99</span>
+                <span className="text-sm opacity-75">{format(connectionFee)}</span>
               </Link>
               <p className="text-xs text-text-lighter mt-3">
                 * One-time payment. No recurring charges. 100% secure.

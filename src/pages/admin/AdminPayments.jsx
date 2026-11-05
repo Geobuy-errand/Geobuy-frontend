@@ -1,12 +1,15 @@
 import React, { useState } from 'react'
 import { useGetAllPaymentsQuery, useGetPaymentStatsQuery } from '../../redux/services/adminApi'
 import { FaSearch, FaMoneyBillWave, FaCheckCircle, FaClock, FaTimesCircle, FaUndo } from 'react-icons/fa'
+import { formatMoney } from '../../utils/money'
 
 const AdminPayments = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const { data: payments, isLoading, refetch } = useGetAllPaymentsQuery()
-  const { data: stats } = useGetPaymentStatsQuery()
+  const [statsCurrency, setStatsCurrency] = useState('GBP')
+  const { data: stats } = useGetPaymentStatsQuery(statsCurrency)
+  const format = (v, cur) => formatMoney(v, cur || statsCurrency)
 
   const filteredPayments = payments?.filter(p => {
     const matchesSearch = p.bookingId?.bookingId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -28,22 +31,38 @@ const AdminPayments = () => {
 
   return (
     <div>
-      <h1 className="text-2xl md:text-3xl font-bold text-text mb-6">Payments</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <h1 className="text-2xl md:text-3xl font-bold text-text">Payments</h1>
+        <div className="inline-flex rounded-lg border border-gray-200 p-0.5 text-sm">
+          {[
+            ['GBP', '🇬🇧 GBP (Stripe)'],
+            ['NGN', '🇳🇬 NGN (Paystack)'],
+          ].map(([cur, label]) => (
+            <button
+              key={cur}
+              onClick={() => setStatsCurrency(cur)}
+              className={`px-3 py-1.5 rounded-md ${statsCurrency === cur ? 'bg-primary text-white' : 'text-text-light'}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Stats */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <div className="card">
             <p className="text-sm text-text-light">Total Revenue</p>
-            <p className="text-2xl font-bold text-primary">£{stats.totalRevenue?.toFixed(2) || '0.00'}</p>
+            <p className="text-2xl font-bold text-primary">{format(stats.totalRevenue)}</p>
           </div>
           <div className="card">
             <p className="text-sm text-text-light">Today's Revenue</p>
-            <p className="text-2xl font-bold text-secondary">£{stats.todayRevenue?.toFixed(2) || '0.00'}</p>
+            <p className="text-2xl font-bold text-secondary">{format(stats.todayRevenue)}</p>
           </div>
           <div className="card">
             <p className="text-sm text-text-light">Platform Fee</p>
-            <p className="text-2xl font-bold text-blue-600">£{stats.totalPlatformFee?.toFixed(2) || '0.00'}</p>
+            <p className="text-2xl font-bold text-blue-600">{format(stats.totalPlatformFee)}</p>
           </div>
           <div className="card">
             <p className="text-sm text-text-light">Pending Disbursements</p>
@@ -113,7 +132,10 @@ const AdminPayments = () => {
                   </td>
                   <td className="py-3 px-4 text-text-light">{payment.customerId?.fullName}</td>
                   <td className="py-3 px-4 text-text-light">{payment.providerId?.fullName}</td>
-                  <td className="py-3 px-4 font-semibold text-primary">£{payment.amount?.toFixed(2)}</td>
+                  <td className="py-3 px-4 font-semibold text-primary">
+                    {format(payment.amount, payment.currency || 'GBP')}
+                    <span className="block text-xs font-normal text-text-lighter">{payment.gateway || 'stripe'} • {payment.type || 'errand'}</span>
+                  </td>
                   <td className="py-3 px-4">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(payment.status)}`}>
                       {payment.status}

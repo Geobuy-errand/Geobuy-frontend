@@ -3,9 +3,9 @@ import { useSelector } from 'react-redux'
 import ChatList from './ChatList'
 import ChatWindow from './ChatWindow'
 import { FaComments, FaHeadset, FaBox, FaFilter } from 'react-icons/fa'
-import axios from 'axios'
 import { toast } from 'react-hot-toast'
 import { io } from 'socket.io-client'
+import http, { SOCKET_URL } from '../../services/http'
 
 const ChatSupport = () => {
   const { user } = useSelector((state) => state.auth)
@@ -17,7 +17,7 @@ const ChatSupport = () => {
 
   // Socket connection for real-time updates
   useEffect(() => {
-    const newSocket = io(import.meta.env.VITE_API_URL || 'http://localhost:5000', {
+    const newSocket = io(SOCKET_URL, {
       withCredentials: true,
     })
 
@@ -48,7 +48,7 @@ const ChatSupport = () => {
   const handleCreateSupport = async () => {
     setIsCreatingSupport(true)
     try {
-      const response = await axios.post('/api/chats/support/create', 
+      const response = await http.post('/api/chats/support/create', 
         { 
           category: 'general',
           priority: 'medium',

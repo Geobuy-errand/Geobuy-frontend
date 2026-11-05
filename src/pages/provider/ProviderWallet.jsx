@@ -1,8 +1,10 @@
 import React from 'react'
 import { useGetWalletQuery, useGetTransactionsQuery } from '../../redux/services/walletApi'
 import { FaWallet, FaArrowUp, FaArrowDown, FaClock } from 'react-icons/fa'
+import useCountry from '../../hooks/useCountry'
 
 const ProviderWallet = () => {
+  const { format, country: userCountry, distanceUnitLabel } = useCountry()
   const { data: wallet, isLoading: walletLoading } = useGetWalletQuery()
   const { data: transactions, isLoading: transactionsLoading } = useGetTransactionsQuery()
 
@@ -25,7 +27,7 @@ const ProviderWallet = () => {
               <div>
                 <p className="text-primary-light text-sm">Available Balance</p>
                 <p className="text-4xl font-bold mt-1">
-                  £{wallet?.balance?.toFixed(2) || '0.00'}
+                  {format(wallet?.balance)}
                 </p>
               </div>
               <FaWallet className="text-4xl text-white/20" />
@@ -33,11 +35,11 @@ const ProviderWallet = () => {
             <div className="grid grid-cols-2 gap-4 mt-6 pt-4 border-t border-white/10">
               <div>
                 <p className="text-primary-light text-sm">Total Earned</p>
-                <p className="text-lg font-semibold">£{wallet?.totalEarned?.toFixed(2) || '0.00'}</p>
+                <p className="text-lg font-semibold">{format(wallet?.totalEarned)}</p>
               </div>
               <div>
                 <p className="text-primary-light text-sm">Pending Balance</p>
-                <p className="text-lg font-semibold">£{wallet?.pendingBalance?.toFixed(2) || '0.00'}</p>
+                <p className="text-lg font-semibold">{format(wallet?.pendingBalance)}</p>
               </div>
             </div>
           </div>
@@ -61,7 +63,7 @@ const ProviderWallet = () => {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-semibold text-green-600">+£{earning.providerAmount?.toFixed(2)}</p>
+                      <p className="font-semibold text-green-600">+{format(earning.providerAmount)}</p>
                       <p className="text-xs text-text-lighter">
                         {new Date(earning.releasedAt || earning.createdAt).toLocaleDateString()}
                       </p>
@@ -80,7 +82,7 @@ const ProviderWallet = () => {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-semibold text-red-600">-£{withdrawal.amount?.toFixed(2)}</p>
+                      <p className="font-semibold text-red-600">-{format(withdrawal.amount)}</p>
                       <p className="text-xs text-text-lighter">
                         {new Date(withdrawal.createdAt).toLocaleDateString()}
                       </p>

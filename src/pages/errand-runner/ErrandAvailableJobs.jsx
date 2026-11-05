@@ -8,8 +8,10 @@ import {
   FaRuler, FaSpinner, FaArrowRight, FaCreditCard, FaTimes 
 } from 'react-icons/fa'
 import socketService from '../../redux/services/socketService'
+import useCountry from '../../hooks/useCountry'
 
 const ErrandAvailableJobs = () => {
+  const { format, country: userCountry, distanceUnitLabel } = useCountry()
   const { data: jobs, isLoading, refetch } = useGetAvailableErrandsQuery()
   const { data: profile } = useGetErrandRunnerProfileQuery()
   const [acceptErrand, { isLoading: isAccepting }] = useAcceptErrandMutation()
@@ -64,7 +66,8 @@ const ErrandAvailableJobs = () => {
     return 0
   })
 
-  const serviceTypes = [...new Set(jobs?.map(j => j.serviceType) || [])]
+  // Errands don't always have a serviceType — undefined values crashed this page
+  const serviceTypes = [...new Set((jobs || []).map(j => j.serviceType).filter(Boolean))]
 
   // ✅ Check if payment is required (paymentStatus === 'pending')
   const isPaymentPending = (job) => job.paymentStatus === 'pending' || job.paymentStatus === 'pending'
@@ -106,7 +109,7 @@ const ErrandAvailableJobs = () => {
           >
             <option value="all">All Services</option>
             {serviceTypes.map((type) => (
-              <option key={type} value={type}>{type.replace('_', ' ')}</option>
+              <option key={type} value={type}>{String(type).replace('_', ' ')}</option>
             ))}
           </select>
           <select
@@ -151,7 +154,7 @@ const ErrandAvailableJobs = () => {
                     {job.distance && (
                       <span className="flex items-center text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
                         <FaRuler className="mr-1 text-xs" />
-                        {job.distance.toFixed(1)} miles
+                        {job.distanceText || `${job.distance.toFixed(1)} ${distanceUnitLabel}`}
                       </span>
                     )}
                     {job.isUrgent && (
@@ -199,7 +202,7 @@ const ErrandAvailableJobs = () => {
                     </div>
                     <div className="flex items-center text-base md:text-lg font-bold text-primary">
                       <FaDollarSign className="text-sm md:text-base" />
-                      £{job.total?.toFixed(2) || job.estimatedPrice?.toFixed(2)}
+                      {format(job.total)}
                     </div>
                   </div>
 

@@ -32,6 +32,9 @@ const AdminVerificationQueue = () => {
       case 'certification': return FaUserCheck
       case 'insurance': return FaBriefcase
       case 'address': return FaHome
+      case 'utility_bill': return FaHome
+      case 'nin': return FaIdCard
+      case 'right_to_work': return FaIdCard
       default: return FaFileAlt
     }
   }
@@ -43,6 +46,9 @@ const AdminVerificationQueue = () => {
       case 'certification': return 'Certification'
       case 'insurance': return 'Insurance'
       case 'address': return 'Proof of Address'
+      case 'right_to_work': return 'Right to Work (UK)'
+      case 'nin': return 'NIN Slip / National ID (NG)'
+      case 'utility_bill': return 'Utility Bill (NG)'
       default: return type
     }
   }
@@ -77,7 +83,7 @@ const AdminVerificationQueue = () => {
     return matchesSearch && matchesFilter
   })
 
-  const typeOptions = ['all', 'identity', 'dbs', 'certification', 'insurance', 'address']
+  const typeOptions = ['all', 'identity', 'dbs', 'right_to_work', 'nin', 'utility_bill', 'certification', 'insurance', 'address']
 
   return (
     <div>

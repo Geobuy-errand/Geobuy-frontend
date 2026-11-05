@@ -1,8 +1,10 @@
 import React from 'react'
 import { useGetMyPaymentsQuery } from '../../redux/services/paymentApi'
 import { FaCreditCard, FaCheckCircle, FaClock, FaTimesCircle } from 'react-icons/fa'
+import useCountry from '../../hooks/useCountry'
 
 const CustomerPayments = () => {
+  const { format, country: userCountry, distanceUnitLabel } = useCountry()
   const { data: payments, isLoading } = useGetMyPaymentsQuery()
 
   const getStatusIcon = (status) => {
@@ -52,7 +54,7 @@ const CustomerPayments = () => {
                 </div>
                 <div className="text-right mt-4 md:mt-0">
                   <p className="text-xl font-bold text-primary">
-                    £{payment.amount?.toFixed(2)}
+                    {format(payment.amount)}
                   </p>
                   <p className="text-sm text-text-lighter capitalize">
                     {payment.status}

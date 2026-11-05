@@ -13,7 +13,8 @@ const SubscriptionSuccess = () => {
   const [error, setError] = useState(null)
   const [subscriptionData, setSubscriptionData] = useState(null)
   
-  const sessionId = searchParams.get('session_id')
+  // Stripe returns ?session_id=, Paystack returns ?reference=
+  const sessionId = searchParams.get('session_id') || searchParams.get('reference') || searchParams.get('trxref')
   
   // ✅ RTK Query - Verify subscription
   const { 
@@ -163,7 +164,7 @@ const SubscriptionSuccess = () => {
             <Link to={`/${user?.role || 'customer'}/dashboard`} className="btn-primary block">
               Go to Dashboard
             </Link>
-            <Link to="/book-errand" className="btn-secondary block">
+            <Link to="/customer/create-errand" className="btn-secondary block">
               Book an Errand
             </Link>
             <Link to="/subscription" className="text-primary hover:underline text-sm">

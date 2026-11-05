@@ -7,8 +7,10 @@ import {
   FaQrcode, FaRuler, FaArrowRight, FaHistory, FaFlagCheckered,
   FaCheckCircle
 } from 'react-icons/fa'
+import useCountry from '../../hooks/useCountry'
 
 const ErrandAcceptedJobs = () => {
+  const { format, country: userCountry, distanceUnitLabel } = useCountry()
   const { data: errands, isLoading, refetch } = useGetErrandsQuery()
   const [updateStatus, { isLoading: isUpdating }] = useUpdateErrandStatusMutation()
   const [filter, setFilter] = useState('all')
@@ -213,7 +215,7 @@ const ErrandAcceptedJobs = () => {
                       {job.distance && !isCancelled && !isCompleted && (
                         <span className="flex items-center text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
                           <FaRuler className="mr-1 text-xs" />
-                          {job.distance.toFixed(1)} miles
+                          {job.distanceText || `${job.distance.toFixed(1)} ${distanceUnitLabel}`}
                         </span>
                       )}
                       {isCompleted && job.completedAt && (
@@ -229,7 +231,7 @@ const ErrandAcceptedJobs = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-semibold text-primary whitespace-nowrap">
-                        £{job.total?.toFixed(2) || job.estimatedPrice?.toFixed(2)}
+                        {format(job.total)}
                       </span>
                       {nextStep && !isCancelled && !isCompleted && (
                         <button

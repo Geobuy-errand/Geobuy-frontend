@@ -6,8 +6,10 @@ import {
   FaCheckCircle, FaArrowRight, FaGift,
   FaHandsHelping, FaStar, FaUserFriends, FaGlobe
 } from 'react-icons/fa'
+import usePublicPricing from '../hooks/usePublicPricing'
 
 const ConnectLanding = () => {
+  const { format, connectionFee } = usePublicPricing()
   const navigate = useNavigate()
   const { user, isAuthenticated } = useSelector((state) => state.auth)
   const [showMore, setShowMore] = useState(false)
@@ -73,7 +75,7 @@ const ConnectLanding = () => {
     {
       step: 2,
       title: 'Pay the One-Time Fee',
-      description: 'A small £1.99 fee unlocks unlimited access to all our connect events.',
+      description: `A small ${format(connectionFee)} fee unlocks unlimited access to all our connect events.`,
       icon: FaGift,
     },
     {
@@ -129,7 +131,7 @@ const ConnectLanding = () => {
             </div>
             <div className="mt-6 flex items-center justify-center gap-4 text-sm text-text-light">
               <span className="flex items-center gap-1">
-                <FaCheckCircle className="text-primary" /> One-time fee £1.99
+                <FaCheckCircle className="text-primary" /> One-time fee {format(connectionFee)}
               </span>
               <span className="flex items-center gap-1">
                 <FaCheckCircle className="text-primary" /> Weekly Sunday meetups
@@ -274,7 +276,7 @@ const ConnectLanding = () => {
             <FaArrowRight />
           </button>
           <p className="text-white/60 text-sm mt-4">
-            £1.99 one-time fee • Unlimited connections • Local meetups
+            {format(connectionFee)} one-time fee • Unlimited connections • Local meetups
           </p>
         </div>
       </section>

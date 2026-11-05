@@ -1,10 +1,13 @@
 import React, { useState } from 'react'
 import { useGetRevenueAnalyticsQuery, useGetBookingAnalyticsQuery } from '../../redux/services/adminApi'
 import { FaChartLine, FaChartBar, FaMoneyBillWave, FaClipboardList } from 'react-icons/fa'
+import { formatMoney } from '../../utils/money'
 
 const AdminAnalytics = () => {
   const [period, setPeriod] = useState('month')
-  const { data: revenueData, isLoading: revenueLoading } = useGetRevenueAnalyticsQuery(period)
+  const [currency, setCurrency] = useState('GBP')
+  const { data: revenueData, isLoading: revenueLoading } = useGetRevenueAnalyticsQuery({ period, currency })
+  const format = (v) => formatMoney(v, currency)
   const { data: bookingData, isLoading: bookingLoading } = useGetBookingAnalyticsQuery()
 
   const isLoading = revenueLoading || bookingLoading
@@ -14,7 +17,13 @@ const AdminAnalytics = () => {
 
   return (
     <div>
-      <h1 className="text-2xl md:text-3xl font-bold text-text mb-6">Analytics</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <h1 className="text-2xl md:text-3xl font-bold text-text">Analytics</h1>
+        <select value={currency} onChange={(e) => setCurrency(e.target.value)} className="input-field py-2 w-auto">
+          <option value="GBP">🇬🇧 United Kingdom (GBP)</option>
+          <option value="NGN">🇳🇬 Nigeria (NGN)</option>
+        </select>
+      </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -22,7 +31,7 @@ const AdminAnalytics = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-text-light">Total Revenue</p>
-              <p className="text-2xl font-bold text-primary">£{totalRevenue.toFixed(2)}</p>
+              <p className="text-2xl font-bold text-primary">{format(totalRevenue)}</p>
             </div>
             <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
               <FaMoneyBillWave className="text-primary text-xl" />
@@ -44,7 +53,7 @@ const AdminAnalytics = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-text-light">Average Price</p>
-              <p className="text-2xl font-bold text-text">£{bookingData?.averagePrice?.toFixed(2) || '0.00'}</p>
+              <p className="text-2xl font-bold text-text">{format(bookingData?.averagePrice)}</p>
             </div>
             <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
               <FaChartLine className="text-green-600 text-xl" />
@@ -56,7 +65,7 @@ const AdminAnalytics = () => {
             <div>
               <p className="text-sm text-text-light">Total Platform Fee</p>
               <p className="text-2xl font-bold text-secondary">
-                £{revenueData?.reduce((sum, item) => sum + (item.platformFee || 0), 0).toFixed(2)}
+                {format(revenueData?.reduce((sum, item) => sum + (item.platformFee || 0), 0))}
               </p>
             </div>
             <div className="w-12 h-12 rounded-full bg-secondary/10 flex items-center justify-center">
@@ -93,7 +102,7 @@ const AdminAnalytics = () => {
                 <div key={item._id}>
                   <div className="flex justify-between text-sm mb-1">
                     <span className="text-text-light">{item._id}</span>
-                    <span className="font-medium text-text">£{item.total.toFixed(2)}</span>
+                    <span className="font-medium text-text">{format(item.total)}</span>
                   </div>
                   <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
                     <div

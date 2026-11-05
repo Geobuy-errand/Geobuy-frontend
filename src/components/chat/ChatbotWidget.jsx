@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useSelector } from 'react-redux'
 import { FaComments, FaTimes, FaPaperPlane, FaRobot, FaUser, FaCircle, FaHeadset } from 'react-icons/fa'
-import axios from 'axios'
+import http from '../../services/http'
 import { toast } from 'react-hot-toast'
 
 const ChatbotWidget = () => {
@@ -55,7 +55,7 @@ const ChatbotWidget = () => {
     setIsLoading(true)
 
     try {
-      const response = await axios.post('/api/chatbot/response', {
+      const response = await http.post('/api/chatbot/response', {
         message: inputMessage.trim(),
         chatId: chatId,
       }, {

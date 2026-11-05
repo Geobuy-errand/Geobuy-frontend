@@ -16,8 +16,11 @@ import {
   FaEnvelope,
   FaMapMarkerAlt
 } from 'react-icons/fa'
+import useCountry from '../../hooks/useCountry'
+import { backgroundCheckLabel } from '../../config/countries'
 
 const QuoteComparison = () => {
+  const { format, country: userCountry, distanceUnitLabel } = useCountry()
   const { id } = useParams()
   const navigate = useNavigate()
   const [selectedQuote, setSelectedQuote] = useState(null)
@@ -102,7 +105,7 @@ const QuoteComparison = () => {
           </div>
           <div>
             <span className="text-sm text-text-lighter">Budget</span>
-            <p className="text-text">£{request.budget?.toFixed(2) || 'Not specified'}</p>
+            <p className="text-text">{request.budget != null ? format(request.budget) : 'Not specified'}</p>
           </div>
         </div>
         <div className="mt-4 p-4 bg-gray-50 rounded-lg">
@@ -149,7 +152,7 @@ const QuoteComparison = () => {
                       <div className="flex flex-wrap gap-2 mt-1">
                         {provider?.verificationBadges?.includes('dbs_checked') && (
                           <span className="flex items-center text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
-                            <FaCheckCircle className="mr-1" /> DBS Checked
+                            <FaCheckCircle className="mr-1" /> {backgroundCheckLabel(userCountry.code)}
                           </span>
                         )}
                         {provider?.verificationBadges?.includes('insured') && (
@@ -221,7 +224,7 @@ const QuoteComparison = () => {
                 {/* Quote Price and Actions */}
                 <div className="flex flex-col items-end gap-2 min-w-[150px]">
                   <div className="text-right">
-                    <span className="text-2xl font-bold text-primary">£{quote.amount.toFixed(2)}</span>
+                    <span className="text-2xl font-bold text-primary">{format(quote.amount)}</span>
                     <p className="text-xs text-text-lighter">Quote amount</p>
                   </div>
                   {!isSelected && request.status !== 'provider_selected' && (

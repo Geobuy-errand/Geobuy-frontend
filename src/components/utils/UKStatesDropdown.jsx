@@ -1,73 +1,64 @@
 import React from 'react'
+import useCountry from '../../hooks/useCountry'
+import { UK_REGIONS, NG_STATE_NAMES } from '../../config/locations'
 
-export const UK_STATES = [
-  // Regions
-  // { value: 'england', label: '🏴󠁧󠁢󠁥󠁮󠁧󠁿 England' },
-  // { value: 'scotland', label: '🏴󠁧󠁢󠁳󠁣󠁴󠁿 Scotland' },
-  // { value: 'wales', label: '🏴󠁧󠁢󠁷󠁬󠁳󠁿 Wales' },
-  // { value: 'northern_ireland', label: '🇮🇪 Northern Ireland' },
-  
-  // Major Cities
-  { value: 'london', label: '📍 London' },
-  { value: 'manchester', label: '📍 Manchester' },
-  { value: 'birmingham', label: '📍 Birmingham' },
-  { value: 'liverpool', label: '📍 Liverpool' },
-  { value: 'bristol', label: '📍 Bristol' },
-  { value: 'sheffield', label: '📍 Sheffield' },
-  { value: 'leeds', label: '📍 Leeds' },
-  { value: 'newcastle', label: '📍 Newcastle upon Tyne' },
-  { value: 'nottingham', label: '📍 Nottingham' },
-  { value: 'southampton', label: '📍 Southampton' },
-  { value: 'brighton', label: '📍 Brighton' },
-  { value: 'oxford', label: '📍 Oxford' },
-  { value: 'cambridge', label: '📍 Cambridge' },
-  { value: 'york', label: '📍 York' },
-  { value: 'bath', label: '📍 Bath' },
-  { value: 'edinburgh', label: '📍 Edinburgh' },
-  { value: 'glasgow', label: '📍 Glasgow' },
-  { value: 'aberdeen', label: '📍 Aberdeen' },
-  { value: 'dundee', label: '📍 Dundee' },
-  { value: 'cardiff', label: '📍 Cardiff' },
-  { value: 'swansea', label: '📍 Swansea' },
-  { value: 'belfast', label: '📍 Belfast' },
-  { value: 'derry', label: '📍 Derry' },
-  { value: 'reading', label: '📍 Reading' },
-  { value: 'leicester', label: '📍 Leicester' },
-  { value: 'coventry', label: '📍 Coventry' },
-  { value: 'stoke', label: '📍 Stoke-on-Trent' },
-  { value: 'wolverhampton', label: '📍 Wolverhampton' },
-  { value: 'plymouth', label: '📍 Plymouth' },
-  { value: 'exeter', label: '📍 Exeter' },
-  { value: 'bournemouth', label: '📍 Bournemouth' },
-  { value: 'portsmouth', label: '📍 Portsmouth' },
-  { value: 'norwich', label: '📍 Norwich' },
-  { value: 'peterborough', label: '📍 Peterborough' },
-  { value: 'chelmsford', label: '📍 Chelmsford' },
-  { value: 'colchester', label: '📍 Colchester' },
-  { value: 'st_albans', label: '📍 St Albans' },
-  // { value: 'all_uk', label: '🌍 All UK' },
-]
+// Values match the backend enum exactly (e.g. 'London', 'Lagos').
+// The old list sent lowercase values ('london'), which the backend rejected.
+export const UK_STATES = UK_REGIONS.filter((r) => r !== 'All UK').map((r) => ({ value: r, label: `📍 ${r}` }))
+export const NG_STATES_OPTIONS = NG_STATE_NAMES.map((s) => ({ value: s, label: `📍 ${s === 'Federal Capital Territory' ? 'Abuja (FCT)' : s}` }))
 
-const UKStatesDropdown = ({ 
-  value, 
-  onChange, 
-  placeholder = 'Select your state or city...', 
-  required = false, 
-  className = '' 
+export const statesForCountry = (country, { includeCountryWide = false } = {}) => {
+  const base = country === 'NG' ? NG_STATES_OPTIONS : UK_STATES
+  if (!includeCountryWide) return base
+  return [...base, country === 'NG' ? { value: 'All Nigeria', label: '🌍 All Nigeria' } : { value: 'All UK', label: '🌍 All UK' }]
+}
+
+/**
+ * Region / state picker. UK users see cities & regions; Nigerian users see the 36 states + FCT.
+ * Admin screens can pass `country="ALL"` to see both lists.
+ */
+const UKStatesDropdown = ({
+  value,
+  onChange,
+  placeholder,
+  required = false,
+  className = '',
+  country: countryProp,
+  includeCountryWide = false,
 }) => {
+  const { code } = useCountry()
+  const country = countryProp || code
+
+  const groups =
+    country === 'ALL'
+      ? [
+          { label: 'United Kingdom', options: statesForCountry('GB', { includeCountryWide }) },
+          { label: 'Nigeria', options: statesForCountry('NG', { includeCountryWide }) },
+        ]
+      : [{ label: null, options: statesForCountry(country, { includeCountryWide }) }]
+
+  const ph = placeholder || (country === 'NG' ? 'Select your state...' : 'Select your state or city...')
+
   return (
-    <select
-      value={value}
-      onChange={onChange}
-      required={required}
-      className={`input-field ${className}`}
-    >
-      <option value="">{placeholder}</option>
-      {UK_STATES.map(state => (
-        <option key={state.value} value={state.value}>
-          {state.label}
-        </option>
-      ))}
+    <select value={value} onChange={onChange} required={required} className={`input-field ${className}`}>
+      <option value="">{ph}</option>
+      {groups.map((g) =>
+        g.label ? (
+          <optgroup key={g.label} label={g.label}>
+            {g.options.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </optgroup>
+        ) : (
+          g.options.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))
+        )
+      )}
     </select>
   )
 }

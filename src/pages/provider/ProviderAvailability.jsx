@@ -10,15 +10,16 @@ const ProviderAvailability = () => {
   
   const [isAvailable, setIsAvailable] = useState(user?.isAvailable ?? true)
   const [location, setLocation] = useState({
-    lat: user?.location?.coordinates?.[1] || 51.5074,
-    lng: user?.location?.coordinates?.[0] || -0.1276,
+    // No London default — an unknown location is sent as "unknown", not as the UK
+    lat: user?.location?.coordinates?.[1] || null,
+    lng: user?.location?.coordinates?.[0] || null,
   })
 
   const handleToggle = async () => {
     try {
       await updateAvailability({
         isAvailable: !isAvailable,
-        location,
+        ...(location?.lat && location?.lng ? { location } : {}),
       }).unwrap()
       setIsAvailable(!isAvailable)
       toast.success(`You are now ${!isAvailable ? 'available' : 'unavailable'} for jobs`)
@@ -96,10 +97,10 @@ const ProviderAvailability = () => {
             <div className="p-4 bg-gray-50 rounded-xl">
               <p className="text-sm text-text-light">Current Location</p>
               <p className="font-medium text-text">
-                Lat: {location.lat.toFixed(6)}
+                Lat: {location.lat != null ? location.lat.toFixed(6) : "Not set"}
               </p>
               <p className="font-medium text-text">
-                Lng: {location.lng.toFixed(6)}
+                Lng: {location.lng != null ? location.lng.toFixed(6) : "Not set"}
               </p>
             </div>
             <button

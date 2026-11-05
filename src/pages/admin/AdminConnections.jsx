@@ -9,6 +9,7 @@ import {
 } from 'react-icons/fa'
 import UKStatesDropdown from '../../components/utils/UKStatesDropdown'
 import Pagination from '../../components/utils/Pagination'
+import { formatMoney } from '../../utils/money'
 
 const AdminConnections = () => {
   const [statusFilter, setStatusFilter] = useState('')
@@ -165,12 +166,9 @@ const AdminConnections = () => {
     try {
       // First, get all connections for this state/city
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/connections/admin/all?state=${bulkScheduleData.state}&limit=1000`,
+        `${import.meta.env.VITE_API_URL}/connections/admin/all?state=${encodeURIComponent(bulkScheduleData.state)}&limit=1000`,
         {
           credentials: 'include',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
         }
       )
       const result = await response.json()
@@ -245,7 +243,7 @@ const AdminConnections = () => {
           <p className="text-sm text-text-light">Active</p>
         </div>
         <div className="card p-4 text-center">
-          <p className="text-2xl font-bold text-primary">£{(stats?.totalRevenue?.[0]?.total || 0).toFixed(2)}</p>
+          <p className="text-2xl font-bold text-primary">{formatMoney(stats?.totalRevenue?.[0]?.total || 0, 'GBP')}</p>
           <p className="text-sm text-text-light">Revenue</p>
         </div>
       </div>
@@ -274,6 +272,7 @@ const AdminConnections = () => {
           <option value="cancelled">Cancelled</option>
         </select>
         <UKStatesDropdown
+                  country="ALL"
           value={stateFilter}
           onChange={(e) => setStateFilter(e.target.value)}
           placeholder="All Cities"
@@ -371,7 +370,7 @@ const AdminConnections = () => {
                         )}
                         {connection.venue?.name && (
                           <span className="flex items-center gap-1 text-blue-700">
-                            <FaLocationDot className="text-blue-600" />
+                            <FaMapMarkerAlt className="text-blue-600" />
                             {connection.venue.name}
                           </span>
                         )}
@@ -577,7 +576,7 @@ const AdminConnections = () => {
                 </span>
                 {selectedConnection.fee?.paid && (
                   <span className="text-sm bg-green-100 text-green-700 px-3 py-1 rounded-full flex items-center gap-1">
-                    💳 Paid - £{selectedConnection.fee?.amount}
+                    💳 Paid - {formatMoney(selectedConnection.fee?.amount, selectedConnection.fee?.currency || 'GBP')}
                   </span>
                 )}
               </div>
@@ -832,6 +831,7 @@ const AdminConnections = () => {
                   Select City / State *
                 </label>
                 <UKStatesDropdown
+                  country="ALL"
                   value={bulkScheduleData.state}
                   onChange={(e) => setBulkScheduleData({ ...bulkScheduleData, state: e.target.value })}
                   placeholder="Select a city to schedule..."

@@ -6,13 +6,15 @@ import { useGetActivePlansQuery } from '../redux/services/subscriptionPlanApi'
 import { useCreateCheckoutSessionMutation, useGetSubscriptionStatusQuery } from '../redux/services/subscriptionApi'
 import { toast } from 'react-hot-toast'
 import SignupModal from '../components/modals/SignupModal'
+import useCountry from '../hooks/useCountry'
 
 const Pricing = () => {
+  const { code, format } = useCountry()
   const { user } = useSelector((state) => state.auth)
   const [isSignupModalOpen, setIsSignupModalOpen] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   
-  const { data: plans, isLoading: plansLoading } = useGetActivePlansQuery()
+  const { data: plans, isLoading: plansLoading } = useGetActivePlansQuery(code)
   const { data: statusData } = useGetSubscriptionStatusQuery()
   const [createCheckout] = useCreateCheckoutSessionMutation()
 
@@ -130,7 +132,7 @@ const Pricing = () => {
                   </div>
                   <h3 className="text-lg font-semibold text-text">{plan.name}</h3>
                   <div className="mt-2">
-                    <span className="text-3xl font-bold text-text">£{plan.price}</span>
+                    <span className="text-3xl font-bold text-text">{plan.formattedPrice || format(plan.localPrice ?? plan.price)}</span>
                     <span className="text-text-light text-sm">/{getIntervalLabel(plan)}</span>
                   </div>
                   {savings && (
@@ -212,7 +214,7 @@ const Pricing = () => {
         <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
           <div className="text-center p-4">
             <h4 className="font-semibold text-text">💳 Secure Payment</h4>
-            <p className="text-sm text-text-light">All payments are processed securely via Stripe</p>
+            <p className="text-sm text-text-light">All payments are processed securely via Stripe (UK) or Paystack (Nigeria)</p>
           </div>
           <div className="text-center p-4">
             <h4 className="font-semibold text-text">🔄 Cancel Anytime</h4>

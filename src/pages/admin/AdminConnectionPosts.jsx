@@ -206,6 +206,7 @@ const AdminConnectionPosts = () => {
       <div className="flex flex-wrap gap-4 mb-6">
         <div className="flex-1">
           <UKStatesDropdown
+                  country="ALL"
             value={stateFilter}
             onChange={(e) => setStateFilter(e.target.value)}
             placeholder="Filter by state..."
@@ -420,9 +421,11 @@ const AdminConnectionPosts = () => {
                     Target State *
                   </label>
                   <UKStatesDropdown
+                  country="ALL"
                     value={formData.state}
                     onChange={(e) => setFormData({ ...formData, state: e.target.value })}
                     placeholder="Select state..."
+                    includeCountryWide
                     required
                   />
                   <p className="text-xs text-text-lighter mt-1">
@@ -457,7 +460,7 @@ const AdminConnectionPosts = () => {
                     value={formData.venue.postcode}
                     onChange={(e) => setFormData({ ...formData, venue: { ...formData.venue, postcode: e.target.value } })}
                     className="input-field"
-                    placeholder="Postcode"
+                    placeholder="Postcode / postal code (optional)"
                   />
                   <input
                     type="url"

@@ -18,8 +18,10 @@ import {
   FaTimes,
   FaInfoCircle
 } from 'react-icons/fa'
+import useCountry from '../../hooks/useCountry'
 
 const ServiceProviderJobDetails = () => {
+  const { format, country: userCountry, distanceUnitLabel } = useCountry()
   const { id } = useParams()
   const navigate = useNavigate()
   const { user } = useSelector((state) => state.auth)
@@ -158,11 +160,11 @@ const ServiceProviderJobDetails = () => {
               )}
               <div className="flex justify-between">
                 <span className="text-text-light">Agreed Price</span>
-                <span className="text-xl font-bold text-primary">£{request.finalPrice?.toFixed(2) || 'Negotiating'}</span>
+                <span className="text-xl font-bold text-primary">{request.finalPrice != null ? format(request.finalPrice) : 'Negotiating'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-text-light">Service Fee (GEOBUY)</span>
-                <span className="font-medium text-text-light">£{request.serviceFee?.toFixed(2) || '1.99'}</span>
+                <span className="font-medium text-text-light">{format(request.serviceFee)}</span>
               </div>
             </div>
           </div>
@@ -273,15 +275,15 @@ const ServiceProviderJobDetails = () => {
             <div className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-text-light">Service Amount</span>
-                <span className="font-bold text-primary">£{request.finalPrice?.toFixed(2) || '0.00'}</span>
+                <span className="font-bold text-primary">{format(request.finalPrice)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-text-light">Service Fee</span>
-                <span className="font-medium text-text-light">£{request.serviceFee?.toFixed(2) || '1.99'}</span>
+                <span className="font-medium text-text-light">{format(request.serviceFee)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-text-light">Your Earnings</span>
-                <span className="font-bold text-green-600">£{(request.finalPrice || 0).toFixed(2)}</span>
+                <span className="font-bold text-green-600">{format((request.finalPrice || 0))}</span>
               </div>
             </div>
           </div>

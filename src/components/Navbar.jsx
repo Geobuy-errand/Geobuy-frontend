@@ -7,6 +7,7 @@ import { toast } from 'react-hot-toast'
 import { FaBars, FaTimes, FaUserCircle, FaShieldAlt, FaRunning, FaSignOutAlt } from 'react-icons/fa'
 import SignupModal from './modals/SignupModal'
 import Logo from './utils/Logo'
+import CountrySelector from './CountrySelector'
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false)
@@ -68,6 +69,9 @@ const Navbar = () => {
               <Link to="/about" className="text-text-light hover:text-primary transition-colors">
                 About
               </Link>
+
+              {/* UK / Nigeria switch for visitors (signed-in users are fixed to their account country) */}
+              <CountrySelector />
 
               {isAuthenticated ? (
                 <div className="relative">
@@ -173,6 +177,8 @@ const Navbar = () => {
                 <Link to="/about" className="text-text-light hover:text-primary transition-colors" onClick={() => setIsOpen(false)}>
                   About
                 </Link>
+
+                <CountrySelector className="self-start" />
 
                 {isAuthenticated ? (
                   <>

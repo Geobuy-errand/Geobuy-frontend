@@ -1,7 +1,9 @@
 import React, { useState } from 'react'
 import { FaQuestionCircle, FaPhone, FaEnvelope, FaBook, FaChevronDown, FaChevronUp } from 'react-icons/fa'
+import usePublicPricing from '../../hooks/usePublicPricing'
 
 const CustomerHelp = () => {
+  const { contactPhone, contactEmail } = usePublicPricing()
   const [openFaq, setOpenFaq] = useState(null)
 
   const faqs = [
@@ -44,13 +46,13 @@ const CustomerHelp = () => {
         <div className="card text-center">
           <FaPhone className="text-3xl text-primary mx-auto mb-3" />
           <h3 className="font-semibold text-text">Call Support</h3>
-          <p className="text-sm text-text-light">+44 20 1234 5678</p>
+          <p className="text-sm text-text-light">{contactPhone}</p>
           <p className="text-xs text-text-lighter">Mon-Fri 9AM-6PM</p>
         </div>
         <div className="card text-center">
           <FaEnvelope className="text-3xl text-primary mx-auto mb-3" />
           <h3 className="font-semibold text-text">Email Support</h3>
-          <p className="text-sm text-text-light">support@geobuy.com</p>
+          <p className="text-sm text-text-light">{contactEmail}</p>
           <p className="text-xs text-text-lighter">Reply within 24 hours</p>
         </div>
       </div>

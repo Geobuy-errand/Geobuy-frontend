@@ -2,9 +2,16 @@ import React, { useState, useEffect } from 'react'
 import { useGetProviderServiceRequestsQuery, useSubmitQuoteMutation } from '../../redux/services/serviceApi'
 import { toast } from 'react-hot-toast'
 import { FaMapMarkerAlt, FaDollarSign, FaClock, FaCheck, FaSearch, FaRuler, FaUser, FaStar } from 'react-icons/fa'
+import { useSelector } from 'react-redux'
 import { io } from 'socket.io-client'
+import http, { SOCKET_URL } from '../../services/http'
+import useCountry from '../../hooks/useCountry'
 
 const ServiceProviderAvailableJobs = () => {
+  // `user` was used below but never defined, which crashed this page
+  const { user } = useSelector((state) => state.auth)
+  const myId = String(user?._id || user?.id || '')
+  const { format, country: userCountry, distanceUnitLabel } = useCountry()
   const [socket, setSocket] = useState(null)
   const { data: requests, isLoading, refetch } = useGetProviderServiceRequestsQuery()
   const { data: invitedRequests } = useGetProviderServiceRequestsQuery()
@@ -19,7 +26,7 @@ const ServiceProviderAvailableJobs = () => {
   const [estimatedDuration, setEstimatedDuration] = useState('')
 
   useEffect(() => {
-    const newSocket = io(import.meta.env.VITE_API_URL || 'http://localhost:5000', {
+    const newSocket = io(SOCKET_URL, {
       withCredentials: true,
     })
 
@@ -54,7 +61,7 @@ const ServiceProviderAvailableJobs = () => {
   const categories = [...new Set(requests?.map(r => r.category) || [])]
 
   const invitedRequestsList = requests?.filter(r => 
-    r.invitedProviders?.some(p => p.providerId === user._id && p.status === 'invited')
+    r.invitedProviders?.some(p => String(p.providerId?._id || p.providerId) === myId && p.status === 'invited')
   ) || []
 
   const handleOpenQuoteModal = (request) => {
@@ -161,14 +168,14 @@ const ServiceProviderAvailableJobs = () => {
                   </div>
                   <div className="flex flex-wrap gap-2 mt-2">
                     {request.requiresDBS && (
-                      <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">✅ DBS Required</span>
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">✅ {userCountry.code === 'NG' ? 'Background check required' : 'DBS Required'}</span>
                     )}
                     {request.requiresCertification && (
                       <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">✅ Certification Required</span>
                     )}
                     {request.budget && (
                       <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
-                        Budget: £{request.budget.toFixed(2)}
+                        Budget: {format(request.budget)}
                       </span>
                     )}
                   </div>
@@ -213,7 +220,7 @@ const ServiceProviderAvailableJobs = () => {
             <form onSubmit={handleSubmitQuote} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-text-light mb-1">
-                  Quote Amount (£) *
+                  Quote Amount ({userCountry.currencySymbol}) *
                 </label>
                 <input
                   type="number"

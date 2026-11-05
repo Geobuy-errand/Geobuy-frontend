@@ -9,7 +9,8 @@ export const subscriptionApi = baseApi.injectEndpoints({
     }),
      // Verify subscription session (public endpoint)
      verifySubscriptionSession: builder.query({
-      query: (sessionId) => `/subscription/verify-session/${sessionId}`,
+      // Stripe session id (UK) or Paystack reference (Nigeria)
+      query: (sessionId) => `/subscription/verify-session/${encodeURIComponent(sessionId)}`,
       // This endpoint doesn't need auth
     }),
     

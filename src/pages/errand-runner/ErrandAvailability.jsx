@@ -11,8 +11,9 @@ const ErrandAvailability = () => {
   
   const [isAvailable, setIsAvailable] = useState(profile?.isAvailable ?? true)
   const [location, setLocation] = useState({
-    lat: profile?.location?.coordinates?.[1] || 51.5074,
-    lng: profile?.location?.coordinates?.[0] || -0.1276,
+    // No London default — an unknown location is sent as "unknown", not as the UK
+    lat: profile?.location?.coordinates?.[1] || null,
+    lng: profile?.location?.coordinates?.[0] || null,
   })
   const [availableDays, setAvailableDays] = useState(profile?.availableDays || {
     monday: true,
@@ -32,7 +33,7 @@ const ErrandAvailability = () => {
     try {
       await updateAvailability({
         isAvailable: !isAvailable,
-        location,
+        ...(location?.lat && location?.lng ? { location } : {}),
       }).unwrap()
       setIsAvailable(!isAvailable)
       toast.success(`You are now ${!isAvailable ? 'available' : 'unavailable'} for errands`)
@@ -149,10 +150,10 @@ const ErrandAvailability = () => {
             <div className="p-4 bg-gray-50 rounded-xl">
               <p className="text-sm text-text-light">Current Location</p>
               <p className="font-medium text-text">
-                Lat: {location.lat.toFixed(6)}
+                Lat: {location.lat != null ? location.lat.toFixed(6) : "Not set"}
               </p>
               <p className="font-medium text-text">
-                Lng: {location.lng.toFixed(6)}
+                Lng: {location.lng != null ? location.lng.toFixed(6) : "Not set"}
               </p>
             </div>
             <button

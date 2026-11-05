@@ -27,8 +27,10 @@ import {
   FaBox,
   FaFlagCheckered,
 } from "react-icons/fa";
+import useCountry from '../../hooks/useCountry'
 
 const ErrandJobDetails = () => {
+  const { format, country: userCountry, distanceUnitLabel } = useCountry()
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
@@ -147,13 +149,9 @@ const ErrandJobDetails = () => {
         description: "Confirm you have delivered the item",
         color: "bg-green-600 hover:bg-green-700",
       },
-      delivered: {
-        label: "Mark as Completed",
-        value: "completed",
-        icon: FaFlagCheckered,
-        description: "Confirm the errand is fully completed",
-        color: "bg-primary hover:bg-primary/90",
-      },
+      // The customer confirms completion (that's what releases your earnings).
+      // If they don't, it completes automatically after the period set by admin.
+      delivered: null,
       completed: null,
     };
     return map[status];
@@ -261,6 +259,15 @@ const ErrandJobDetails = () => {
       )}
 
       {/* If completed, show success message */}
+{errand.status === 'delivered' && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+          <p className="font-medium text-blue-700">Delivered — waiting for the customer to confirm</p>
+          <p className="text-sm text-blue-600">
+            Your earnings of {format(errand.providerAmount, errand.currency)} are released to your wallet as soon as the customer confirms,
+            or automatically if they don't respond.
+          </p>
+        </div>
+      )}
 {errand.status === 'completed' && (
   <div className="card bg-green-50 border-2 border-green-200">
     <div className="flex items-center gap-3">
@@ -371,23 +378,19 @@ const ErrandJobDetails = () => {
                 <span className="text-text-light">Distance</span>
                 <span className="font-medium text-text flex items-center">
                   <FaRuler className="mr-1 text-primary" />
-                  {errand.distance?.toFixed(1)} miles
+                  {errand.distanceText || `${errand.distance?.toFixed(1)} ${distanceUnitLabel}`}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-text-light">Total</span>
                 <span className="text-xl font-bold text-primary">
-                  £
-                  {errand.total?.toFixed(2) ||
-                    errand.estimatedPrice?.toFixed(2)}
+                  {format(errand.total, errand.currency)}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-text-light">Your Earnings (80%)</span>
+                <span className="text-text-light">Your Earnings</span>
                 <span className="font-bold text-green-600">
-                  £
-                  {errand.providerAmount?.toFixed(2) ||
-                    (errand.total * 0.8).toFixed(2)}
+                  {format(errand.providerAmount || errand.total * 0.8, errand.currency)}
                 </span>
               </div>
             </div>
@@ -525,17 +528,13 @@ const ErrandJobDetails = () => {
               <div className="flex justify-between">
                 <span className="text-text-light">Amount</span>
                 <span className="font-bold text-primary">
-                  £
-                  {errand.total?.toFixed(2) ||
-                    errand.estimatedPrice?.toFixed(2)}
+                  {format(errand.total, errand.currency)}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-text-light">Your Earnings</span>
                 <span className="font-bold text-green-600">
-                  £
-                  {errand.providerAmount?.toFixed(2) ||
-                    (errand.total * 0.8).toFixed(2)}
+                  {format(errand.providerAmount || errand.total * 0.8, errand.currency)}
                 </span>
               </div>
               <div className="flex justify-between">

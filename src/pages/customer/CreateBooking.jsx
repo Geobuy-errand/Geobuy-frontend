@@ -1,13 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import { useCreateErrandMutation } from "../../redux/services/errandApi";
-import {
-  getDistance,
-  getApproximateDistance,
-} from "../../services/distanceService";
 import AddressAutocomplete from "../../components/AddressAutocomplete";
 import { toast } from "react-hot-toast";
+import http from "../../services/http";
+import useCountry from "../../hooks/useCountry";
 import {
   FaCalendar,
   FaClock,
@@ -20,49 +18,55 @@ import {
   FaCheckCircle,
   FaClock as FaClockIcon,
   FaDollarSign,
-  FaEdit,
-  FaSave,
 } from "react-icons/fa";
+
+// ============================================================
+// The price is calculated by the SERVER (/errands/quote) — the same code
+// that charges the customer — so what you see is exactly what you pay,
+// in £ for the UK and ₦ for Nigeria.
+// ============================================================
+
+const EMPTY_PRICE = {
+  baseFee: 0,
+  distanceFee: 0,
+  distanceRate: 0,
+  heavyItemFee: 0,
+  waitTimeFee: 0,
+  peakUrgentFee: 0,
+  extraStopsFee: 0,
+  subtotal: 0,
+  discountPercentage: 0,
+  discountAmount: 0,
+  total: 0,
+  platformFee: 0,
+  providerAmount: 0,
+};
 
 const CreateBooking = () => {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
   const [createErrand, { isLoading }] = useCreateErrandMutation();
+  const { code: countryCode, country, format, distanceUnitLabel } = useCountry();
+  const unitShort = country.distanceUnit === "mi" ? "mile" : "km";
 
-  // Pricing constants
-  const BASE_FEE = 3.99;
-  const SUBSCRIPTION_DISCOUNT = 20;
-  const HEAVY_ITEM_FEE = 2.99;
-  const WAIT_TIME_FEE_PER_MIN = 0.3;
-  const WAIT_TIME_FREE_MIN = 5;
-  const PEAK_URGENT_FEE = 1.99;
-  const EXTRA_STOP_FEE = 1.5;
+  // Public pricing for the customer's country (for option labels)
+  const [pricing, setPricing] = useState(null);
+  useEffect(() => {
+    http
+      .get(`/settings/public?country=${countryCode}`)
+      .then((r) => setPricing(r.data.pricing))
+      .catch(() => setPricing(null));
+  }, [countryCode]);
 
-  const getDistanceRate = (miles) => {
-    if (miles <= 3) return 0.8;
-    if (miles <= 10) return 0.7;
-    if (miles <= 20) return 0.6;
-    return 0.5;
-  };
+  const HEAVY_ITEM_FEE = pricing?.heavyItemFee ?? 0;
+  const WAIT_TIME_FEE_PER_MIN = pricing?.waitTimeFeePerMin ?? 0;
+  const WAIT_TIME_FREE_MIN = pricing?.waitTimeFreeMin ?? 0;
+  const PEAK_URGENT_FEE = pricing?.peakUrgentFee ?? 0;
+  const EXTRA_STOP_FEE = pricing?.extraStopFee ?? 0;
 
   const [formData, setFormData] = useState({
-    pickup: {
-      address: "",
-      street: "",
-      town: "",
-      postcode: "",
-      instructions: "",
-      coordinates: null,
-    },
-    dropoff: {
-      address: "",
-      street: "",
-      town: "",
-      postcode: "",
-      instructions: "",
-      coordinates: null,
-    },
+    pickup: { address: "", street: "", area: "", town: "", state: "", postcode: "", instructions: "", coordinates: null },
+    dropoff: { address: "", street: "", area: "", town: "", state: "", postcode: "", instructions: "", coordinates: null },
     taskDetails: "",
     preferredDate: "",
     preferredTime: "",
@@ -78,367 +82,129 @@ const CreateBooking = () => {
   const [distance, setDistance] = useState(0);
   const [distanceText, setDistanceText] = useState("");
   const [durationText, setDurationText] = useState("");
+  const [distanceAccuracy, setDistanceAccuracy] = useState("");
   const [isCalculating, setIsCalculating] = useState(false);
   const [distanceError, setDistanceError] = useState(null);
-  const [addressesValid, setAddressesValid] = useState({
-    pickup: false,
-    dropoff: false,
-  });
-  const [priceEstimate, setPriceEstimate] = useState({
-    baseFee: BASE_FEE,
-    distanceFee: 0,
-    distanceRate: 0.8,
-    heavyItemFee: 0,
-    waitTimeFee: 0,
-    peakUrgentFee: 0,
-    extraStopsFee: 0,
-    subtotal: 0,
-    discountPercentage: 0,
-    discountAmount: 0,
-    total: 0,
-    platformFee: 0,
-    providerAmount: 0,
-  });
+  const [addressesValid, setAddressesValid] = useState({ pickup: false, dropoff: false });
+  const [priceEstimate, setPriceEstimate] = useState(EMPTY_PRICE);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isDistanceCalculated, setIsDistanceCalculated] = useState(false);
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(true);
+  const [isPaying, setIsPaying] = useState(false);
+  const quoteSeq = useRef(0);
 
-  // Manual distance edit
-  const [isEditingDistance, setIsEditingDistance] = useState(false);
-  const [manualDistance, setManualDistance] = useState("");
+  const quotePayload = () => ({
+    pickup: formData.pickup,
+    dropoff: formData.dropoff,
+    isHeavyItem: formData.isHeavyItem,
+    isPeakUrgent: formData.isPeakUrgent,
+    extraStopsCount: formData.extraStopsCount,
+    waitTimeMinutes: formData.waitTimeMinutes,
+  });
 
-  // BASE DISTANCE FOR SAME LOCATION
-  const BASE_SAME_LOCATION_MILES = 0.5;
-
-  // DISTANCE CALCULATION FUNCTION
-  const calculateRealDistance = async () => {
-    // Check if we have enough data to calculate
-    const hasPickupData = formData.pickup.address;
-    const hasDropoffData = formData.dropoff.address;
-
-    if (!hasPickupData || !hasDropoffData) {
-      console.log("⏳ Waiting for both pickup and dropoff data...");
-      return;
-    }
-
+  // Ask the server for distance + price
+  const fetchQuote = async () => {
+    if (!formData.pickup.address || !formData.dropoff.address) return;
+    const seq = ++quoteSeq.current;
     setIsCalculating(true);
     setDistanceError(null);
-
     try {
-      const result = await getDistance(
-        formData.pickup.address || "",
-        formData.dropoff.address || "",
-        "DRIVING"
-      );
-
-      let distanceInMiles = result.distance.value;
-
-      // If distance is 0 or very small, set a base distance
-      if (distanceInMiles < 0.1) {
-        distanceInMiles = BASE_SAME_LOCATION_MILES;
-      }
-
-      setDistance(distanceInMiles);
-      setDistanceText(result.distance.text || `${distanceInMiles} miles`);
-      setDurationText(
-        result.duration.text || `${Math.round(distanceInMiles * 3)} min`
-      );
+      const { data } = await http.post("/errands/quote", quotePayload());
+      if (seq !== quoteSeq.current) return; // a newer quote is on its way
+      const b = data.priceBreakdown;
+      setDistance(b.distance.value);
+      setDistanceText(b.distance.text);
+      setDurationText(b.duration.text);
+      setDistanceAccuracy(b.distance.accuracy);
+      setIsSubscribed(Boolean(b.subscription?.isSubscribed));
+      setPriceEstimate({
+        baseFee: b.baseFee,
+        distanceFee: b.distanceFee,
+        distanceRate: b.distanceRate,
+        heavyItemFee: b.additionalCharges.heavyItem || 0,
+        waitTimeFee: b.additionalCharges.waitTime || 0,
+        peakUrgentFee: b.additionalCharges.peakUrgent || 0,
+        extraStopsFee: b.additionalCharges.extraStops || 0,
+        subtotal: b.subtotal,
+        discountPercentage: b.subscription?.discountPercentage || 0,
+        discountAmount: b.subscription?.discountAmount || 0,
+        total: b.total,
+        platformFee: b.revenueSplit.geobuyFee,
+        providerAmount: b.revenueSplit.providerAmount,
+      });
+      // Keep the coordinates the server resolved so creation uses the same points
+      setFormData((prev) => ({
+        ...prev,
+        pickup: { ...prev.pickup, coordinates: prev.pickup.coordinates || data.pickup?.coordinates || null },
+        dropoff: { ...prev.dropoff, coordinates: prev.dropoff.coordinates || data.dropoff?.coordinates || null },
+      }));
+      setAddressesValid({ pickup: true, dropoff: true });
       setIsDistanceCalculated(true);
-      calculatePrice(distanceInMiles);
-
-      // Mark addresses as valid
-      if (formData.pickup.address) {
-        setAddressesValid((prev) => ({ ...prev, pickup: true }));
-      }
-      if (formData.dropoff.address) {
-        setAddressesValid((prev) => ({ ...prev, dropoff: true }));
-      }
-
-      // Show toast based on accuracy
-      if (result.isFallback && distanceInMiles > 20) {
-        toast.info(`📍 Approximate distance: ${result.distance.text}`, {
-          duration: 3000,
-        });
-      } else if (!result.isFallback) {
-        toast.success(`✅ ${result.distance.text}`, { duration: 2000 });
-      } else {
-        toast.success(`📍 ${result.distance.text}`, { duration: 2000 });
-      }
     } catch (error) {
-      console.warn("Distance calculation fallback:", error);
-
-      // Always have a fallback
-      const fallbackResult = getApproximateDistance(
-        formData.pickup.address || "",
-        formData.dropoff.address || ""
-      );
-
-      let fallbackDistance =
-        fallbackResult?.distance?.value || BASE_SAME_LOCATION_MILES;
-
-      if (fallbackDistance < 0.1) {
-        fallbackDistance = BASE_SAME_LOCATION_MILES;
-      }
-
-      setDistance(fallbackDistance);
-      setDistanceText(`${fallbackDistance} miles`);
-      setDurationText(`${Math.round(fallbackDistance * 3)} min`);
-      setIsDistanceCalculated(true);
-      calculatePrice(fallbackDistance);
-
-      // Mark addresses as valid even with fallback
-      if (formData.pickup.address) {
-        setAddressesValid((prev) => ({ ...prev, pickup: true }));
-      }
-      if (formData.dropoff.address) {
-        setAddressesValid((prev) => ({ ...prev, dropoff: true }));
-      }
-
-      if (fallbackDistance > 10) {
-        toast.info(`📍 Estimated distance: ${fallbackDistance} miles`, {
-          duration: 3000,
-        });
-      } else {
-        toast.success(`📍 ${fallbackDistance} miles`, { duration: 2000 });
-      }
-      setDistanceError(null);
+      if (seq !== quoteSeq.current) return;
+      setIsDistanceCalculated(false);
+      setDistance(0);
+      setPriceEstimate(EMPTY_PRICE);
+      setDistanceError(error.response?.data?.message || "We couldn't calculate this route. Please check both addresses.");
     } finally {
-      setIsCalculating(false);
+      if (seq === quoteSeq.current) setIsCalculating(false);
     }
   };
 
-  // MANUAL DISTANCE UPDATE
-  const handleManualDistanceUpdate = () => {
-    const miles = parseFloat(manualDistance);
-    if (isNaN(miles) || miles <= 0) {
-      toast.error("Please enter a valid distance in miles");
-      return;
-    }
-
-    setDistance(miles);
-    setDistanceText(`${miles} miles`);
-    setDurationText(`${Math.round(miles * 3)} min`);
-    setIsDistanceCalculated(true);
-    calculatePrice(miles);
-    setIsEditingDistance(false);
-    toast.success(`✅ Distance updated to ${miles} miles`);
-  };
-
-  // EFFECTS - Auto-calculate when data changes
   useEffect(() => {
-    if (user?.subscription?.isSubscribed) {
-      setIsSubscribed(true);
-    }
+    if (user?.subscription?.isSubscribed) setIsSubscribed(true);
   }, [user]);
 
-  // Auto-calculate when ANY location data changes
+  // Re-quote when addresses or priced options change (debounced)
   useEffect(() => {
-    const hasPickupData = formData.pickup.address;
-    const hasDropoffData = formData.dropoff.address;
-
-    if (hasPickupData && hasDropoffData) {
-      if (window.distanceTimer) {
-        clearTimeout(window.distanceTimer);
-      }
-
-      window.distanceTimer = setTimeout(() => {
-        calculateRealDistance();
-      }, 600);
-      return () => clearTimeout(window.distanceTimer);
-    }
-  }, [formData.pickup.address, formData.dropoff.address]);
-
-  // Recalculate price when any pricing option changes
-  useEffect(() => {
-    if (distance > 0 && isDistanceCalculated) {
-      calculatePrice(distance);
-    }
+    if (!formData.pickup.address || !formData.dropoff.address) return undefined;
+    const t = setTimeout(fetchQuote, 600);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    distance,
-    isSubscribed,
+    formData.pickup.address,
+    formData.dropoff.address,
+    formData.pickup.coordinates,
+    formData.dropoff.coordinates,
     formData.isHeavyItem,
     formData.isPeakUrgent,
     formData.extraStopsCount,
     formData.waitTimeMinutes,
   ]);
 
-  // HANDLERS
   const handleAddressSelect = (type, suggestion) => {
-    const addressField = type === "pickup" ? "pickup" : "dropoff";
-
-    const fullAddress =
-      suggestion.displayName || suggestion.address?.road || "";
-    const addressParts = fullAddress.split(",") || [];
-    const street = addressParts[0]?.trim() || "";
-    const town = addressParts[1]?.trim() || "";
-    const postcode =
-      suggestion.postcode ||
-      addressParts[addressParts.length - 2]?.trim() ||
-      "";
-
+    const fullAddress = suggestion.displayName || "";
+    const parts = fullAddress.split(",").map((p) => p.trim());
+    const lng = suggestion.lng ?? suggestion.lon;
     setFormData((prev) => ({
       ...prev,
-      [addressField]: {
-        ...prev[addressField],
+      [type]: {
+        ...prev[type],
         address: fullAddress,
-        street: street,
-        town: town,
-        postcode: postcode,
-        coordinates:
-          suggestion.lat && suggestion.lon
-            ? { lat: suggestion.lat, lng: suggestion.lon }
-            : null,
+        street: [suggestion.houseNumber, suggestion.road].filter(Boolean).join(" ") || parts[0] || "",
+        area: suggestion.suburb || "",
+        town: suggestion.city || parts[1] || "",
+        state: suggestion.state || "",
+        postcode: suggestion.postcode || "",
+        coordinates: suggestion.lat && lng ? { lat: Number(suggestion.lat), lng: Number(lng) } : null,
       },
     }));
-
-    setAddressesValid((prev) => ({
-      ...prev,
-      [type]: true,
-    }));
-
-    setTimeout(() => {
-      if (formData.pickup.address && formData.dropoff.address) {
-        calculateRealDistance();
-      }
-    }, 500);
+    setAddressesValid((prev) => ({ ...prev, [type]: true }));
   };
 
-  // ✅ FIXED: Handle both event objects and direct string values
   const handleAddressChange = (type, valueOrEvent) => {
-    const addressField = type === "pickup" ? "pickup" : "dropoff";
-
-    // Handle different input types
     let value = "";
-    if (typeof valueOrEvent === "string") {
-      value = valueOrEvent;
-    } else if (valueOrEvent?.target?.value !== undefined) {
-      value = valueOrEvent.target.value;
-    } else if (valueOrEvent?.value !== undefined) {
-      value = valueOrEvent.value;
-    } else {
-      value = String(valueOrEvent || "");
-    }
+    if (typeof valueOrEvent === "string") value = valueOrEvent;
+    else if (valueOrEvent?.target?.value !== undefined) value = valueOrEvent.target.value;
+    else value = String(valueOrEvent || "");
 
-    // If value is [object Object], clear it
-    if (value === "[object Object]" || value === "object Object") {
-      value = "";
-    }
-
-    setFormData((prev) => ({
-      ...prev,
-      [addressField]: {
-        ...prev[addressField],
-        address: value,
-        coordinates: null,
-      },
-    }));
-
-    if (!value || value.trim() === "") {
-      setAddressesValid((prev) => ({
-        ...prev,
-        [type]: false,
-      }));
-      setIsDistanceCalculated(false);
-      setDistance(0);
-    } else {
-      setAddressesValid((prev) => ({
-        ...prev,
-        [type]: true,
-      }));
-    }
-
+    setFormData((prev) => ({ ...prev, [type]: { ...prev[type], address: value, coordinates: null } }));
+    setAddressesValid((prev) => ({ ...prev, [type]: Boolean(value.trim()) }));
     setIsDistanceCalculated(false);
     setDistance(0);
     setDistanceText("");
     setDurationText("");
     setDistanceError(null);
-  };
-
-  const calculatePrice = (dist) => {
-    const distanceInMiles = dist || distance || 0;
-
-    if (distanceInMiles === 0) {
-      setPriceEstimate({
-        baseFee: BASE_FEE,
-        distanceFee: 0,
-        distanceRate: 0.8,
-        heavyItemFee: 0,
-        waitTimeFee: 0,
-        peakUrgentFee: 0,
-        extraStopsFee: 0,
-        subtotal: 0,
-        discountPercentage: 0,
-        discountAmount: 0,
-        total: 0,
-        platformFee: 0,
-        providerAmount: 0,
-      });
-      return;
-    }
-
-    const ratePerMile = getDistanceRate(distanceInMiles);
-    const distanceFee = Math.round(distanceInMiles * ratePerMile * 100) / 100;
-
-    let subtotal = BASE_FEE + distanceFee;
-
-    let heavyItemFee = 0;
-    if (formData.isHeavyItem) {
-      heavyItemFee = HEAVY_ITEM_FEE;
-      subtotal += heavyItemFee;
-    }
-
-    let waitTimeFee = 0;
-    if (formData.waitTimeMinutes > WAIT_TIME_FREE_MIN) {
-      const extraMinutes = formData.waitTimeMinutes - WAIT_TIME_FREE_MIN;
-      waitTimeFee =
-        Math.round(extraMinutes * WAIT_TIME_FEE_PER_MIN * 100) / 100;
-      subtotal += waitTimeFee;
-    }
-
-    let peakUrgentFee = 0;
-    if (formData.isPeakUrgent) {
-      peakUrgentFee = PEAK_URGENT_FEE;
-      subtotal += peakUrgentFee;
-    }
-
-    let extraStopsFee = 0;
-    if (formData.extraStopsCount > 0) {
-      extraStopsFee =
-        Math.round(formData.extraStopsCount * EXTRA_STOP_FEE * 100) / 100;
-      subtotal += extraStopsFee;
-    }
-
-    subtotal = Math.round(subtotal * 100) / 100;
-
-    let discountPercentage = 0;
-    let discountAmount = 0;
-    let total = subtotal;
-
-    if (isSubscribed) {
-      discountPercentage = SUBSCRIPTION_DISCOUNT;
-      discountAmount =
-        Math.round(((subtotal * SUBSCRIPTION_DISCOUNT) / 100) * 100) / 100;
-      total = Math.round((subtotal - discountAmount) * 100) / 100;
-    }
-
-    const platformFee = Math.round(total * 0.2 * 100) / 100;
-    const providerAmount = Math.round(total * 0.8 * 100) / 100;
-
-    setPriceEstimate({
-      baseFee: BASE_FEE,
-      distanceFee: distanceFee,
-      distanceRate: ratePerMile,
-      heavyItemFee: heavyItemFee,
-      waitTimeFee: waitTimeFee,
-      peakUrgentFee: peakUrgentFee,
-      extraStopsFee: extraStopsFee,
-      subtotal: subtotal,
-      discountPercentage: discountPercentage,
-      discountAmount: discountAmount,
-      total: total,
-      platformFee: platformFee,
-      providerAmount: providerAmount,
-    });
   };
 
   const handlePhotoUpload = (e) => {
@@ -450,68 +216,50 @@ const CreateBooking = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.pickup.address) {
-      toast.error("Please select a pickup address");
-      return;
-    }
-    if (!formData.dropoff.address) {
-      toast.error("Please select a dropoff address");
-      return;
-    }
-    if (!formData.preferredDate || !formData.preferredTime) {
-      toast.error("Please select date and time");
-      return;
-    }
-    if (distance === 0 || !isDistanceCalculated) {
-      toast.error("Please calculate distance first");
-      return;
-    }
+    if (!formData.pickup.address) return toast.error("Please select a pickup address");
+    if (!formData.dropoff.address) return toast.error("Please select a drop-off address");
+    if (!formData.preferredDate || !formData.preferredTime) return toast.error("Please select date and time");
+    if (!isDistanceCalculated) return toast.error("Please wait for the price to be calculated");
 
     try {
-      const result = await createErrand({
-        ...formData,
-        photos: photos,
-        distance: distance,
-        distanceText: distanceText,
-        duration: durationText,
-        isSubscribed: isSubscribed,
-      }).unwrap();
+      // Photos are local previews only (blob: URLs) — don't send them
+      const result = await createErrand({ ...formData }).unwrap();
+      const errandId = result.errand._id;
 
-      toast.success("Errand created successfully!");
-      navigate(`/customer/errand/${result.errand._id}`);
+      if (!result.paymentRequired) {
+        toast.success("Errand created successfully!");
+        navigate(`/customer/errand/${errandId}`);
+        return;
+      }
+
+      // Pay now: redirect to Stripe (UK) or Paystack (Nigeria)
+      setIsPaying(true);
+      try {
+        const { data } = await http.post("/payments/errand/checkout", { errandId });
+        toast.success(`Errand created — redirecting to ${country.paymentGatewayLabel}...`);
+        window.location.assign(data.url);
+      } catch (payErr) {
+        setIsPaying(false);
+        toast.error(payErr.response?.data?.message || "Errand saved. Please complete payment from the booking page.");
+        navigate(`/customer/booking/${errandId}`);
+      }
     } catch (error) {
       console.error("Create errand error:", error);
       toast.error(error.data?.message || "Failed to create errand");
     }
   };
 
-  const isFormReady = () => {
-    const hasPickupAddress = !!formData.pickup.address;
-    const hasDropoffAddress = !!formData.dropoff.address;
-    const hasDate = !!formData.preferredDate;
-    const hasTime = !!formData.preferredTime;
-    const hasDistance = distance > 0 && isDistanceCalculated;
-    const notLoading = !isLoading && !isCalculating;
-    const addressesAreValid = addressesValid.pickup && addressesValid.dropoff;
-
-    return (
-      notLoading &&
-      hasPickupAddress &&
-      hasDropoffAddress &&
-      hasDate &&
-      hasTime &&
-      hasDistance &&
-      addressesAreValid
-    );
-  };
-
-  if (false) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <FaSpinner className="animate-spin text-primary text-3xl" />
-      </div>
-    );
-  }
+  const isFormReady = () =>
+    !isLoading &&
+    !isCalculating &&
+    !isPaying &&
+    Boolean(formData.pickup.address) &&
+    Boolean(formData.dropoff.address) &&
+    Boolean(formData.preferredDate) &&
+    Boolean(formData.preferredTime) &&
+    isDistanceCalculated &&
+    addressesValid.pickup &&
+    addressesValid.dropoff;
 
   return (
     <div>
@@ -533,14 +281,14 @@ const CreateBooking = () => {
             onSelect={(suggestion) => handleAddressSelect("pickup", suggestion)}
             onChange={(e) => handleAddressChange("pickup", e)}
             required
-            country="gb"
+            country={countryCode}
             minChars={2}
           />
 
           {addressesValid.pickup && (
             <div className="flex items-center text-green-600 text-sm mt-2">
               <FaCheckCircle className="mr-2" />
-              <span>Address verified in UK</span>
+              <span>Address found in {country.name}</span>
             </div>
           )}
 
@@ -601,14 +349,14 @@ const CreateBooking = () => {
                 }
                 onChange={(e) => handleAddressChange("dropoff", e)}
                 required
-                country="gb"
+                country={countryCode}
                 minChars={2}
               />
 
               {addressesValid.dropoff && (
                 <div className="flex items-center text-green-600 text-sm mt-2">
                   <FaCheckCircle className="mr-2" />
-                  <span>Address verified in UK</span>
+                  <span>Address found in {country.name}</span>
                 </div>
               )}
 
@@ -721,7 +469,7 @@ const CreateBooking = () => {
                     Heavy Item (over 5kg/large)
                   </span>
                   <p className="text-xs text-text-lighter">
-                    +£{HEAVY_ITEM_FEE.toFixed(2)}
+                    +{format(HEAVY_ITEM_FEE)}
                   </p>
                 </div>
               </label>
@@ -741,7 +489,7 @@ const CreateBooking = () => {
                 <div>
                   <span className="text-sm text-text-light">Peak/Urgent</span>
                   <p className="text-xs text-text-lighter">
-                    +£{PEAK_URGENT_FEE.toFixed(2)}
+                    +{format(PEAK_URGENT_FEE)}
                   </p>
                 </div>
               </label>
@@ -763,7 +511,7 @@ const CreateBooking = () => {
                     className="w-20 px-3 py-1 rounded-lg border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
                   />
                   <span className="text-xs text-text-lighter">
-                    × £{EXTRA_STOP_FEE.toFixed(2)} each
+                    × {format(EXTRA_STOP_FEE)} each
                   </span>
                 </label>
               </div>
@@ -776,7 +524,7 @@ const CreateBooking = () => {
                   <input
                     type="number"
                     min="0"
-                    max="60"
+                    max="240"
                     value={formData.waitTimeMinutes}
                     onChange={(e) =>
                       setFormData((prev) => ({
@@ -787,8 +535,7 @@ const CreateBooking = () => {
                     className="w-20 px-3 py-1 rounded-lg border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
                   />
                   <span className="text-xs text-text-lighter">
-                    minutes (first 5 free, then £
-                    {WAIT_TIME_FEE_PER_MIN.toFixed(2)}/min)
+                    minutes (first {WAIT_TIME_FREE_MIN} free, then {format(WAIT_TIME_FEE_PER_MIN)}/min)
                   </span>
                 </label>
               </div>
@@ -800,18 +547,8 @@ const CreateBooking = () => {
         <div className="card">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-text">Price Estimate</h2>
-            {isDistanceCalculated && distance > 0 && (
-              <button
-                type="button"
-                onClick={() => {
-                  setIsEditingDistance(true);
-                  setManualDistance(distance.toString());
-                }}
-                className="text-sm text-primary hover:underline flex items-center gap-1"
-              >
-                <FaEdit className="text-xs" />
-                Edit Distance
-              </button>
+            {isDistanceCalculated && distanceAccuracy === "approximate" && (
+              <span className="text-xs text-amber-600">Approximate route — add street names for an exact price</span>
             )}
           </div>
 
@@ -835,47 +572,7 @@ const CreateBooking = () => {
               </div>
             ) : distance > 0 && isDistanceCalculated ? (
               <>
-                {/* Manual Distance Edit Mode */}
-                {isEditingDistance ? (
-                  <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1">
-                        <label className="block text-sm font-medium text-text-light mb-1">
-                          Enter Distance (miles)
-                        </label>
-                        <input
-                          type="number"
-                          step="0.1"
-                          min="0.1"
-                          value={manualDistance}
-                          onChange={(e) => setManualDistance(e.target.value)}
-                          className="input-field bg-white"
-                          placeholder="e.g., 5.5"
-                        />
-                      </div>
-                      <div className="flex gap-2 mt-6">
-                        <button
-                          type="button"
-                          onClick={handleManualDistanceUpdate}
-                          className="btn-primary text-sm py-2 px-4 flex items-center gap-1"
-                        >
-                          <FaSave className="text-xs" /> Update
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setIsEditingDistance(false)}
-                          className="btn-outline text-sm py-2 px-4"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                    <p className="text-xs text-text-lighter mt-2">
-                      Enter the distance in miles. Price will update
-                      automatically.
-                    </p>
-                  </div>
-                ) : (
+                {true && (
                   <>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="bg-gray-50 rounded-xl p-3">
@@ -889,7 +586,7 @@ const CreateBooking = () => {
                           {distanceText}
                         </span>
                         <p className="text-xs text-text-lighter">
-                          Rate: £{priceEstimate.distanceRate.toFixed(2)}/mile
+                          Avg rate: {format(priceEstimate.distanceRate)}/{unitShort}
                         </p>
                       </div>
                       <div className="bg-gray-50 rounded-xl p-3">
@@ -909,23 +606,22 @@ const CreateBooking = () => {
                       <div className="flex justify-between">
                         <span className="text-text-light">Base Fee</span>
                         <span className="font-medium">
-                          £{priceEstimate.baseFee.toFixed(2)}
+                          {format(priceEstimate.baseFee)}
                         </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-text-light">
-                          Distance Fee ({distance.toFixed(1)} miles × £
-                          {priceEstimate.distanceRate.toFixed(2)})
+                          Distance Fee ({distance.toFixed(1)} {distanceUnitLabel})
                         </span>
                         <span className="font-medium">
-                          £{priceEstimate.distanceFee.toFixed(2)}
+                          {format(priceEstimate.distanceFee)}
                         </span>
                       </div>
 
                       {formData.isHeavyItem && (
                         <div className="flex justify-between text-orange-600">
                           <span>Heavy Item Fee</span>
-                          <span>+£{priceEstimate.heavyItemFee.toFixed(2)}</span>
+                          <span>+{format(priceEstimate.heavyItemFee)}</span>
                         </div>
                       )}
                       {formData.waitTimeMinutes > 5 && (
@@ -934,14 +630,14 @@ const CreateBooking = () => {
                             Wait Time ({formData.waitTimeMinutes - 5} extra
                             mins)
                           </span>
-                          <span>+£{priceEstimate.waitTimeFee.toFixed(2)}</span>
+                          <span>+{format(priceEstimate.waitTimeFee)}</span>
                         </div>
                       )}
                       {formData.isPeakUrgent && (
                         <div className="flex justify-between text-orange-600">
                           <span>Peak/Urgent Fee</span>
                           <span>
-                            +£{priceEstimate.peakUrgentFee.toFixed(2)}
+                            +{format(priceEstimate.peakUrgentFee)}
                           </span>
                         </div>
                       )}
@@ -949,7 +645,7 @@ const CreateBooking = () => {
                         <div className="flex justify-between text-orange-600">
                           <span>Extra Stops ({formData.extraStopsCount})</span>
                           <span>
-                            +£{priceEstimate.extraStopsFee.toFixed(2)}
+                            +{format(priceEstimate.extraStopsFee)}
                           </span>
                         </div>
                       )}
@@ -957,7 +653,7 @@ const CreateBooking = () => {
                       <div className="flex justify-between pt-2 border-t border-gray-200">
                         <span className="font-medium text-text">Subtotal</span>
                         <span className="font-semibold text-text">
-                          £{priceEstimate.subtotal.toFixed(2)}
+                          {format(priceEstimate.subtotal)}
                         </span>
                       </div>
                     </div>
@@ -972,7 +668,7 @@ const CreateBooking = () => {
                             <p className="text-xs text-green-600">20% off</p>
                           </div>
                           <span className="font-bold text-green-700">
-                            -£{priceEstimate.discountAmount.toFixed(2)}
+                            -{format(priceEstimate.discountAmount)}
                           </span>
                         </div>
                       </div>
@@ -984,7 +680,7 @@ const CreateBooking = () => {
                           Total
                         </span>
                         <span className="text-2xl font-bold text-primary">
-                          £{priceEstimate.total.toFixed(2)}
+                          {format(priceEstimate.total)}
                         </span>
                       </div>
                     </div>
@@ -1000,7 +696,7 @@ const CreateBooking = () => {
                             GEOBUY Fee (20%)
                           </span>
                           <span className="font-medium text-blue-600">
-                            £{priceEstimate.platformFee.toFixed(2)}
+                            {format(priceEstimate.platformFee)}
                           </span>
                         </div>
                         <div className="flex justify-between">
@@ -1008,7 +704,7 @@ const CreateBooking = () => {
                             Provider Amount (80%)
                           </span>
                           <span className="font-medium text-primary">
-                            £{priceEstimate.providerAmount.toFixed(2)}
+                            {format(priceEstimate.providerAmount)}
                           </span>
                         </div>
                       </div>
@@ -1118,9 +814,21 @@ const CreateBooking = () => {
             !isFormReady() ? "opacity-50 cursor-not-allowed" : ""
           }`}
         >
-          <span>{isLoading ? "Creating..." : "Create Errand"}</span>
+          <span>
+            {isPaying
+              ? "Redirecting to payment..."
+              : isLoading
+              ? "Creating..."
+              : isDistanceCalculated
+              ? `Book & pay ${format(priceEstimate.total)}`
+              : "Create Errand"}
+          </span>
           <FaArrowRight />
         </button>
+        <p className="text-xs text-text-lighter text-center">
+          You'll pay securely with {country.paymentGatewayLabel}. Your money is held by GEOBUY and only released to the
+          runner when you confirm the errand is done.
+        </p>
       </form>
     </div>
   );

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useSelector } from 'react-redux'
 import { FaUser, FaClock, FaCircle, FaHeadset, FaBox } from 'react-icons/fa'
-import axios from 'axios'
+import http from '../../services/http'
 import { toast } from 'react-hot-toast'
 
 const ChatList = ({ onChatSelect, selectedChatId, filterType = 'all' }) => {
@@ -16,7 +16,7 @@ const ChatList = ({ onChatSelect, selectedChatId, filterType = 'all' }) => {
   const loadChats = async () => {
     setIsLoading(true)
     try {
-      const response = await axios.get('/api/chats', {
+      const response = await http.get('/api/chats', {
         withCredentials: true,
       })
       

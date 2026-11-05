@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useGetAllBookingsQuery } from '../../redux/services/adminApi'
 import { FaSearch, FaCalendar, FaFilter } from 'react-icons/fa'
+import { formatMoney } from '../../utils/money'
 
 const AdminBookings = () => {
   const [searchTerm, setSearchTerm] = useState('')
@@ -123,7 +124,7 @@ const AdminBookings = () => {
                     {new Date(booking.date).toLocaleDateString()}
                   </td>
                   <td className="py-3 px-4 font-semibold text-primary">
-                    £{booking.estimatedPrice?.toFixed(2)}
+                    {formatMoney(booking.total ?? booking.estimatedPrice, booking.currency || 'GBP')}
                   </td>
                   <td className="py-3 px-4">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(booking.status)}`}>

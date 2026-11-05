@@ -4,7 +4,8 @@ export const subscriptionPlanApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     // Public: Get active plans
     getActivePlans: builder.query({
-      query: () => '/subscription-plans/active',
+      // Pass a country ('GB' | 'NG') to get local prices (localPrice / currency)
+      query: (country) => (country ? `/subscription-plans/active?country=${country}` : '/subscription-plans/active'),
       providesTags: ['SubscriptionPlan'],
     }),
     

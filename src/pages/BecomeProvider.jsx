@@ -88,11 +88,11 @@ const BecomeProvider = () => {
               </li>
               <li className="flex items-start space-x-3">
                 <span className="text-primary font-bold">✓</span>
-                <span className="text-text-light">Have a valid UK phone number</span>
+                <span className="text-text-light">Have a valid UK or Nigerian phone number</span>
               </li>
               <li className="flex items-start space-x-3">
                 <span className="text-primary font-bold">✓</span>
-                <span className="text-text-light">Provide proof of identity (Passport or Driving Licence)</span>
+                <span className="text-text-light">Provide proof of identity (UK: passport or driving licence · Nigeria: NIN slip or National ID)</span>
               </li>
               <li className="flex items-start space-x-3">
                 <span className="text-primary font-bold">✓</span>
@@ -100,7 +100,7 @@ const BecomeProvider = () => {
               </li>
               <li className="flex items-start space-x-3">
                 <span className="text-primary font-bold">✓</span>
-                <span className="text-text-light">Right to work documentation</span>
+                <span className="text-text-light">Right to work (UK) or NIN / National ID (Nigeria)</span>
               </li>
               <li className="flex items-start space-x-3">
                 <span className="text-primary font-bold">✓</span>

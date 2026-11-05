@@ -13,8 +13,11 @@ import {
   FaUserCheck, FaSpinner, FaLocationArrow, FaRuler, FaCheck,
   FaPaperPlane, FaInfoCircle
 } from 'react-icons/fa'
+import useCountry from '../../hooks/useCountry'
+import { backgroundCheckLabel } from '../../config/countries'
 
 const FindServices = () => {
+  const { format, country: userCountry, distanceUnitLabel } = useCountry()
   const navigate = useNavigate()
   const { user } = useSelector((state) => state.auth)
   
@@ -26,7 +29,7 @@ const FindServices = () => {
     dbsChecked: false,
     insured: false,
     rated: false,
-    maxDistance: 20,
+    maxDistance: 20, // in the country's unit (miles UK / km Nigeria)
     sortBy: 'nearest',
   })
   const [userLocation, setUserLocation] = useState(null)
@@ -66,6 +69,7 @@ const FindServices = () => {
     lat: userLocation?.lat || null,
     lng: userLocation?.lng || null,
     radius: filters.maxDistance,
+    country: userCountry.code,
     limit: 50,
   }, {
     skip: !selectedCategory,
@@ -89,21 +93,15 @@ const FindServices = () => {
         },
         (error) => {
           setIsGettingLocation(false)
-          toast.error('Could not get your location. Please enter your address manually.')
-          setUserLocation({
-            lat: 51.5074,
-            lng: -0.1276,
-          })
-          toast.info('📍 Using default location (London) as fallback')
+          toast.error('Could not get your location. Please enter your address below.')
+          // Fall back to the main city of the user's country (London / Lagos)
+          setUserLocation(userCountry.defaultCenter)
         }
       )
     } else {
       setIsGettingLocation(false)
       toast.error('Geolocation is not supported by your browser.')
-      setUserLocation({
-        lat: 51.5074,
-        lng: -0.1276,
-      })
+      setUserLocation(userCountry.defaultCenter)
     }
   }
 
@@ -128,11 +126,12 @@ const FindServices = () => {
       ...prev,
       location: {
         address: suggestion.displayName || '',
-        town: addressParts[1]?.trim() || '',
+        town: suggestion.city || addressParts[1]?.trim() || '',
+        state: suggestion.state || '',
         postcode: suggestion.postcode || '',
         coordinates: {
-          lat: suggestion.lat,
-          lng: suggestion.lon,
+          lat: Number(suggestion.lat),
+          lng: Number(suggestion.lng ?? suggestion.lon),
         },
       },
     }))
@@ -239,10 +238,11 @@ const FindServices = () => {
                 onChange={(e) => setFilters({ ...filters, maxDistance: parseInt(e.target.value) })}
                 className="input-field py-2"
               >
-                <option value={5}>Within 5 miles</option>
-                <option value={10}>Within 10 miles</option>
-                <option value={20}>Within 20 miles</option>
-                <option value={50}>Within 50 miles</option>
+                {[5, 10, 20, 50].map((d) => (
+                  <option key={d} value={d}>
+                    Within {d} {distanceUnitLabel}
+                  </option>
+                ))}
                 <option value={100}>Any distance</option>
               </select>
             </div>
@@ -268,7 +268,7 @@ const FindServices = () => {
                   onChange={(e) => setFilters({ ...filters, dbsChecked: e.target.checked })}
                   className="w-4 h-4 text-primary rounded"
                 />
-                <span className="text-sm">DBS Checked</span>
+                <span className="text-sm">{backgroundCheckLabel(userCountry.code)}</span>
               </label>
               <label className="flex items-center space-x-2 px-3 py-2 bg-white rounded-lg shadow-soft">
                 <input
@@ -413,14 +413,14 @@ const FindServices = () => {
                             {provider.distance && (
                               <span className="flex items-center text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
                                 <FaRuler className="mr-1" />
-                                {provider.distance.toFixed(1)} miles away
+                                {provider.distanceText || `${provider.distance.toFixed(1)} ${distanceUnitLabel}`} away
                               </span>
                             )}
                           </div>
                           <div className="flex flex-wrap gap-2 mt-2">
                             {provider.verificationBadges?.includes('dbs_checked') && (
                               <span className="flex items-center text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
-                                <FaCheckCircle className="mr-1" /> DBS Checked
+                                <FaCheckCircle className="mr-1" /> {backgroundCheckLabel(userCountry.code)}
                               </span>
                             )}
                             {provider.verificationBadges?.includes('insured') && (
@@ -451,7 +451,7 @@ const FindServices = () => {
                           {provider.serviceRates?.hourlyRate && (
                             <p className="text-sm text-text-light">
                               <span className="font-semibold text-primary">
-                                £{provider.serviceRates.hourlyRate}
+                                {format(provider.serviceRates.hourlyRate)}
                               </span>
                               /hr
                             </p>
@@ -541,11 +541,14 @@ const FindServices = () => {
                     value={serviceRequest.location.address}
                     onSelect={handleLocationSelect}
                     onChange={(e) => {
+                      // AddressAutocomplete passes the text, not an event
+                      const text = typeof e === 'string' ? e : e?.target?.value || ''
                       setServiceRequest(prev => ({
                         ...prev,
                         location: {
                           ...prev.location,
-                          address: e.target.value,
+                          address: text,
+                          coordinates: null,
                         },
                       }))
                     }}
@@ -583,7 +586,7 @@ const FindServices = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-text-light mb-1">
-                    Budget (£)
+                    Budget ({userCountry.currencySymbol})
                   </label>
                   <input
                     type="number"
@@ -615,7 +618,9 @@ const FindServices = () => {
                       onChange={handleRequestChange}
                       className="w-5 h-5 text-primary rounded border-gray-300 focus:ring-primary"
                     />
-                    <span className="text-sm text-text-light">Requires DBS checked provider</span>
+                    <span className="text-sm text-text-light">
+                      {userCountry.code === 'NG' ? 'Requires background-checked provider' : 'Requires DBS checked provider'}
+                    </span>
                   </label>
                   <label className="flex items-center space-x-3">
                     <input
@@ -633,14 +638,14 @@ const FindServices = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <span className="font-medium text-blue-700">
-                        💳 Service Fee
+                        💳 Requesting quotes is free
                       </span>
-                      <p className="text-xs text-blue-600">Fixed booking fee</p>
+                      <p className="text-xs text-blue-600">You agree the price directly with the provider</p>
                     </div>
-                    <span className="font-bold text-blue-700">£1.99</span>
+                    <span className="font-bold text-blue-700">{format(0)}</span>
                   </div>
                   <p className="text-xs text-text-lighter mt-2">
-                    * Service fee is charged by GEOBUY. Service provider amount is negotiated directly.
+                    * Prices are in {userCountry.currency}. Providers pay GEOBUY a commission on completed jobs.
                   </p>
                 </div>
 

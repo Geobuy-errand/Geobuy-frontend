@@ -4,11 +4,13 @@ import { useGetServicesQuery } from '../redux/services/serviceApi'
 import { FaSearch, FaRunning, FaHandsHelping, FaArrowRight, FaInfoCircle } from 'react-icons/fa'
 import SignupModal from '../components/modals/SignupModal'
 import { useSelector } from 'react-redux'
+import usePublicPricing from '../hooks/usePublicPricing'
 
 const Services = () => {
+  const { format, baseFee, firstRate, country } = usePublicPricing()
   const navigate = useNavigate()
   const { user } = useSelector((state) => state.auth)
-  const { data: services, isLoading } = useGetServicesQuery()
+  const { data: services, isLoading } = useGetServicesQuery(country.code)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [activeTab, setActiveTab] = useState('errands')
@@ -357,7 +359,7 @@ const Services = () => {
                           {isErrand ? (
                             <>
                               <p className="text-sm text-text-light">
-                                <span className="font-medium">Distance-based pricing:</span> £3.50 base + £1.60/mile
+                                <span className="font-medium">Distance-based pricing:</span> {format(baseFee)} base + from {format(firstRate)}/{country.distanceUnit === 'mi' ? 'mile' : 'km'}
                               </p>
                               <p className="text-xs text-text-lighter mt-1">
                                 📍 Price calculated based on distance
@@ -366,7 +368,7 @@ const Services = () => {
                           ) : (
                             <>
                               <p className="text-sm text-text-light">
-                                <span className="font-medium">Service Fee:</span> £1.99 (GEOBUY fee)
+                                <span className="font-medium">No booking fee</span> — free to request quotes
                               </p>
                               <p className="text-xs text-text-lighter mt-1">
                                 💬 Service price is negotiated directly between you and the provider

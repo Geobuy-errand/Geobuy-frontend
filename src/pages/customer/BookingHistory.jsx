@@ -2,8 +2,10 @@ import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useGetBookingsQuery } from '../../redux/services/bookingApi'
 import { FaSearch, FaFilter } from 'react-icons/fa'
+import useCountry from '../../hooks/useCountry'
 
 const BookingHistory = () => {
+  const { format, country: userCountry, distanceUnitLabel } = useCountry()
   const { data: bookings, isLoading } = useGetBookingsQuery()
   const [filter, setFilter] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
@@ -105,7 +107,7 @@ const BookingHistory = () => {
                 </div>
                 <div className="flex items-center space-x-4 mt-4 md:mt-0">
                   <span className="text-lg font-bold text-primary">
-                    £{booking.subtotal?.toFixed(2)}
+                    {format(booking.subtotal)}
                   </span>
                   <span className="text-sm text-text-light">
                     #{booking.errandId}

@@ -144,6 +144,7 @@ const AdminSettings = () => {
                 className="input-field"
               >
                 <option value="Europe/London">Europe/London</option>
+                <option value="Africa/Lagos">Africa/Lagos</option>
                 <option value="Europe/Paris">Europe/Paris</option>
                 <option value="America/New_York">America/New_York</option>
                 <option value="Asia/Dubai">Asia/Dubai</option>

@@ -19,7 +19,7 @@ const FAQ = () => {
     },
     {
       question: 'What payment methods are accepted?',
-      answer: 'We accept all major debit and credit cards through our secure Stripe payment system. Payments are held in escrow and released to the provider only after you confirm the errand is complete.',
+      answer: 'We accept all major debit and credit cards through secure hosted checkout — Stripe in the UK, and Paystack in Nigeria (cards, bank transfer and USSD). Payments are held in escrow and released to the provider only after you confirm the errand is complete.',
     },
     {
       question: 'Can I cancel a booking?',
@@ -31,7 +31,7 @@ const FAQ = () => {
     },
     {
       question: 'Is my personal information secure?',
-      answer: 'Yes, we take data security seriously. All information is encrypted, and we never share your personal information without your explicit consent. We comply with UK privacy regulations.',
+      answer: 'Yes, we take data security seriously. All information is encrypted, and we never share your personal information without your explicit consent. We comply with UK data protection law (UK GDPR) and the Nigeria Data Protection Act (NDPA).',
     },
     {
       question: 'What happens if something goes wrong?',

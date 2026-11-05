@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
+import http from '../../services/http'
 import { useGetBookingByIdQuery, useUpdateBookingStatusMutation } from '../../redux/services/bookingApi'
 import { useGetMessagesQuery, useSendMessageMutation } from '../../redux/services/messageApi'
 import { useSelector } from 'react-redux'
@@ -9,8 +10,10 @@ import {
   FaCheckCircle, FaTimesCircle, FaComment, FaCreditCard, FaSpinner,
   FaFlagCheckered, FaDollarSign
 } from 'react-icons/fa'
+import useCountry from '../../hooks/useCountry'
 
 const BookingDetails = () => {
+  const { format, country: userCountry, distanceUnitLabel } = useCountry()
   const { id } = useParams()
   const navigate = useNavigate()
   const { user } = useSelector((state) => state.auth)
@@ -26,6 +29,7 @@ const BookingDetails = () => {
   // ✅ Determine if customer can complete (only when delivered)
   const canComplete = booking?.status === 'delivered' && user?.role === 'customer'
   const canCancel = booking?.status === 'pending' || booking?.status === 'accepted'
+  const isRefunded = booking?.paymentStatus === 'refunded' || booking?.paymentStatus === 'refund_pending'
   const isPaid = booking?.paymentStatus === 'paid' || booking?.paymentStatus === 'released'
   const isPaymentPending = booking?.paymentStatus === 'pending'
 
@@ -63,49 +67,53 @@ const BookingDetails = () => {
     }
   }
 
-  // ✅ Handle payment
+  // ============================================================
+  // Payment: hosted checkout (Stripe for UK, Paystack for Nigeria)
+  // ============================================================
   const handlePayment = async () => {
     setIsProcessingPayment(true)
     try {
-      // Call the payment intent creation endpoint
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/payments/create-payment-intent`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ errandId: id })
-      })
-      
-      const data = await response.json()
-      
-      if (!response.ok) {
-        throw new Error(data.message || 'Payment initiation failed')
-      }
-
-      // Initialize Stripe checkout
-      const stripe = window.Stripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY)
-      const { error } = await stripe.confirmCardPayment(data.clientSecret, {
-        payment_method: {
-          card: {
-            // Stripe Elements will handle this
-          },
-        },
-        receipt_email: user?.email,
-      })
-
-      if (error) {
-        throw new Error(error.message)
-      }
-
-      toast.success('Payment successful!')
-      refetch()
+      const { data } = await http.post('/payments/errand/checkout', { errandId: id })
+      window.location.assign(data.url)
     } catch (error) {
-      toast.error(error.message || 'Payment failed')
-    } finally {
+      toast.error(error.response?.data?.message || 'Could not start payment')
       setIsProcessingPayment(false)
     }
   }
+
+  // Coming back from the payment page: confirm with the server
+  const [searchParams, setSearchParams] = useSearchParams()
+  useEffect(() => {
+    const reference = searchParams.get('reference') || searchParams.get('trxref') || searchParams.get('session_id')
+    if (searchParams.get('payment') === 'cancelled') {
+      toast('Payment was cancelled — you can try again any time.')
+      setSearchParams({}, { replace: true })
+      return
+    }
+    if (!reference) return
+    let cancelled = false
+    ;(async () => {
+      setIsProcessingPayment(true)
+      try {
+        const { data } = await http.get(`/payments/verify?reference=${encodeURIComponent(reference)}`)
+        if (cancelled) return
+        if (data.paid) toast.success("Payment successful! We're finding a runner near you.")
+        else toast.error('Payment not completed yet. If you were charged, it will update shortly.')
+      } catch (error) {
+        if (!cancelled) toast.error(error.response?.data?.message || 'Could not confirm payment')
+      } finally {
+        if (!cancelled) {
+          setIsProcessingPayment(false)
+          setSearchParams({}, { replace: true })
+          refetch()
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   if (isLoading) {
     return (
@@ -194,7 +202,7 @@ const BookingDetails = () => {
       </div>
 
       {/* ✅ Payment Required Banner */}
-      {!isPaid && booking.status === 'pending' && (
+      {!isPaid && !isRefunded && booking.status === 'pending' && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
             <p className="font-medium text-yellow-800 flex items-center gap-2">
@@ -202,7 +210,7 @@ const BookingDetails = () => {
               Payment Required
             </p>
             <p className="text-sm text-yellow-700">
-              Please complete payment of <span className="font-bold">£{booking.total?.toFixed(2) || booking.estimatedPrice?.toFixed(2)}</span> for your errand to proceed.
+              Please complete payment of <span className="font-bold">{format(booking.total, booking?.currency)}</span> for your errand to proceed.
             </p>
           </div>
           <button
@@ -252,12 +260,12 @@ const BookingDetails = () => {
               )}
               <div className="flex justify-between">
                 <span className="text-text-light">Distance</span>
-                <span className="font-medium text-text">{booking.distance?.toFixed(1) || 0} miles</span>
+                <span className="font-medium text-text">{booking.distanceText || `${booking.distance?.toFixed(1) || 0} ${booking.distanceUnit === 'km' ? 'km' : 'miles'}`}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-text-light">Total</span>
                 <span className="text-xl font-bold text-primary">
-                  £{booking.total?.toFixed(2) || booking.estimatedPrice?.toFixed(2)}
+                  {format(booking.total, booking?.currency)}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -385,43 +393,43 @@ const BookingDetails = () => {
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-text-light">Base Fee</span>
-                <span className="font-medium">£{booking.baseFee?.toFixed(2) || '0.00'}</span>
+                <span className="font-medium">{format(booking.baseFee, booking?.currency)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-text-light">Distance Fee</span>
-                <span className="font-medium">£{booking.distanceFee?.toFixed(2) || '0.00'}</span>
+                <span className="font-medium">{format(booking.distanceFee, booking?.currency)}</span>
               </div>
               {booking.isHeavyItem && (
                 <div className="flex justify-between text-sm">
                   <span className="text-text-light">Heavy Item</span>
-                  <span className="font-medium">£{booking.heavyItemFee?.toFixed(2) || '0.00'}</span>
+                  <span className="font-medium">{format(booking.heavyItemFee, booking?.currency)}</span>
                 </div>
               )}
               {booking.isPeakUrgent && (
                 <div className="flex justify-between text-sm">
                   <span className="text-text-light">Peak/Urgent</span>
-                  <span className="font-medium">£{booking.peakUrgentFee?.toFixed(2) || '0.00'}</span>
+                  <span className="font-medium">{format(booking.peakUrgentFee, booking?.currency)}</span>
                 </div>
               )}
               {booking.extraStopsCount > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-text-light">Extra Stops ({booking.extraStopsCount})</span>
-                  <span className="font-medium">£{booking.extraStopsFee?.toFixed(2) || '0.00'}</span>
+                  <span className="font-medium">{format(booking.extraStopsFee, booking?.currency)}</span>
                 </div>
               )}
               {booking.isSubscribed && (
                 <div className="flex justify-between text-sm text-green-600">
                   <span>Subscription Discount (20%)</span>
-                  <span>-£{booking.discountAmount?.toFixed(2) || '0.00'}</span>
+                  <span>-{format(booking.discountAmount, booking?.currency)}</span>
                 </div>
               )}
               <div className="flex justify-between pt-2 border-t border-gray-200">
                 <span className="font-semibold text-text">Total</span>
-                <span className="font-bold text-primary">£{booking.total?.toFixed(2) || booking.estimatedPrice?.toFixed(2)}</span>
+                <span className="font-bold text-primary">{format(booking.total, booking?.currency)}</span>
               </div>
               <div className="flex justify-between text-xs text-text-lighter pt-1">
                 <span>Platform Fee (20%)</span>
-                <span>£{booking.platformFee?.toFixed(2) || '0.00'}</span>
+                <span>{format(booking.platformFee, booking?.currency)}</span>
               </div>
             </div>
           </div>

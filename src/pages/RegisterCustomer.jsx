@@ -5,9 +5,15 @@ import { useRegisterCustomerMutation } from '../redux/services/authApi'
 import { setUser } from '../redux/slices/authSlice'
 import { toast } from 'react-hot-toast'
 import { FaUser, FaEnvelope, FaPhone, FaLock, FaHome, FaCity, FaMapPin, FaCheckCircle, FaTimesCircle, FaEyeSlash, FaEye } from 'react-icons/fa'
+import CountrySelector from '../components/CountrySelector'
+import CountryAddressFields from '../components/forms/CountryAddressFields'
+import useCountry from '../hooks/useCountry'
+import { getCountry, PHONE_PATTERNS } from '../config/countries'
 
 const RegisterCustomer = () => {
+  const { code: initialCountry, setCountry: setVisitorCountry } = useCountry()
   const [formData, setFormData] = useState({
+    country: initialCountry,
     fullName: '',
     email: '',
     phoneNumber: '',
@@ -15,7 +21,9 @@ const RegisterCustomer = () => {
     confirmPassword: '',
     address: {
       street: '',
+      area: '',
       town: '',
+      state: '',
       postcode: '',
     },
     accessNeeds: '',
@@ -105,6 +113,11 @@ const RegisterCustomer = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     
+    if (!PHONE_PATTERNS[formData.country].test(formData.phoneNumber.trim())) {
+      toast.error(formData.country === 'NG' ? 'Enter a valid Nigerian phone number, e.g. 0803 123 4567' : 'Enter a valid UK phone number')
+      return
+    }
+
     // Validate password match
     if (!validatePasswordMatch()) {
       return
@@ -163,6 +176,19 @@ const RegisterCustomer = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
+            <CountrySelector
+              variant="cards"
+              value={formData.country}
+              onChange={(c) => {
+                setVisitorCountry(c)
+                setFormData((prev) => ({
+                  ...prev,
+                  country: c,
+                  address: { ...prev.address, state: '', postcode: '' },
+                  ...(prev.bankDetails ? { bankDetails: { bankName: '', bankCode: '', sortCode: '', accountNumber: '' } } : {}),
+                }))
+              }}
+            />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-text-light mb-1">
@@ -212,7 +238,7 @@ const RegisterCustomer = () => {
                     value={formData.phoneNumber}
                     onChange={handleChange}
                     className="input-field pl-10"
-                    placeholder="07700 900000"
+                    placeholder={getCountry(formData.country).phonePlaceholder}
                     required
                   />
                 </div>
@@ -257,59 +283,7 @@ const RegisterCustomer = () => {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-text-light mb-1">
-                  Street Address *
-                </label>
-                <div className="relative">
-                  <FaHome className="absolute left-3 top-1/2 -translate-y-1/2 text-text-lighter" />
-                  <input
-                    type="text"
-                    name="address.street"
-                    value={formData.address.street}
-                    onChange={handleChange}
-                    className="input-field pl-10"
-                    placeholder="123 Main Street"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-text-light mb-1">
-                  Town/City *
-                </label>
-                <div className="relative">
-                  <FaCity className="absolute left-3 top-1/2 -translate-y-1/2 text-text-lighter" />
-                  <input
-                    type="text"
-                    name="address.town"
-                    value={formData.address.town}
-                    onChange={handleChange}
-                    className="input-field pl-10"
-                    placeholder="London"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-text-light mb-1">
-                  Postcode *
-                </label>
-                <div className="relative">
-                  <FaMapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-text-lighter" />
-                  <input
-                    type="text"
-                    name="address.postcode"
-                    value={formData.address.postcode}
-                    onChange={handleChange}
-                    className="input-field pl-10"
-                    placeholder="SW1A 1AA"
-                    required
-                  />
-                </div>
-              </div>
+              <CountryAddressFields country={formData.country} address={formData.address} onChange={handleChange} />
 
               <div>
                 <label className="block text-sm font-medium text-text-light mb-1">
@@ -403,7 +377,7 @@ const RegisterCustomer = () => {
 
             <div className="bg-primary/5 rounded-xl p-4 text-sm text-text-light">
               <p>
-                We only use these details to process your bookings, keep you safe and follow UK privacy rules. 
+                We only use these details to process your bookings, keep you safe and follow {formData.country === 'NG' ? 'the Nigeria Data Protection Act (NDPA)' : 'UK data protection law (UK GDPR)'}. 
                 We never share your information without your permission.
               </p>
             </div>

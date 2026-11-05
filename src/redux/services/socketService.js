@@ -1,3 +1,4 @@
+import { SOCKET_URL } from '../../services/http'
 import { io } from 'socket.io-client';
 
 class SocketService {
@@ -13,8 +14,6 @@ class SocketService {
       return;
     }
 
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-    const SOCKET_URL = API_URL.replace('/api', '');
 
     console.log('🔌 Connecting to socket:', SOCKET_URL);
 

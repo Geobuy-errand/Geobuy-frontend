@@ -150,6 +150,7 @@ const DashboardSidebar = ({ open, onClose }) => {
         { to: "/admin/bookings", icon: FaClipboardList, label: "Bookings" },
         { to: '/admin/subscriptions', icon: FaCrown, label: 'Subscriptions' },
         { to: "/admin/payments", icon: FaCreditCard, label: "Payments" },
+        { to: "/admin/withdrawals", icon: FaCreditCard, label: "Withdrawals" },
         { to: "/admin/reviews", icon: FaStar, label: "Reviews" },
         { to: '/admin/categories', icon: FaTags, label: 'Service Categories'},
         { to: "/admin/subscription-plans", icon: FaStumbleupon, label: "Subscription Plan" },

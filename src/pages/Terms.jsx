@@ -29,7 +29,7 @@ const Terms = () => {
           <section className="mb-8">
             <h2 className="text-xl font-semibold text-text mb-3">3. Provider Verification</h2>
             <p className="text-text-light">
-              Providers must submit verification documents including identification, proof of address, and right to work documentation. We reserve the right to reject any application that does not meet our standards.
+              Providers must submit verification documents including identification and proof of address — in the UK, photo ID, proof of address and right to work (plus DBS for care work); in Nigeria, a NIN slip or National ID card and a recent utility bill. We reserve the right to reject any application that does not meet our standards.
             </p>
           </section>
 
@@ -38,7 +38,7 @@ const Terms = () => {
             <p className="text-text-light mb-2">All bookings are subject to:</p>
             <ul className="list-disc list-inside text-text-light space-y-1">
               <li>Provider availability and acceptance</li>
-              <li>Payment processing through Stripe</li>
+              <li>Payment processing through Stripe (UK) or Paystack (Nigeria)</li>
               <li>Escrow holding until service completion</li>
               <li>Our service fee structure</li>
             </ul>
@@ -91,7 +91,7 @@ const Terms = () => {
               <br />
               <strong>Email:</strong> legal@geobuy.com
               <br />
-              <strong>Address:</strong> London, United Kingdom
+              <strong>Address:</strong> London, United Kingdom · Lagos, Nigeria
             </p>
           </section>
         </div>

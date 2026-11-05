@@ -16,8 +16,10 @@ import {
   useResumeSubscriptionMutation,
   useGetSubscriptionStatusQuery,
 } from '../redux/services/subscriptionApi'
+import useCountry from '../hooks/useCountry'
 
 const Subscription = () => {
+  const { format, country: userCountry, distanceUnitLabel } = useCountry()
   const { user } = useSelector((state) => state.auth)
 
   const [processingPlanId, setProcessingPlanId] = useState(null)
@@ -29,7 +31,7 @@ const Subscription = () => {
     data: plansData,
     isLoading: plansLoading,
     refetch: refetchPlans,
-  } = useGetActivePlansQuery()
+  } = useGetActivePlansQuery(userCountry.code)
 
   const {
     data: statusData,
@@ -305,7 +307,7 @@ const Subscription = () => {
 
                 {/* Price */}
                 <p className="text-3xl font-bold text-primary mt-2">
-                  £{plan.price}
+                  {plan.formattedPrice || format(plan.localPrice ?? plan.price, plan.currency)}
 
                   <span className="text-sm font-normal text-text-light">
                     /{getIntervalLabel(plan)}
@@ -415,7 +417,7 @@ const Subscription = () => {
 
               <p className="text-sm text-text-light">
                 We accept all major credit and debit cards
-                through Stripe.
+                through Stripe (UK) or Paystack (Nigeria).
               </p>
             </div>
 

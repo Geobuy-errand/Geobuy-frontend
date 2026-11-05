@@ -3,6 +3,7 @@ import { useSelector } from 'react-redux'
 import { useUpdateProfileMutation } from '../../redux/services/providerApi'
 import { toast } from 'react-hot-toast'
 import { FaUser, FaEnvelope, FaPhone, FaMapMarkerAlt, FaSave } from 'react-icons/fa'
+import CountryAddressFields from '../../components/forms/CountryAddressFields'
 
 const ProviderProfile = () => {
   const { user } = useSelector((state) => state.auth)
@@ -13,7 +14,9 @@ const ProviderProfile = () => {
     phoneNumber: user?.phoneNumber || '',
     address: {
       street: user?.address?.street || '',
+      area: user?.address?.area || '',
       town: user?.address?.town || '',
+      state: user?.address?.state || '',
       postcode: user?.address?.postcode || '',
     },
     about: user?.providerProfile?.about || '',
@@ -107,47 +110,8 @@ const ProviderProfile = () => {
           <div className="border-t border-gray-100 pt-4">
             <h3 className="text-lg font-semibold text-text mb-3">Address</h3>
             <div className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium text-text-light mb-1">
-                  Street Address
-                </label>
-                <div className="relative">
-                  <FaMapMarkerAlt className="absolute left-3 top-1/2 -translate-y-1/2 text-text-lighter" />
-                  <input
-                    type="text"
-                    name="address.street"
-                    value={formData.address.street}
-                    onChange={handleChange}
-                    className="input-field pl-10"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-text-light mb-1">
-                    Town/City
-                  </label>
-                  <input
-                    type="text"
-                    name="address.town"
-                    value={formData.address.town}
-                    onChange={handleChange}
-                    className="input-field"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-text-light mb-1">
-                    Postcode
-                  </label>
-                  <input
-                    type="text"
-                    name="address.postcode"
-                    value={formData.address.postcode}
-                    onChange={handleChange}
-                    className="input-field"
-                  />
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <CountryAddressFields country={user?.country || 'GB'} address={formData.address} onChange={handleChange} required={false} />
               </div>
             </div>
           </div>

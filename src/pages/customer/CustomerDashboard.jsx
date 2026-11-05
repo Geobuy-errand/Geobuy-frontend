@@ -5,8 +5,10 @@ import { useGetBookingsQuery } from '../../redux/services/bookingApi'
 import { useGetErrandsQuery } from '../../redux/services/errandApi'
 import socketService from '../../redux/services/socketService'
 import { FaPlus, FaClock } from 'react-icons/fa'
+import useCountry from '../../hooks/useCountry'
 
 const CustomerDashboard = () => {
+  const { format, country: userCountry, distanceUnitLabel } = useCountry()
   const { user } = useSelector((state) => state.auth || { user: null })
   const { data: bookings, isLoading, refetch } = useGetBookingsQuery()
   const { data: errands, isLoading: errandsLoading } = useGetErrandsQuery()
@@ -177,7 +179,7 @@ const CustomerDashboard = () => {
                     {item.status?.replace('_', ' ')}
                   </span>
                   <span className="text-sm font-semibold text-text">
-                    £{item.total?.toFixed(2) || item.estimatedPrice?.toFixed(2)}
+                    {format(item.total)}
                   </span>
                 </div>
               </Link>

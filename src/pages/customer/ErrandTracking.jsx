@@ -35,10 +35,13 @@ import {
   FaComments,
   FaExpand,
   FaCompress,
+  FaTimesCircle,
 } from "react-icons/fa";
-import axios from "axios";
+import http from '../../services/http'
+import useCountry from '../../hooks/useCountry'
 
 const ErrandTracking = () => {
+  const { format, country: userCountry, distanceUnitLabel } = useCountry()
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
@@ -119,7 +122,7 @@ const ErrandTracking = () => {
     setQrError(null);
 
     try {
-      const response = await axios.get(`/api/errands/${id}/qr-code`, {
+      const response = await http.get(`/api/errands/${id}/qr-code`, {
         withCredentials: true,
       });
 
@@ -141,7 +144,7 @@ const ErrandTracking = () => {
     setQrError(null);
 
     try {
-      const response = await axios.get(`/api/errands/${id}/qr-code`, {
+      const response = await http.get(`/api/errands/${id}/qr-code`, {
         withCredentials: true,
       });
 
@@ -245,7 +248,7 @@ const ErrandTracking = () => {
   const verifyQRCode = async (qrData) => {
     setIsVerifying(true);
     try {
-      const response = await axios.post(
+      const response = await http.post(
         `/api/errands/${id}/scan-qr`,
         { qrData },
         { withCredentials: true }
@@ -302,7 +305,7 @@ const ErrandTracking = () => {
       formData.append("documentType", documentType);
       formData.append("description", documentDescription);
 
-      const response = await axios.post(
+      const response = await http.post(
         `/api/errands/${id}/upload-document`,
         formData,
         {
@@ -362,10 +365,16 @@ const ErrandTracking = () => {
 
   const handleStatusUpdate = async (newStatus) => {
     try {
-      const location = {
-        lat: 51.5074 + (Math.random() - 0.5) * 0.01,
-        lng: -0.1276 + (Math.random() - 0.5) * 0.01,
-      };
+      // Real device location (best effort). The old code sent a random point
+      // in London, which made every Nigerian errand appear to be in the UK.
+      const location = await new Promise((resolve) => {
+        if (!navigator.geolocation) return resolve(undefined);
+        navigator.geolocation.getCurrentPosition(
+          (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+          () => resolve(undefined),
+          { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 }
+        );
+      });
 
       await updateStatus({ id, status: newStatus, location }).unwrap();
       toast.success(`Status updated to ${newStatus.replace("_", " ")}`);
@@ -920,7 +929,7 @@ const ErrandTracking = () => {
               <button
                 onClick={async () => {
                   try {
-                    const response = await axios.post(
+                    const response = await http.post(
                       `/api/chats/errand/${errand._id}/initiate`,
                       {},
                       {
@@ -1037,51 +1046,51 @@ const ErrandTracking = () => {
           <div className="flex justify-between">
             <span className="text-text-light">Base Fee</span>
             <span className="font-medium">
-              £{errand.baseFee?.toFixed(2) || "0.00"}
+              {format(errand.baseFee)}
             </span>
           </div>
           <div className="flex justify-between">
             <span className="text-text-light">
-              Distance ({errand.distance?.toFixed(1) || 0} miles)
+              Distance ({errand.distanceText || `${errand.distance?.toFixed(1) || 0} ${distanceUnitLabel}`})
             </span>
             <span className="font-medium">
-              £{errand.distanceFee?.toFixed(2) || "0.00"}
+              {format(errand.distanceFee)}
             </span>
           </div>
           {errand.isHeavyItem && (
             <div className="flex justify-between text-orange-600">
               <span>Heavy Item Fee</span>
-              <span>+£{errand.heavyItemFee?.toFixed(2) || "0.00"}</span>
+              <span>+{format(errand.heavyItemFee)}</span>
             </div>
           )}
           {errand.waitTimeMinutes > 5 && (
             <div className="flex justify-between text-orange-600">
               <span>Wait Time</span>
-              <span>+£{errand.waitTimeFee?.toFixed(2) || "0.00"}</span>
+              <span>+{format(errand.waitTimeFee)}</span>
             </div>
           )}
           {errand.isPeakUrgent && (
             <div className="flex justify-between text-orange-600">
               <span>Peak/Urgent Fee</span>
-              <span>+£{errand.peakUrgentFee?.toFixed(2) || "0.00"}</span>
+              <span>+{format(errand.peakUrgentFee)}</span>
             </div>
           )}
           {errand.extraStopsCount > 0 && (
             <div className="flex justify-between text-orange-600">
               <span>Extra Stops ({errand.extraStopsCount})</span>
-              <span>+£{errand.extraStopsFee?.toFixed(2) || "0.00"}</span>
+              <span>+{format(errand.extraStopsFee)}</span>
             </div>
           )}
           {errand.isSubscribed && (
             <div className="flex justify-between text-green-600">
               <span>Subscription Discount (20%)</span>
-              <span>-£{errand.discountAmount?.toFixed(2) || "0.00"}</span>
+              <span>-{format(errand.discountAmount)}</span>
             </div>
           )}
           <div className="flex justify-between pt-2 border-t border-gray-200">
             <span className="font-semibold text-text">Total</span>
             <span className="text-xl font-bold text-primary">
-              £{errand.total?.toFixed(2) || "0.00"}
+              {format(errand.total)}
             </span>
           </div>
         </div>

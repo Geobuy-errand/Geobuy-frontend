@@ -31,7 +31,11 @@ export const walletApi = baseApi.injectEndpoints({
       invalidatesTags: ['Wallet'],
     }),
     getAdminWithdrawals: builder.query({
-      query: () => '/wallet/admin/withdrawals',
+      // optional filters: { status, country }
+      query: (params = {}) => {
+        const q = new URLSearchParams(Object.entries(params).filter(([, v]) => v))
+        return `/wallet/admin/withdrawals${q.toString() ? `?${q}` : ''}`
+      },
       providesTags: ['Wallet'],
     }),
   }),

@@ -8,8 +8,10 @@ import {
 import { useGetWalletQuery } from '../../redux/services/walletApi'
 import socketService from '../../redux/services/socketService'
 import { FaBriefcase, FaCheckCircle, FaWallet, FaStar, FaClock, FaArrowRight } from 'react-icons/fa'
+import useCountry from '../../hooks/useCountry'
 
 const ProviderDashboard = () => {
+  const { format, country: userCountry, distanceUnitLabel } = useCountry()
   const { user } = useSelector((state) => state.auth)
   
   // ✅ Correct hooks for provider
@@ -66,7 +68,7 @@ const ProviderDashboard = () => {
     {
       icon: FaWallet,
       label: 'Balance',
-      value: `£${wallet?.balance?.toFixed(2) || '0.00'}`,
+      value: `${format(wallet?.balance)}`,
       color: 'text-primary',
       bg: 'bg-primary/10',
     },
@@ -154,7 +156,7 @@ const ProviderDashboard = () => {
                       <p className="text-sm text-text-light">{request.location?.address}</p>
                     </div>
                     <span className="text-sm font-semibold text-primary">
-                      £{request.budget?.toFixed(2) || 'Negotiable'}
+                      {request.budget != null ? format(request.budget) : 'Negotiable'}
                     </span>
                   </div>
                 </Link>
@@ -180,7 +182,7 @@ const ProviderDashboard = () => {
                     </p>
                   </div>
                   <span className="text-sm font-semibold text-primary">
-                    £{request.finalPrice?.toFixed(2) || 'Negotiating'}
+                    {request.finalPrice != null ? format(request.finalPrice) : 'Negotiating'}
                   </span>
                 </div>
               ))}

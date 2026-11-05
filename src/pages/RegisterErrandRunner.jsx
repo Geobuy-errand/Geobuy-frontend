@@ -11,9 +11,16 @@ import {
   FaEyeSlash,
   FaEye
 } from 'react-icons/fa'
+import CountrySelector from '../components/CountrySelector'
+import CountryAddressFields from '../components/forms/CountryAddressFields'
+import useCountry from '../hooks/useCountry'
+import { getCountry, PHONE_PATTERNS } from '../config/countries'
+import BankDetailsFields from '../components/forms/BankDetailsFields'
 
 const RegisterErrandRunner = () => {
+  const { code: initialCountry, setCountry: setVisitorCountry } = useCountry()
   const [formData, setFormData] = useState({
+    country: initialCountry,
     fullName: '',
     dateOfBirth: '',
     email: '',
@@ -22,11 +29,14 @@ const RegisterErrandRunner = () => {
     confirmPassword: '',
     address: {
       street: '',
+      area: '',
       town: '',
+      state: '',
       postcode: '',
     },
     bankDetails: {
       bankName: '',
+      bankCode: '',
       sortCode: '',
       accountNumber: '',
     },
@@ -120,7 +130,15 @@ const RegisterErrandRunner = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     
-    if (!validatePasswordMatch()) return
+    if (!PHONE_PATTERNS[formData.country].test(formData.phoneNumber.trim())) {
+      toast.error(formData.country === 'NG' ? 'Enter a valid Nigerian phone number, e.g. 0803 123 4567' : 'Enter a valid UK phone number')
+      return
+    }
+
+    // Validate password match
+    if (!validatePasswordMatch()) {
+      return
+    }
     if (!validatePasswordStrength()) return
 
     setIsLoading(true)
@@ -158,10 +176,12 @@ const RegisterErrandRunner = () => {
       formData.phoneNumber &&
       formData.address.street &&
       formData.address.town &&
-      formData.address.postcode &&
-      formData.bankDetails.bankName &&
-      formData.bankDetails.sortCode &&
-      formData.bankDetails.accountNumber &&
+      (formData.country === 'NG'
+        ? formData.address.state
+        : formData.address.postcode &&
+          formData.bankDetails.bankName &&
+          formData.bankDetails.sortCode &&
+          formData.bankDetails.accountNumber) &&
       isPasswordValid() &&
       doPasswordsMatch() &&
       formData.over18 &&
@@ -181,6 +201,19 @@ const RegisterErrandRunner = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
+            <CountrySelector
+              variant="cards"
+              value={formData.country}
+              onChange={(c) => {
+                setVisitorCountry(c)
+                setFormData((prev) => ({
+                  ...prev,
+                  country: c,
+                  address: { ...prev.address, state: '', postcode: '' },
+                  ...(prev.bankDetails ? { bankDetails: { bankName: '', bankCode: '', sortCode: '', accountNumber: '' } } : {}),
+                }))
+              }}
+            />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-text-light mb-1">
@@ -247,7 +280,7 @@ const RegisterErrandRunner = () => {
                     value={formData.phoneNumber}
                     onChange={handleChange}
                     className="input-field pl-10"
-                    placeholder="07700 900000"
+                    placeholder={getCountry(formData.country).phonePlaceholder}
                     required
                   />
                 </div>
@@ -292,59 +325,7 @@ const RegisterErrandRunner = () => {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-text-light mb-1">
-                  Street Address *
-                </label>
-                <div className="relative">
-                  <FaHome className="absolute left-3 top-1/2 -translate-y-1/2 text-text-lighter" />
-                  <input
-                    type="text"
-                    name="address.street"
-                    value={formData.address.street}
-                    onChange={handleChange}
-                    className="input-field pl-10"
-                    placeholder="123 Main Street"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-text-light mb-1">
-                  Town/City *
-                </label>
-                <div className="relative">
-                  <FaCity className="absolute left-3 top-1/2 -translate-y-1/2 text-text-lighter" />
-                  <input
-                    type="text"
-                    name="address.town"
-                    value={formData.address.town}
-                    onChange={handleChange}
-                    className="input-field pl-10"
-                    placeholder="London"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-text-light mb-1">
-                  Postcode *
-                </label>
-                <div className="relative">
-                  <FaMapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-text-lighter" />
-                  <input
-                    type="text"
-                    name="address.postcode"
-                    value={formData.address.postcode}
-                    onChange={handleChange}
-                    className="input-field pl-10"
-                    placeholder="SW1A 1AA"
-                    required
-                  />
-                </div>
-              </div>
+              <CountryAddressFields country={formData.country} address={formData.address} onChange={handleChange} />
 
               <div>
                 <label className="block text-sm font-medium text-text-light mb-1">
@@ -359,7 +340,8 @@ const RegisterErrandRunner = () => {
                 >
                   <option value="walking">Walking</option>
                   <option value="bicycle">Bicycle</option>
-                  <option value="motorbike">Motorbike</option>
+                  <option value="motorbike">{formData.country === 'NG' ? 'Motorbike (okada)' : 'Motorbike'}</option>
+                  {formData.country === 'NG' && <option value="keke">Tricycle (keke)</option>}
                   <option value="car">Car</option>
                   <option value="van">Van</option>
                 </select>
@@ -383,7 +365,7 @@ const RegisterErrandRunner = () => {
               <div>
                 <label className="block text-sm font-medium text-text-light mb-1">
                   <FaRuler className="inline mr-2" />
-                  Max Distance (miles)
+                  Max Distance ({getCountry(formData.country).distanceUnitLabel})
                 </label>
                 <input
                   type="number"
@@ -459,55 +441,18 @@ const RegisterErrandRunner = () => {
 
             <div className="border-t border-gray-200 pt-4">
               <h3 className="text-lg font-semibold text-text mb-3">Bank Details</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-text-light mb-1">
-                    Bank Name *
-                  </label>
-                  <div className="relative">
-                    <FaUniversity className="absolute left-3 top-1/2 -translate-y-1/2 text-text-lighter" />
-                    <input
-                      type="text"
-                      name="bankDetails.bankName"
-                      value={formData.bankDetails.bankName}
-                      onChange={handleChange}
-                      className="input-field pl-10"
-                      placeholder="Bank of England"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-text-light mb-1">
-                    Sort Code *
-                  </label>
-                  <input
-                    type="text"
-                    name="bankDetails.sortCode"
-                    value={formData.bankDetails.sortCode}
-                    onChange={handleChange}
-                    className="input-field"
-                    placeholder="12-34-56"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-text-light mb-1">
-                    Account Number *
-                  </label>
-                  <input
-                    type="text"
-                    name="bankDetails.accountNumber"
-                    value={formData.bankDetails.accountNumber}
-                    onChange={handleChange}
-                    className="input-field"
-                    placeholder="12345678"
-                    required
-                  />
-                </div>
-              </div>
+              <BankDetailsFields
+                country={formData.country}
+                bankDetails={formData.bankDetails}
+                onChange={handleChange}
+                required={formData.country !== 'NG'}
+                setBankDetails={(b) => setFormData((prev) => ({ ...prev, bankDetails: { ...prev.bankDetails, ...b } }))}
+              />
+              {formData.country === 'NG' && (
+                <p className="text-xs text-text-lighter mt-2">
+                  Optional now — you can add and verify your account from your wallet before your first withdrawal.
+                </p>
+              )}
             </div>
 
             <div>
@@ -519,7 +464,9 @@ const RegisterErrandRunner = () => {
                   onChange={handleChange}
                   className="w-5 h-5 text-primary rounded border-gray-300 focus:ring-primary"
                 />
-                <span className="text-sm text-text-light">Render care services? (Requires DBS check)</span>
+                <span className="text-sm text-text-light">
+                  Render care services? {formData.country === 'NG' ? '(Requires a background check)' : '(Requires DBS check)'}
+                </span>
               </label>
             </div>
 

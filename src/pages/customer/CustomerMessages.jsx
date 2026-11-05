@@ -6,7 +6,7 @@ import { useSelector } from 'react-redux'
 import { toast } from 'react-hot-toast'
 import { io } from 'socket.io-client'
 import { FaComments, FaChevronRight, FaPaperPlane, FaSpinner } from 'react-icons/fa'
-import axios from 'axios'
+import http, { SOCKET_URL } from '../../services/http'
 
 const CustomerMessages = () => {
   const { user } = useSelector((state) => state.auth)
@@ -24,7 +24,7 @@ const CustomerMessages = () => {
 
   // Socket connection for real-time messages
   useEffect(() => {
-    const newSocket = io(import.meta.env.VITE_API_URL || 'http://localhost:5000', {
+    const newSocket = io(SOCKET_URL, {
       withCredentials: true,
     })
 
@@ -55,7 +55,7 @@ const CustomerMessages = () => {
 
   const getOrCreateChat = async () => {
     try {
-      const response = await axios.post(
+      const response = await http.post(
         '/api/chats/get-or-create',
         {
           userId: selectedBooking.providerId?._id,

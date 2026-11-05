@@ -2,8 +2,10 @@ import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useGetServiceRequestsQuery } from '../../redux/services/serviceApi'
 import { FaSearch, FaClock, FaCheckCircle, FaTimesCircle, FaUser } from 'react-icons/fa'
+import useCountry from '../../hooks/useCountry'
 
 const ServiceHistory = () => {
+  const { format, country: userCountry, distanceUnitLabel } = useCountry()
   const [searchTerm, setSearchTerm] = useState('')
   const [filter, setFilter] = useState('all')
   const { data: requests, isLoading } = useGetServiceRequestsQuery()
@@ -117,7 +119,7 @@ const ServiceHistory = () => {
                 <div className="flex items-center space-x-4">
                   {request.finalPrice && (
                     <span className="text-lg font-bold text-primary">
-                      £{request.finalPrice.toFixed(2)}
+                      {format(request.finalPrice)}
                     </span>
                   )}
                   <span className="text-sm text-text-light">

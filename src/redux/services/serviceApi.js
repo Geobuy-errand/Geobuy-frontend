@@ -4,7 +4,8 @@ export const serviceApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     // ========== SERVICE CRUD ==========
     getServices: builder.query({
-      query: () => '/services',
+      // optional country ('GB' | 'NG') to list only services offered there
+      query: (country) => (country ? `/services?country=${country}` : '/services'),
       providesTags: ['Service'],
     }),
     getServiceById: builder.query({

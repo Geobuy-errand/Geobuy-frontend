@@ -2,8 +2,10 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 import { FaFacebook, FaTwitter, FaInstagram, FaLinkedin } from 'react-icons/fa'
 import Logo from './utils/Logo'
+import usePublicPricing from '../hooks/usePublicPricing'
 
 const Footer = () => {
+  const { contactEmail, contactPhone } = usePublicPricing()
   return (
     <footer className="bg-gray-900 text-white">
       <div className="container-custom py-12">
@@ -53,9 +55,9 @@ const Footer = () => {
           <div>
             <h4 className="font-semibold mb-4">Contact</h4>
             <ul className="space-y-2 text-gray-400 text-sm">
-              <li>📍 London, United Kingdom</li>
-              <li>📧 support@geobuy.com</li>
-              <li>📞 +44 20 1234 5678</li>
+              <li>📍 Serving the United Kingdom & Nigeria</li>
+              <li>📧 {contactEmail}</li>
+              <li>📞 {contactPhone}</li>
             </ul>
           </div>
         </div>
