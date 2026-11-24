@@ -14,6 +14,7 @@ import {
   FaPaperPlane, FaInfoCircle
 } from 'react-icons/fa'
 import useCountry from '../../hooks/useCountry'
+import { getDevicePosition } from '../../utils/geolocation'
 import { backgroundCheckLabel } from '../../config/countries'
 
 const FindServices = () => {
@@ -78,32 +79,22 @@ const FindServices = () => {
   const [createServiceRequest, { isLoading: isCreating }] = useCreateServiceRequestMutation()
 
   // Get user's location
-  const getUserLocation = () => {
+  const getUserLocation = async () => {
     setIsGettingLocation(true)
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          })
-          setIsGettingLocation(false)
-          toast.success('Location detected successfully!')
-          refetchProviders()
-        },
-        (error) => {
-          setIsGettingLocation(false)
-          toast.error('Could not get your location. Please enter your address below.')
-          // Fall back to the main city of the user's country (London / Lagos)
-          setUserLocation(userCountry.defaultCenter)
-        }
-      )
-    } else {
-      setIsGettingLocation(false)
-      toast.error('Geolocation is not supported by your browser.')
+    try {
+      const pos = await getDevicePosition()
+      setUserLocation({ lat: pos.lat, lng: pos.lng })
+      toast.success('Location detected successfully!')
+      refetchProviders()
+    } catch (error) {
+      toast.error(error.message, { duration: 7000 })
+      // Fall back to the main city of the user's country (London / Lagos)
       setUserLocation(userCountry.defaultCenter)
+    } finally {
+      setIsGettingLocation(false)
     }
   }
+
 
   const handleCategorySelect = (category) => {
     setSelectedCategory(category.name)

@@ -18,6 +18,7 @@ import {
   FaCheckCircle,
   FaClock as FaClockIcon,
   FaDollarSign,
+  FaMapMarkerAlt,
 } from "react-icons/fa";
 
 // ============================================================
@@ -83,8 +84,14 @@ const CreateBooking = () => {
   const [distanceText, setDistanceText] = useState("");
   const [durationText, setDurationText] = useState("");
   const [distanceAccuracy, setDistanceAccuracy] = useState("");
+  const [distancePrecision, setDistancePrecision] = useState("");
   const [isCalculating, setIsCalculating] = useState(false);
   const [distanceError, setDistanceError] = useState(null);
+  // Which address the server couldn't place ('pickup' | 'dropoff'), and a
+  // counter per field that opens that field's map picker when bumped.
+  const [distanceErrorField, setDistanceErrorField] = useState(null);
+  const [mapRequest, setMapRequest] = useState({ pickup: 0, dropoff: 0 });
+  const openMapFor = (field) => setMapRequest((prev) => ({ ...prev, [field]: prev[field] + 1 }));
   const [addressesValid, setAddressesValid] = useState({ pickup: false, dropoff: false });
   const [priceEstimate, setPriceEstimate] = useState(EMPTY_PRICE);
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -108,6 +115,7 @@ const CreateBooking = () => {
     const seq = ++quoteSeq.current;
     setIsCalculating(true);
     setDistanceError(null);
+    setDistanceErrorField(null);
     try {
       const { data } = await http.post("/errands/quote", quotePayload());
       if (seq !== quoteSeq.current) return; // a newer quote is on its way
@@ -116,6 +124,7 @@ const CreateBooking = () => {
       setDistanceText(b.distance.text);
       setDurationText(b.duration.text);
       setDistanceAccuracy(b.distance.accuracy);
+      setDistancePrecision(b.distance.precision || "");
       setIsSubscribed(Boolean(b.subscription?.isSubscribed));
       setPriceEstimate({
         baseFee: b.baseFee,
@@ -132,12 +141,10 @@ const CreateBooking = () => {
         platformFee: b.revenueSplit.geobuyFee,
         providerAmount: b.revenueSplit.providerAmount,
       });
-      // Keep the coordinates the server resolved so creation uses the same points
-      setFormData((prev) => ({
-        ...prev,
-        pickup: { ...prev.pickup, coordinates: prev.pickup.coordinates || data.pickup?.coordinates || null },
-        dropoff: { ...prev.dropoff, coordinates: prev.dropoff.coordinates || data.dropoff?.coordinates || null },
-      }));
+      // Don't copy the server's resolved points into the form: for a typed
+      // address they may be an area centre, and sending them back would make
+      // the next quote treat them as an exact pick. Creating the errand
+      // resolves the same address the same way.
       setAddressesValid({ pickup: true, dropoff: true });
       setIsDistanceCalculated(true);
     } catch (error) {
@@ -146,6 +153,7 @@ const CreateBooking = () => {
       setDistance(0);
       setPriceEstimate(EMPTY_PRICE);
       setDistanceError(error.response?.data?.message || "We couldn't calculate this route. Please check both addresses.");
+      setDistanceErrorField(error.response?.data?.field || null);
     } finally {
       if (seq === quoteSeq.current) setIsCalculating(false);
     }
@@ -283,9 +291,11 @@ const CreateBooking = () => {
             required
             country={countryCode}
             minChars={2}
+            mapRequest={mapRequest.pickup}
+            mapTitle="Set pickup on map"
           />
 
-          {addressesValid.pickup && (
+          {addressesValid.pickup && formData.pickup.coordinates && (
             <div className="flex items-center text-green-600 text-sm mt-2">
               <FaCheckCircle className="mr-2" />
               <span>Address found in {country.name}</span>
@@ -351,9 +361,11 @@ const CreateBooking = () => {
                 required
                 country={countryCode}
                 minChars={2}
+                mapRequest={mapRequest.dropoff}
+                mapTitle="Set drop-off on map"
               />
 
-              {addressesValid.dropoff && (
+              {addressesValid.dropoff && formData.dropoff.coordinates && (
                 <div className="flex items-center text-green-600 text-sm mt-2">
                   <FaCheckCircle className="mr-2" />
                   <span>Address found in {country.name}</span>
@@ -547,7 +559,10 @@ const CreateBooking = () => {
         <div className="card">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-text">Price Estimate</h2>
-            {isDistanceCalculated && distanceAccuracy === "approximate" && (
+            {isDistanceCalculated && ["area", "town"].includes(distancePrecision) && (
+              <span className="text-xs text-amber-600">Location is approximate — pick the exact address from the suggestions for an exact price</span>
+            )}
+            {isDistanceCalculated && !["area", "town"].includes(distancePrecision) && distanceAccuracy === "approximate" && (
               <span className="text-xs text-amber-600">Approximate route — add street names for an exact price</span>
             )}
           </div>
@@ -567,6 +582,17 @@ const CreateBooking = () => {
                       Distance Calculation Failed
                     </p>
                     <p className="text-red-600 text-sm">{distanceError}</p>
+                    {distanceErrorField && (
+                      <button
+                        type="button"
+                        onClick={() => openMapFor(distanceErrorField)}
+                        className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-white bg-primary hover:bg-primary-dark px-4 py-2 rounded-lg"
+                        data-testid="set-on-map-from-error"
+                      >
+                        <FaMapMarkerAlt />
+                        Set {distanceErrorField === "pickup" ? "pickup" : "drop-off"} on map
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -588,6 +614,9 @@ const CreateBooking = () => {
                         <p className="text-xs text-text-lighter">
                           Avg rate: {format(priceEstimate.distanceRate)}/{unitShort}
                         </p>
+                        {distanceAccuracy === "straight_line" && (
+                          <p className="text-xs text-text-lighter" data-testid="distance-method">Direct distance between the two points</p>
+                        )}
                       </div>
                       <div className="bg-gray-50 rounded-xl p-3">
                         <div className="flex items-center space-x-2">

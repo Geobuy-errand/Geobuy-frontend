@@ -68,6 +68,7 @@ const PricingFields = ({ section, values, symbol, unit, onChange, onTierChange }
         {num('waitTimeFreeMin', 'Free Wait Minutes', { step: '1', int: true })}
         {num('minimumFare', `Minimum Fare (${symbol}, 0 = none)`)}
         {num('minWithdrawal', `Minimum Withdrawal (${symbol})`)}
+        {num('providerCommissionPercentage', 'Provider Commission (%) — service bookings', { step: '1' })}
         <div>
           <label className="block text-sm font-medium text-text-light mb-1">Distance pricing</label>
           <select value={values.distanceTierMode || 'progressive'} onChange={(e) => onChange(section, 'distanceTierMode', e.target.value)} className="input-field">
@@ -75,6 +76,39 @@ const PricingFields = ({ section, values, symbol, unit, onChange, onTierChange }
             <option value="flat">Flat (whole trip at one band's rate)</option>
           </select>
         </div>
+      </div>
+      <div className="bg-gray-50 rounded-xl p-4" data-testid="distance-method-settings">
+        <h3 className="text-sm font-semibold text-text mb-2">Distance calculation</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-text-light mb-1">Method</label>
+            <select
+              value={values.distanceMethod || (isNG ? 'haversine' : 'road')}
+              onChange={(e) => onChange(section, 'distanceMethod', e.target.value)}
+              className="input-field"
+            >
+              <option value="haversine">Haversine — straight-line distance between the two points</option>
+              <option value="road">Road routing — Google / OpenStreetMap road distance</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-text-light mb-1">Distance multiplier (Haversine only)</label>
+            <input
+              type="number"
+              value={values.distanceMultiplier ?? 1}
+              onChange={(e) => onChange(section, 'distanceMultiplier', parseFloat(e.target.value))}
+              className="input-field"
+              step="0.05"
+              min="1"
+              max="3"
+              disabled={(values.distanceMethod || (isNG ? 'haversine' : 'road')) !== 'haversine'}
+            />
+          </div>
+        </div>
+        <p className="text-xs text-text-lighter mt-2">
+          Haversine measures the direct distance, which is shorter than the road route. Leave the multiplier at 1 for pure
+          straight-line pricing, or raise it (e.g. 1.3) to allow for roads — or adjust the per-{unit} rates below instead.
+        </p>
       </div>
       <div>
         <h3 className="text-sm font-semibold text-text mb-2">Distance tiers</h3>

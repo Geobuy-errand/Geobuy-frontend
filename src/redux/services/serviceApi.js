@@ -132,9 +132,12 @@ export const serviceApi = baseApi.injectEndpoints({
       providesTags: ['Service'],
     }),
     selectQuote: builder.mutation({
-      query: (id) => ({
-        url: `/services/quote/${id}/select`,
-        method: 'PUT',
+      // There is no /quote/:id/select route on the server — selecting a
+      // provider means accepting their quote.
+      query: (quoteId) => ({
+        url: '/services/quote/accept',
+        method: 'POST',
+        body: { quoteId },
       }),
       invalidatesTags: ['Service'],
     }),
@@ -178,6 +181,15 @@ export const serviceApi = baseApi.injectEndpoints({
         method: 'PUT',
       }),
       invalidatesTags: ['Service'],
+    }),
+    // Provider: "I've finished" — customer is asked to confirm, then the
+    // provider's wallet is credited.
+    markServiceDone: builder.mutation({
+      query: (id) => ({
+        url: `/services/request/${id}/mark-done`,
+        method: 'PUT',
+      }),
+      invalidatesTags: ['Service', 'Wallet'],
     }),
   }),
   overrideExisting: true,
@@ -225,5 +237,6 @@ export const {
 
   // Provider Actions
   useStartServiceRequestMutation,
+  useMarkServiceDoneMutation,
   useInviteProvidersMutation,
 } = serviceApi

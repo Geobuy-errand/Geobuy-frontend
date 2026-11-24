@@ -3,6 +3,7 @@ import { useGetErrandRunnerProfileQuery, useUpdateErrandRunnerAvailabilityMutati
 import { useSelector } from 'react-redux'
 import { toast } from 'react-hot-toast'
 import { FaToggleOn, FaToggleOff, FaMapMarkerAlt, FaSpinner } from 'react-icons/fa'
+import { getDevicePosition } from '../../utils/geolocation'
 
 const ErrandAvailability = () => {
   const { user } = useSelector((state) => state.auth)
@@ -44,33 +45,27 @@ const ErrandAvailability = () => {
   }
 
   const handleLocationUpdate = async () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const newLocation = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          }
-          setLocation(newLocation)
-          try {
-            await updateAvailability({
-              isAvailable,
-              location: newLocation,
-            }).unwrap()
-            toast.success('Location updated successfully')
-            refetch()
-          } catch (error) {
-            toast.error('Failed to update location')
-          }
-        },
-        () => {
-          toast.error('Unable to get location. Please enable location services.')
-        }
-      )
-    } else {
-      toast.error('Geolocation is not supported by your browser')
+    let pos
+    try {
+      pos = await getDevicePosition()
+    } catch (error) {
+      toast.error(error.message, { duration: 7000 })
+      return
+    }
+    const newLocation = { lat: pos.lat, lng: pos.lng }
+    setLocation(newLocation)
+    try {
+      await updateAvailability({
+        isAvailable,
+        location: newLocation,
+      }).unwrap()
+      toast.success('Location updated successfully')
+      refetch()
+    } catch (error) {
+      toast.error('Failed to update location')
     }
   }
+
 
   const handleDayToggle = (day) => {
     setAvailableDays(prev => ({

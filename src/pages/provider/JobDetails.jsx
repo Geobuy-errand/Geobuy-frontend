@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useGetServiceRequestByIdQuery, useStartServiceRequestMutation, useCompleteServiceRequestMutation } from '../../redux/services/serviceApi'
+import { useGetServiceRequestByIdQuery, useStartServiceRequestMutation, useMarkServiceDoneMutation } from '../../redux/services/serviceApi'
 import { useGetMessagesQuery, useSendMessageMutation } from '../../redux/services/messageApi'
 import { useSelector } from 'react-redux'
 import { toast } from 'react-hot-toast'
@@ -28,7 +28,7 @@ const ServiceProviderJobDetails = () => {
   const { data: request, isLoading, refetch } = useGetServiceRequestByIdQuery(id)
   const { data: messages } = useGetMessagesQuery(id)
   const [startService] = useStartServiceRequestMutation()
-  const [completeService] = useCompleteServiceRequestMutation()
+  const [markDone] = useMarkServiceDoneMutation()
   const [sendMessage] = useSendMessageMutation()
   const [newMessage, setNewMessage] = useState('')
 
@@ -42,17 +42,28 @@ const ServiceProviderJobDetails = () => {
     }
   }
 
+  // Providers can't complete a job themselves — they mark it done and the
+  // customer confirms, which releases the payment to the provider's wallet.
   const handleComplete = async () => {
-    if (!window.confirm('Mark this service as completed?')) return
-    
+    if (!window.confirm('Mark this job as done? The customer will be asked to confirm, then your earnings go to your wallet.')) return
+
     try {
-      await completeService(id).unwrap()
-      toast.success('Service completed successfully')
+      const res = await markDone(id).unwrap()
+      toast.success(res.message || 'Marked as done')
       refetch()
     } catch (error) {
-      toast.error(error.data?.message || 'Failed to complete service')
+      toast.error(error.data?.message || 'Failed to update job')
     }
   }
+
+  const awaitingPayment = request?.paymentStatus === 'pending'
+  const paymentNote = {
+    pending: { text: "Waiting for the customer to pay. Don't start until they have.", cls: 'bg-yellow-50 text-yellow-800' },
+    paid: { text: 'Customer has paid. The money is held securely and added to your wallet when they confirm the job is done.', cls: 'bg-green-50 text-green-800' },
+    released: { text: 'Paid — your earnings are in your wallet and can be withdrawn.', cls: 'bg-green-50 text-green-800' },
+    refunded: { text: 'This booking was cancelled and the customer refunded.', cls: 'bg-gray-50 text-text-light' },
+    refund_pending: { text: 'This booking was cancelled; a refund is being processed.', cls: 'bg-gray-50 text-text-light' },
+  }[request?.paymentStatus]
 
   const handleSendMessage = async (e) => {
     e.preventDefault()
@@ -84,7 +95,7 @@ const ServiceProviderJobDetails = () => {
     return (
       <div className="text-center py-12">
         <p className="text-text-light">Job not found</p>
-        <button onClick={() => navigate('/service-provider/accepted-jobs')} className="text-primary hover:underline mt-2">
+        <button onClick={() => navigate('/provider/accepted-jobs')} className="text-primary hover:underline mt-2">
           Back to jobs
         </button>
       </div>
@@ -96,6 +107,7 @@ const ServiceProviderJobDetails = () => {
       case 'completed': return 'bg-green-100 text-green-700'
       case 'provider_selected': return 'bg-blue-100 text-blue-700'
       case 'in_progress': return 'bg-purple-100 text-purple-700'
+      case 'awaiting_confirmation': return 'bg-indigo-100 text-indigo-700'
       default: return 'bg-gray-100 text-gray-700'
     }
   }
@@ -114,12 +126,14 @@ const ServiceProviderJobDetails = () => {
         </div>
         <div className="flex items-center space-x-3 mt-4 md:mt-0">
           <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(request.status)}`}>
-            {request.status.replace('_', ' ')}
+            {request.status === 'awaiting_confirmation' ? 'waiting for customer' : request.status.replace(/_/g, ' ')}
           </span>
           {request.status === 'provider_selected' && (
             <button
               onClick={handleStart}
-              className="btn-secondary text-sm py-2 flex items-center space-x-2"
+              disabled={awaitingPayment}
+              title={awaitingPayment ? 'Waiting for the customer to pay' : undefined}
+              className="btn-secondary text-sm py-2 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <FaPlay />
               <span>Start Service</span>
@@ -131,11 +145,17 @@ const ServiceProviderJobDetails = () => {
               className="btn-primary text-sm py-2 flex items-center space-x-2"
             >
               <FaCheck />
-              <span>Complete Service</span>
+              <span>Mark Job Done</span>
             </button>
           )}
         </div>
       </div>
+
+      {paymentNote && (
+        <div className={`p-4 rounded-lg text-sm ${paymentNote.cls}`} data-testid="provider-payment-note">
+          {paymentNote.text}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Details */}
@@ -162,10 +182,25 @@ const ServiceProviderJobDetails = () => {
                 <span className="text-text-light">Agreed Price</span>
                 <span className="text-xl font-bold text-primary">{request.finalPrice != null ? format(request.finalPrice) : 'Negotiating'}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-text-light">Service Fee (GEOBUY)</span>
-                <span className="font-medium text-text-light">{format(request.serviceFee)}</span>
-              </div>
+              {request.providerAmount != null ? (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-text-light">
+                      Geobuy commission{request.platformFeePercentage != null ? ` (${request.platformFeePercentage}%)` : ''}
+                    </span>
+                    <span className="font-medium text-text-light">-{format(request.platformFee || 0)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-text-light">You receive</span>
+                    <span className="font-semibold text-green-700">{format(request.providerAmount)}</span>
+                  </div>
+                </>
+              ) : (
+                <div className="flex justify-between">
+                  <span className="text-text-light">Service Fee (GEOBUY)</span>
+                  <span className="font-medium text-text-light">{format(request.serviceFee)}</span>
+                </div>
+              )}
             </div>
           </div>
 

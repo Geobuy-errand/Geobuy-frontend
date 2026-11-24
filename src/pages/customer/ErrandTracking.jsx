@@ -39,6 +39,7 @@ import {
 } from "react-icons/fa";
 import http from '../../services/http'
 import useCountry from '../../hooks/useCountry'
+import { tryDevicePosition } from "../../utils/geolocation";
 
 const ErrandTracking = () => {
   const { format, country: userCountry, distanceUnitLabel } = useCountry()
@@ -367,14 +368,8 @@ const ErrandTracking = () => {
     try {
       // Real device location (best effort). The old code sent a random point
       // in London, which made every Nigerian errand appear to be in the UK.
-      const location = await new Promise((resolve) => {
-        if (!navigator.geolocation) return resolve(undefined);
-        navigator.geolocation.getCurrentPosition(
-          (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-          () => resolve(undefined),
-          { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 }
-        );
-      });
+      const pos = await tryDevicePosition();
+      const location = pos ? { lat: pos.lat, lng: pos.lng } : undefined;
 
       await updateStatus({ id, status: newStatus, location }).unwrap();
       toast.success(`Status updated to ${newStatus.replace("_", " ")}`);

@@ -136,7 +136,7 @@ const ProviderDashboard = () => {
         <div className="card">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold text-text">Pending Requests</h2>
-            <Link to="/service-provider/requests" className="text-primary hover:underline text-sm flex items-center">
+            <Link to="/provider/available-jobs" className="text-primary hover:underline text-sm flex items-center">
               View all <FaArrowRight className="ml-1" />
             </Link>
           </div>
@@ -147,7 +147,7 @@ const ProviderDashboard = () => {
               {pendingRequests.slice(0, 5).map((request) => (
                 <Link
                   key={request._id}
-                  to={`/service-provider/request/${request._id}`}
+                  to={`/provider/job/${request._id}`}
                   className="block p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                 >
                   <div className="flex justify-between items-center">
@@ -189,7 +189,7 @@ const ProviderDashboard = () => {
             </div>
           )}
           {activeRequests.length > 0 && (
-            <Link to="/service-provider/active" className="text-primary hover:underline text-sm mt-4 inline-block">
+            <Link to="/provider/accepted-jobs" className="text-primary hover:underline text-sm mt-4 inline-block">
               View all active jobs
             </Link>
           )}

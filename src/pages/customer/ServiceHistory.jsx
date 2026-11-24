@@ -22,6 +22,7 @@ const ServiceHistory = () => {
       case 'completed': return 'bg-green-100 text-green-700'
       case 'pending': return 'bg-yellow-100 text-yellow-700'
       case 'provider_selected': return 'bg-blue-100 text-blue-700'
+      case 'awaiting_confirmation': return 'bg-indigo-100 text-indigo-700'
       case 'cancelled': return 'bg-red-100 text-red-700'
       default: return 'bg-gray-100 text-gray-700'
     }
@@ -33,6 +34,7 @@ const ServiceHistory = () => {
       case 'quotes_received': return 'Quotes Received'
       case 'provider_selected': return 'Provider Selected'
       case 'in_progress': return 'In Progress'
+      case 'awaiting_confirmation': return 'Confirm Completion'
       case 'completed': return 'Completed'
       case 'cancelled': return 'Cancelled'
       default: return status

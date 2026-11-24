@@ -24,6 +24,7 @@ import {
   FaSpinner,
 } from 'react-icons/fa'
 import useCountry from '../../hooks/useCountry'
+import ServiceBookingPanel from '../../components/services/ServiceBookingPanel'
 
 const ServiceRequestDetail = () => {
   const { format, country: userCountry, distanceUnitLabel } = useCountry()
@@ -96,6 +97,7 @@ const ServiceRequestDetail = () => {
       case 'negotiating': return 'bg-purple-100 text-purple-700'
       case 'provider_selected': return 'bg-green-100 text-green-700'
       case 'in_progress': return 'bg-indigo-100 text-indigo-700'
+      case 'awaiting_confirmation': return 'bg-blue-100 text-blue-700'
       case 'completed': return 'bg-green-100 text-green-700'
       case 'cancelled': return 'bg-red-100 text-red-700'
       default: return 'bg-gray-100 text-gray-700'
@@ -107,8 +109,9 @@ const ServiceRequestDetail = () => {
       case 'pending': return 'Awaiting Quotes'
       case 'quotes_received': return 'Quotes Received'
       case 'negotiating': return 'Negotiating'
-      case 'provider_selected': return 'Provider Selected'
+      case 'provider_selected': return request.paymentStatus === 'pending' ? 'Awaiting Payment' : 'Provider Booked'
       case 'in_progress': return 'In Progress'
+      case 'awaiting_confirmation': return 'Confirm Completion'
       case 'completed': return 'Completed'
       case 'cancelled': return 'Cancelled'
       default: return status
@@ -157,6 +160,8 @@ const ServiceRequestDetail = () => {
           <p className="text-text-light">{request.description}</p>
         </div>
       </div>
+
+      {isCustomer && <ServiceBookingPanel request={request} refetch={refetch} />}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Details */}

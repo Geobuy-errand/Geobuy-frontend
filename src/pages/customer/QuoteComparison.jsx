@@ -31,11 +31,11 @@ const QuoteComparison = () => {
   const [selectQuote, { isLoading: isSelecting }] = useSelectQuoteMutation()
 
   const handleSelectQuote = async (quoteId) => {
-    if (!window.confirm('Are you sure you want to select this provider?')) return
+    if (!window.confirm('Book this provider? You will be asked to pay next — the money is held securely until you confirm the job is done.')) return
 
     try {
       await selectQuote(quoteId).unwrap()
-      toast.success('Provider selected successfully!')
+      toast.success('Provider booked! Pay now to confirm.')
       navigate(`/customer/service-request/${id}`)
     } catch (error) {
       toast.error(error.data?.message || 'Failed to select provider')
@@ -227,7 +227,7 @@ const QuoteComparison = () => {
                     <span className="text-2xl font-bold text-primary">{format(quote.amount)}</span>
                     <p className="text-xs text-text-lighter">Quote amount</p>
                   </div>
-                  {!isSelected && request.status !== 'provider_selected' && (
+                  {!isSelected && quote.status === 'pending' && ['pending', 'quotes_received', 'negotiating'].includes(request.status) && (
                     <button
                       onClick={() => handleSelectQuote(quote._id)}
                       disabled={isSelecting}
@@ -242,7 +242,7 @@ const QuoteComparison = () => {
                       <span>Selected</span>
                     </span>
                   )}
-                  {request.status === 'provider_selected' && !isSelected && (
+                  {!['pending', 'quotes_received', 'negotiating'].includes(request.status) && !isSelected && (
                     <span className="text-gray-500 text-sm">Not selected</span>
                   )}
                 </div>

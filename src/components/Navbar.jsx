@@ -33,7 +33,7 @@ const Navbar = () => {
     if (!user) return '/login'
     if (user.role === 'customer') return '/customer/dashboard'
     if (user.role === 'errand_runner') return '/errand-runner/dashboard'
-    if (user.role === 'provider') return '/service-provider/dashboard'
+    if (user.role === 'provider') return '/provider/dashboard'
     if (user.role === 'admin') return '/admin/dashboard'
     return '/login'
   }
