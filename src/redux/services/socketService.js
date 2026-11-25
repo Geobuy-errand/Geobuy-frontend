@@ -1,5 +1,6 @@
 import { SOCKET_URL } from '../../services/http'
 import { io } from 'socket.io-client';
+import { socketAuthOptions } from '../../services/authToken'
 
 class SocketService {
   constructor() {
@@ -17,15 +18,14 @@ class SocketService {
 
     console.log('🔌 Connecting to socket:', SOCKET_URL);
 
-    this.socket = io(SOCKET_URL, {
-      withCredentials: true,
+    this.socket = io(SOCKET_URL, socketAuthOptions({
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
       timeout: 20000,
-    });
+    }));
 
     this.socket.on('connect', () => {
       console.log('✅ Socket connected');

@@ -5,6 +5,7 @@ import http from '../../services/http'
 import useCountry from '../../hooks/useCountry'
 import { useGetCurrentUserQuery } from '../../redux/services/authApi'
 import { VERIFICATION_DOCUMENTS, OPTIONAL_DOCUMENTS } from '../../config/countries'
+import IdentityVerificationCard from './IdentityVerificationCard'
 
 const ICONS = {
   passport: FaIdCard,
@@ -91,13 +92,15 @@ const VerificationPage = ({ role = 'errand_runner' }) => {
     <div>
       <h1 className="text-2xl md:text-3xl font-bold text-text mb-6">Verification</h1>
 
+      <IdentityVerificationCard onVerified={refetch} />
+
       <div className="card mb-6">
         <div className="flex items-start space-x-4">
           <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
             <FaShieldAlt className="text-2xl text-primary" />
           </div>
           <div className="flex-1">
-            <h2 className="text-lg font-semibold text-text">Verification Status</h2>
+            <h2 className="text-lg font-semibold text-text">Step 2 · Account review</h2>
             <p className="text-text-light">
               Your account is currently{' '}
               <span

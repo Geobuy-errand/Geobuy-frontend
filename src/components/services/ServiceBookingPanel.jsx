@@ -4,6 +4,7 @@ import { toast } from 'react-hot-toast'
 import { FaLock, FaCheckCircle, FaSpinner, FaCreditCard, FaHourglassHalf, FaUndo, FaListUl } from 'react-icons/fa'
 import http from '../../services/http'
 import useCountry from '../../hooks/useCountry'
+import usePublicPricing from '../../hooks/usePublicPricing'
 import { useCompleteServiceRequestMutation, useCancelServiceRequestMutation } from '../../redux/services/serviceApi'
 
 /**
@@ -18,8 +19,10 @@ import { useCompleteServiceRequestMutation, useCancelServiceRequestMutation } fr
  */
 const ServiceBookingPanel = ({ request, refetch }) => {
   const { format, country } = useCountry()
+  const autoHours = usePublicPricing().features.autoCompleteHours ?? '…' // Admin → Settings
   const [searchParams, setSearchParams] = useSearchParams()
   const [busy, setBusy] = useState(false)
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
   const [completeRequest, { isLoading: completing }] = useCompleteServiceRequestMutation()
   const [cancelRequest, { isLoading: cancelling }] = useCancelServiceRequestMutation()
 
@@ -62,6 +65,16 @@ const ServiceBookingPanel = ({ request, refetch }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Close the modal on Escape
+  useEffect(() => {
+    if (!showConfirmModal) return
+    const onKey = (e) => {
+      if (e.key === 'Escape') setShowConfirmModal(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [showConfirmModal])
+
   const handlePay = async () => {
     setBusy(true)
     try {
@@ -74,7 +87,7 @@ const ServiceBookingPanel = ({ request, refetch }) => {
   }
 
   const handleConfirm = async () => {
-    if (!window.confirm("Confirm the job is done? Your provider will be paid and this can't be undone.")) return
+    setShowConfirmModal(false)
     try {
       const res = await completeRequest(request._id).unwrap()
       toast.success(res.fundsReleased ? 'Thanks! Your provider has been paid.' : 'Job marked as completed')
@@ -112,10 +125,12 @@ const ServiceBookingPanel = ({ request, refetch }) => {
           <p className="text-text-light text-sm">
             {status === 'pending'
               ? 'Providers near you are being invited to quote.'
-              : 'You have quotes from providers. Compare them and choose one.'}
+              : status === 'negotiating'
+              ? 'You are negotiating the price. Accept an offer, counter it or decline.'
+              : 'You have quotes from providers. Accept one, or make a counter-offer.'}
           </p>
           <Link to={`/customer/quote-comparison/${request._id}`} className="btn-primary text-sm py-2 px-4 flex items-center gap-2 justify-center">
-            <FaListUl /> <span>Compare quotes</span>
+            <FaListUl /> <span>{status === 'negotiating' ? 'Review offers' : 'Compare quotes'}</span>
           </Link>
         </div>
       )}
@@ -162,10 +177,10 @@ const ServiceBookingPanel = ({ request, refetch }) => {
             <FaHourglassHalf className="text-blue-600 mt-1 flex-shrink-0" />
             <p className="text-sm text-blue-800">
               Your provider has marked the job as done. Please check the work and confirm. If there's a problem, contact support before
-              confirming — if you don't respond, it is confirmed automatically after a set time (48 hours by default).
+              confirming — if you don't respond, it is confirmed automatically after {autoHours} hours.
             </p>
           </div>
-          <button onClick={handleConfirm} disabled={completing} className="btn-primary w-full disabled:opacity-50">
+          <button onClick={() => setShowConfirmModal(true)} disabled={completing} className="btn-primary w-full disabled:opacity-50">
             {completing ? 'Confirming…' : 'Confirm job is done'}
           </button>
         </div>
@@ -173,7 +188,7 @@ const ServiceBookingPanel = ({ request, refetch }) => {
 
       {/* Older bookings paid directly to the provider */}
       {!inAppPayment && ['provider_selected', 'in_progress'].includes(status) && (
-        <button onClick={handleConfirm} disabled={completing} className="btn-primary w-full disabled:opacity-50">
+        <button onClick={() => setShowConfirmModal(true)} disabled={completing} className="btn-primary w-full disabled:opacity-50">
           {completing ? 'Confirming…' : 'Mark job as completed'}
         </button>
       )}
@@ -194,6 +209,46 @@ const ServiceBookingPanel = ({ request, refetch }) => {
         <button onClick={handleCancel} disabled={cancelling} className="text-sm text-red-600 hover:underline mt-4">
           {cancelling ? 'Cancelling…' : paymentStatus === 'paid' ? 'Cancel booking and get a refund' : 'Cancel request'}
         </button>
+      )}
+
+      {/* Confirm-done modal */}
+      {showConfirmModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => !completing && setShowConfirmModal(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="confirm-done-title"
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 id="confirm-done-title" className="text-lg font-semibold text-text mb-2">
+              Confirm job is done?
+            </h3>
+            <p className="text-sm text-text-light mb-6">
+              Your provider will be paid and this can't be undone. Please make sure you're happy with the work first.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowConfirmModal(false)}
+                disabled={completing}
+                className="flex-1 py-2 px-4 rounded-lg border border-gray-300 text-text font-medium hover:bg-gray-50 disabled:opacity-50"
+              >
+                Not yet
+              </button>
+              <button
+                onClick={handleConfirm}
+                disabled={completing}
+                className="flex-1 py-2 px-4 rounded-lg bg-primary text-white font-medium hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {completing ? <FaSpinner className="animate-spin" /> : null}
+                {completing ? 'Confirming…' : 'Yes, confirm'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

@@ -40,8 +40,14 @@ import {
 import http from '../../services/http'
 import useCountry from '../../hooks/useCountry'
 import { tryDevicePosition } from "../../utils/geolocation";
+import usePublicPricing from "../../hooks/usePublicPricing";
+import { percentOf } from "../../utils/money";
 
 const ErrandTracking = () => {
+  // Feature switches and QR expiry from Admin → Settings
+  const { features, operations } = usePublicPricing();
+  const qrEnabled = features.qrCodeEnabled !== false;
+  const liveTrackingEnabled = features.liveTrackingEnabled !== false;
   const { format, country: userCountry, distanceUnitLabel } = useCountry()
   const { id } = useParams();
   const navigate = useNavigate();
@@ -73,15 +79,16 @@ const ErrandTracking = () => {
   const [modalImage, setModalImage] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const isCustomer = user?._id === errand?.customerId?._id;
+  const isCustomer = !!user && !!errand && String(user._id || user.id) === String(errand.customerId?._id || errand.customerId);
   const isProvider = user?._id === errand?.providerId?._id;
 
   // Load QR code on mount
   useEffect(() => {
-    if (errand && isCustomer) {
+    if (errand && isCustomer && qrEnabled) {
       loadQRCode();
     }
-  }, [errand, isCustomer]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [errand, isCustomer, qrEnabled]);
 
   // Load documents
   useEffect(() => {
@@ -354,8 +361,7 @@ const ErrandTracking = () => {
 
   const canUpdateStatus = () => {
     if (!user || !errand) return false;
-    const isProvider = user._id === errand.providerId?._id;
-    const isCustomer = user._id === errand.customerId?._id;
+    const isProvider = String(user._id || user.id) === String(errand.providerId?._id || errand.providerId);
 
     if (errand.status === "pending") return false;
     if (errand.status === "delivered" || errand.status === "cancelled")
@@ -376,6 +382,29 @@ const ErrandTracking = () => {
       refetch();
     } catch (error) {
       toast.error(error.data?.message || "Failed to update status");
+    }
+  };
+
+  // Customer: pay for an unpaid errand / confirm delivery (releases the runner's pay)
+  const [isPaying, setIsPaying] = useState(false);
+  const handlePayNow = async () => {
+    setIsPaying(true);
+    try {
+      const { data } = await http.post("/payments/errand/checkout", { errandId: id });
+      window.location.assign(data.url);
+    } catch (error) {
+      setIsPaying(false);
+      toast.error(error.response?.data?.message || "Could not start payment");
+    }
+  };
+  const handleConfirmDelivery = async () => {
+    if (!window.confirm("Confirm your errand was delivered? Your runner will be paid and this can't be undone.")) return;
+    try {
+      await updateStatus({ id, status: "completed" }).unwrap();
+      toast.success("Thanks! Your runner has been paid.");
+      refetch();
+    } catch (error) {
+      toast.error(error.data?.message || "Could not confirm delivery");
     }
   };
 
@@ -479,12 +508,55 @@ const ErrandTracking = () => {
 
       {/* Back Button */}
       <button
-        onClick={() => navigate("/customer/errands")}
+        onClick={() => navigate("/customer/bookings")}
         className="flex items-center space-x-2 text-text-light hover:text-primary transition-colors mb-6"
       >
         <FaArrowLeft />
         <span>Back to Errands</span>
       </button>
+
+      {/* What the customer needs to do next */}
+      {isCustomer && errand.status !== "cancelled" && (
+        <div className="card mb-6" data-testid="errand-next-step">
+          {errand.paymentStatus === "pending" && errand.status === "pending" ? (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <p className="font-semibold text-text">Payment needed</p>
+                <p className="text-sm text-text-light">Pay {format(errand.total)} so a runner can accept your errand. The money is held until you confirm delivery.</p>
+              </div>
+              <button onClick={handlePayNow} disabled={isPaying} className="btn-primary text-sm py-2 px-5 disabled:opacity-50">
+                {isPaying ? "Redirecting…" : "Pay now"}
+              </button>
+            </div>
+          ) : errand.status === "delivered" ? (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <p className="font-semibold text-text">Your runner says it's delivered</p>
+                <p className="text-sm text-text-light">Check everything is right, then confirm. This pays your runner.</p>
+              </div>
+              <button onClick={handleConfirmDelivery} disabled={isUpdating} className="btn-primary text-sm py-2 px-5 disabled:opacity-50" data-testid="confirm-delivery">
+                {isUpdating ? "Confirming…" : "Confirm delivery"}
+              </button>
+            </div>
+          ) : errand.status === "completed" ? (
+            <p className="text-sm text-green-700 font-medium">✅ Completed — thanks for using Geobuy.</p>
+          ) : (
+            <p className="text-sm text-text-light">
+              {errand.status === "pending"
+                ? "Paid — we're finding a runner near you."
+                : errand.status === "accepted"
+                ? `${errand.providerId?.fullName || "Your runner"} has accepted and will set off soon.`
+                : errand.status === "en_route"
+                ? `${errand.providerId?.fullName || "Your runner"} is on the way to the pickup.`
+                : `${errand.providerId?.fullName || "Your runner"} has collected your item and is heading to the drop-off.`}
+            </p>
+          )}
+          <div className="mt-3 pt-3 border-t border-gray-100 flex flex-wrap gap-4 text-sm">
+            <Link to={`/customer/booking/${errand._id}`} className="text-primary hover:underline">Booking, receipt &amp; cancellation</Link>
+            {errand.providerId && <Link to="/customer/messages" className="text-primary hover:underline">Message your runner</Link>}
+          </div>
+        </div>
+      )}
 
       {/* Header */}
       <div className="card mb-6">
@@ -578,8 +650,8 @@ const ErrandTracking = () => {
         </div>
       </div>
 
-      {/* QR Code Section - Always visible for customer */}
-      {isCustomer && errand.status !== "cancelled" && (
+      {/* QR Code Section - customer (hidden when QR codes are switched off in admin) */}
+      {qrEnabled && isCustomer && errand.status !== "cancelled" && (
         <div className="card mb-6">
           <h2 className="text-lg font-semibold text-text mb-4 flex items-center">
             <FaQrcode className="mr-2 text-primary" />
@@ -680,7 +752,7 @@ const ErrandTracking = () => {
                     <li>Show this QR code to your errand runner</li>
                     <li>The runner will scan to confirm pickup and delivery</li>
                     <li>Each scan updates the errand status</li>
-                    <li>QR code expires in 24 hours</li>
+                    <li>QR code expires in {operations.qrCodeExpiryHours ?? "…"} hours</li>
                   </ul>
                 </div>
               </>
@@ -700,7 +772,7 @@ const ErrandTracking = () => {
       )}
 
       {/* QR Code Scanner - Show to provider */}
-      {isProvider &&
+      {qrEnabled && isProvider &&
         (errand.status === "accepted" || errand.status === "en_route") && (
           <div className="card mb-6">
             <h2 className="text-lg font-semibold text-text mb-4 flex items-center">
@@ -1078,7 +1150,7 @@ const ErrandTracking = () => {
           )}
           {errand.isSubscribed && (
             <div className="flex justify-between text-green-600">
-              <span>Subscription Discount (20%)</span>
+              <span>Subscription Discount ({errand.discountPercentage ?? percentOf(errand.discountAmount, errand.subtotal)}%)</span>
               <span>-{format(errand.discountAmount)}</span>
             </div>
           )}
@@ -1129,8 +1201,8 @@ const ErrandTracking = () => {
         </div>
       )}
 
-      {/* Live Location (Optional) */}
-      {errand.requiresLiveTracking && errand.status !== "pending" && (
+      {/* Live Location (Optional; switchable in admin) */}
+      {liveTrackingEnabled && errand.requiresLiveTracking && errand.status !== "pending" && (
         <div className="card mb-6">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-text flex items-center">

@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
+import { ERRAND_VIEW_LABELS, matchesErrandView, customerErrandAction, customerErrandPath } from '../../utils/jobStages'
 import { useGetBookingsQuery } from '../../redux/services/bookingApi'
 import { FaSearch, FaFilter } from 'react-icons/fa'
 import useCountry from '../../hooks/useCountry'
@@ -7,11 +8,13 @@ import useCountry from '../../hooks/useCountry'
 const BookingHistory = () => {
   const { format, country: userCountry, distanceUnitLabel } = useCountry()
   const { data: bookings, isLoading } = useGetBookingsQuery()
-  const [filter, setFilter] = useState('all')
+  const [params, setParams] = useSearchParams()
+  const filter = params.get('view') || 'all'
+  const setFilter = (v) => setParams(v === 'all' ? {} : { view: v }, { replace: true })
   const [searchTerm, setSearchTerm] = useState('')
 
   const filteredBookings = bookings?.filter(booking => {
-    const matchesStatus = filter === 'all' || booking.status === filter
+    const matchesStatus = matchesErrandView(booking, filter)
     const matchesSearch = booking.serviceType?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           booking.bookingId?.toLowerCase().includes(searchTerm.toLowerCase())
     return matchesStatus && matchesSearch
@@ -54,14 +57,11 @@ const BookingHistory = () => {
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            className="input-field py-2 w-32"
+            className="input-field py-2 w-48"
+            data-testid="errand-view-filter"
           >
             <option value="all">All</option>
-            <option value="pending">Pending</option>
-            <option value="accepted">Accepted</option>
-            <option value="in_progress">In Progress</option>
-            <option value="completed">Completed</option>
-            <option value="cancelled">Cancelled</option>
+            {Object.entries(ERRAND_VIEW_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
         </div>
       </div>
@@ -87,7 +87,7 @@ const BookingHistory = () => {
           {filteredBookings?.map((booking) => (
             <Link
               key={booking._id}
-              to={`/customer/booking/${booking._id}`}
+              to={customerErrandAction(booking)?.to || customerErrandPath(booking)}
               className="card hover:shadow-large transition-shadow block"
             >
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center">

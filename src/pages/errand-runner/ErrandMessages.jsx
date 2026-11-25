@@ -7,6 +7,7 @@ import { toast } from 'react-hot-toast'
 import { io } from 'socket.io-client'
 import { FaComments, FaChevronRight, FaUser, FaBox, FaPaperPlane, FaSpinner } from 'react-icons/fa'
 import http, { SOCKET_URL } from '../../services/http'
+import { socketAuthOptions } from '../../services/authToken'
 
 const ErrandRunnerMessages = () => {
   const { user } = useSelector((state) => state.auth)
@@ -23,9 +24,7 @@ const ErrandRunnerMessages = () => {
 
   // Socket connection for real-time messages
   useEffect(() => {
-    const newSocket = io(SOCKET_URL, {
-      withCredentials: true,
-    })
+    const newSocket = io(SOCKET_URL, socketAuthOptions())
 
     newSocket.on('connect', () => {
       console.log('Messages socket connected')

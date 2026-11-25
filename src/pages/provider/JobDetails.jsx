@@ -1,6 +1,10 @@
 import React, { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useGetServiceRequestByIdQuery, useStartServiceRequestMutation, useMarkServiceDoneMutation } from '../../redux/services/serviceApi'
+import { useGetServiceRequestByIdQuery, useStartServiceRequestMutation, useMarkServiceDoneMutation, useSubmitQuoteMutation } from '../../redux/services/serviceApi'
+import NegotiationPanel from '../../components/services/NegotiationPanel'
+import IdentityBanner from '../../components/verification/IdentityBanner'
+import useLiveUpdates from '../../hooks/useLiveUpdates'
+import { useGetIdentityStatusQuery } from '../../redux/services/identityApi'
 import { useGetMessagesQuery, useSendMessageMutation } from '../../redux/services/messageApi'
 import { useSelector } from 'react-redux'
 import { toast } from 'react-hot-toast'
@@ -25,8 +29,41 @@ const ServiceProviderJobDetails = () => {
   const { id } = useParams()
   const navigate = useNavigate()
   const { user } = useSelector((state) => state.auth)
-  const { data: request, isLoading, refetch } = useGetServiceRequestByIdQuery(id)
+  const { data: request, isLoading, refetch, error: loadError } = useGetServiceRequestByIdQuery(id, { pollingInterval: 30000 })
   const { data: messages } = useGetMessagesQuery(id)
+  const { data: identity } = useGetIdentityStatusQuery()
+  const needsIdentity = identity?.required && !identity?.verified
+  const [submitQuote, { isLoading: submittingQuote }] = useSubmitQuoteMutation()
+  const [quoteForm, setQuoteForm] = useState({ amount: '', duration: '', message: '' })
+
+  // Counter-offers, bookings and payments show up without reloading
+  useLiveUpdates(['negotiation-update', 'quote-accepted', 'service-paid', 'funds-released'], (name, data) => {
+    if (data?.serviceRequestId && String(data.serviceRequestId) !== String(id)) return
+    if (name === 'negotiation-update' && data?.from === 'customer') toast(data.declined ? 'The customer declined your quote' : 'The customer sent a counter-offer', { icon: '🔄' })
+    if (name === 'quote-accepted') toast.success('Booked! Wait for the customer to pay before starting.')
+    refetch()
+  }, { rooms: [{ type: 'booking', id }] })
+
+  const handleSubmitQuote = async (e) => {
+    e.preventDefault()
+    const amount = parseFloat(quoteForm.amount)
+    if (!Number.isFinite(amount) || amount <= 0) return toast.error('Enter a valid amount')
+    try {
+      await submitQuote({
+        serviceRequestId: id,
+        amount,
+        message: quoteForm.message,
+        estimatedDuration: parseFloat(quoteForm.duration) || 1,
+        availabilityStart: new Date().toISOString(),
+        availabilityEnd: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      }).unwrap()
+      toast.success('Quote sent to the customer')
+      setQuoteForm({ amount: '', duration: '', message: '' })
+      refetch()
+    } catch (error) {
+      toast.error(error.data?.message || 'Failed to send quote')
+    }
+  }
   const [startService] = useStartServiceRequestMutation()
   const [markDone] = useMarkServiceDoneMutation()
   const [sendMessage] = useSendMessageMutation()
@@ -94,13 +131,18 @@ const ServiceProviderJobDetails = () => {
   if (!request) {
     return (
       <div className="text-center py-12">
-        <p className="text-text-light">Job not found</p>
+        <p className="text-text-light">{loadError?.status === 403 ? 'This request is no longer available to you' : 'Job not found'}</p>
         <button onClick={() => navigate('/provider/accepted-jobs')} className="text-primary hover:underline mt-2">
           Back to jobs
         </button>
       </div>
     )
   }
+
+  const isMine = request.isMine ?? String(request.selectedProviderId?._id || request.selectedProviderId || '') === String(user?._id || user?.id || '')
+  const isOpenRequest = ['pending', 'quotes_received', 'negotiating'].includes(request.status)
+  const lostToOther = !!request.selectedProviderId && !isMine
+  const myQuote = request.myQuote
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -126,9 +168,9 @@ const ServiceProviderJobDetails = () => {
         </div>
         <div className="flex items-center space-x-3 mt-4 md:mt-0">
           <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(request.status)}`}>
-            {request.status === 'awaiting_confirmation' ? 'waiting for customer' : request.status.replace(/_/g, ' ')}
+            {lostToOther ? 'booked by someone else' : request.status === 'awaiting_confirmation' ? 'waiting for customer' : request.status.replace(/_/g, ' ')}
           </span>
-          {request.status === 'provider_selected' && (
+          {isMine && request.status === 'provider_selected' && (
             <button
               onClick={handleStart}
               disabled={awaitingPayment}
@@ -139,7 +181,7 @@ const ServiceProviderJobDetails = () => {
               <span>Start Service</span>
             </button>
           )}
-          {request.status === 'in_progress' && (
+          {isMine && request.status === 'in_progress' && (
             <button
               onClick={handleComplete}
               className="btn-primary text-sm py-2 flex items-center space-x-2"
@@ -151,9 +193,60 @@ const ServiceProviderJobDetails = () => {
         </div>
       </div>
 
-      {paymentNote && (
+      {needsIdentity && (isOpenRequest || isMine) && <IdentityBanner status={identity} />}
+
+      {isMine && paymentNote && (
         <div className={`p-4 rounded-lg text-sm ${paymentNote.cls}`} data-testid="provider-payment-note">
           {paymentNote.text}
+        </div>
+      )}
+
+      {lostToOther && (
+        <div className="p-4 rounded-lg text-sm bg-gray-50 text-text-light">The customer booked another provider for this request.</div>
+      )}
+
+      {/* Quote & negotiation (before the job is booked) */}
+      {!isMine && !lostToOther && isOpenRequest && (
+        <div className="card" data-testid="provider-quote-card">
+          <h2 className="text-lg font-semibold text-text mb-3">Your quote</h2>
+          {!myQuote ? (
+            request.canQuote === false ? (
+              <p className="text-sm text-text-light">You can't quote on this request.</p>
+            ) : (
+              <form onSubmit={handleSubmitQuote} className="space-y-3" data-testid="provider-quote-form">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-text-light mb-1">Your price ({userCountry.currencySymbol}) *</label>
+                    <input type="number" inputMode="decimal" step="0.01" min="0" required value={quoteForm.amount}
+                      onChange={(e) => setQuoteForm((f) => ({ ...f, amount: e.target.value }))} className="input-field" data-testid="quote-amount" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-text-light mb-1">Estimated hours</label>
+                    <input type="number" inputMode="decimal" step="0.5" min="0.5" value={quoteForm.duration}
+                      onChange={(e) => setQuoteForm((f) => ({ ...f, duration: e.target.value }))} className="input-field" />
+                  </div>
+                </div>
+                <textarea rows="2" value={quoteForm.message} onChange={(e) => setQuoteForm((f) => ({ ...f, message: e.target.value }))}
+                  className="input-field resize-none" placeholder="Message to the customer (optional)" />
+                {request.budget != null && <p className="text-xs text-text-lighter">Customer's budget: {format(request.budget)}</p>}
+                <button type="submit" disabled={submittingQuote || needsIdentity} className="btn-primary text-sm py-2 px-5 disabled:opacity-50" data-testid="quote-submit">
+                  {submittingQuote ? 'Sending…' : 'Send quote'}
+                </button>
+              </form>
+            )
+          ) : myQuote.status === 'rejected' ? (
+            <p className="text-sm text-text-light">Your quote of {format(myQuote.amount)} was declined or withdrawn.</p>
+          ) : (
+            <NegotiationPanel
+              role="provider"
+              quote={{ ...myQuote, createdAt: undefined }}
+              history={request.negotiationHistory}
+              format={format}
+              currencySymbol={userCountry.currencySymbol}
+              onBooked={refetch}
+              onChanged={refetch}
+            />
+          )}
         </div>
       )}
 
@@ -309,17 +402,26 @@ const ServiceProviderJobDetails = () => {
             <h2 className="text-lg font-semibold text-text mb-4">Payment</h2>
             <div className="space-y-3">
               <div className="flex justify-between">
-                <span className="text-text-light">Service Amount</span>
-                <span className="font-bold text-primary">{format(request.finalPrice)}</span>
+                <span className="text-text-light">Agreed price</span>
+                <span className="font-bold text-primary">{request.finalPrice != null ? format(request.finalPrice) : myQuote ? format(myQuote.amount) : '—'}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-text-light">Service Fee</span>
-                <span className="font-medium text-text-light">{format(request.serviceFee)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-text-light">Your Earnings</span>
-                <span className="font-bold text-green-600">{format((request.finalPrice || 0))}</span>
-              </div>
+              {request.providerAmount != null && (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-text-light">Geobuy commission</span>
+                    <span className="font-medium text-text-light">-{format(request.platformFee || 0)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-text-light">Your earnings</span>
+                    <span className="font-bold text-green-600">{format(request.providerAmount)}</span>
+                  </div>
+                </>
+              )}
+              {isMine && (
+                <p className="text-xs text-text-lighter">
+                  {request.paymentStatus === 'released' ? 'In your wallet — withdraw any time.' : 'Added to your wallet when the customer confirms the job is done.'}
+                </p>
+              )}
             </div>
           </div>
 

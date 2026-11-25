@@ -152,7 +152,9 @@ const WithdrawalsPage = () => {
   const [requestWithdrawal, { isLoading }] = useRequestWithdrawalMutation()
   const [amount, setAmount] = useState('')
 
-  const minWithdrawal = wallet?.minWithdrawal ?? (isNigeria ? 1000 : 10)
+  // Limits for the user's country, from Admin → Settings (sent with the wallet)
+  const minWithdrawal = wallet?.minWithdrawal ?? 0
+  const maxWithdrawal = Number(wallet?.maxWithdrawal) || 0 // 0 = no limit
   const hasBank = Boolean((me?.user?.bankDetails || user?.bankDetails)?.accountNumber)
 
   const handleWithdraw = async (e) => {
@@ -160,6 +162,7 @@ const WithdrawalsPage = () => {
     const withdrawalAmount = parseFloat(amount)
     if (Number.isNaN(withdrawalAmount) || withdrawalAmount <= 0) return toast.error('Please enter a valid amount')
     if (withdrawalAmount < minWithdrawal) return toast.error(`Minimum withdrawal amount is ${format(minWithdrawal)}`)
+    if (maxWithdrawal > 0 && withdrawalAmount > maxWithdrawal) return toast.error(`Maximum withdrawal per request is ${format(maxWithdrawal)}`)
     if (withdrawalAmount > (wallet?.balance || 0)) return toast.error('Insufficient balance')
     if (!hasBank) return toast.error('Please add your bank account first')
 
@@ -200,12 +203,14 @@ const WithdrawalsPage = () => {
                   placeholder="0.00"
                   step="0.01"
                   min={minWithdrawal}
+                  {...(maxWithdrawal > 0 ? { max: maxWithdrawal } : {})}
                   max={wallet?.balance || 0}
                   required
                 />
               </div>
               <p className="text-xs text-text-lighter mt-1">
-                Minimum withdrawal: {format(minWithdrawal)}
+                Minimum withdrawal: {wallet ? format(minWithdrawal) : '…'}
+                {maxWithdrawal > 0 && ` • Maximum per request: ${format(maxWithdrawal)}`}
                 {isNigeria ? ' • Paid to your bank via Paystack after approval' : ' • Paid by bank transfer after approval'}
               </p>
             </div>

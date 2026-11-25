@@ -1,6 +1,9 @@
 import React from 'react'
+import usePublicPricing from '../hooks/usePublicPricing'
 
 const Terms = () => {
+  // Policy hours come from Admin → Settings → Operations
+  const cancelHours = usePublicPricing().operations.cancellationNoticeHours ?? '…'
   return (
     <div className="py-12">
       <div className="container-custom max-w-4xl">
@@ -47,7 +50,7 @@ const Terms = () => {
           <section className="mb-8">
             <h2 className="text-xl font-semibold text-text mb-3">5. Cancellation Policy</h2>
             <p className="text-text-light">
-              Customers may cancel bookings up to 24 hours before the scheduled time for a full refund. Cancellations within 24 hours may be subject to a cancellation fee. Providers who cancel accepted bookings may face penalties.
+              Customers may cancel bookings up to {cancelHours} hours before the scheduled time for a full refund. Cancellations within {cancelHours} hours may be subject to a cancellation fee. Providers who cancel accepted bookings may face penalties.
             </p>
           </section>
 

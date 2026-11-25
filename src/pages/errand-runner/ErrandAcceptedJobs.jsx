@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useGetErrandsQuery, useUpdateErrandStatusMutation } from '../../redux/services/errandApi'
 import { toast } from 'react-hot-toast'
 import { 
@@ -8,13 +8,20 @@ import {
   FaCheckCircle
 } from 'react-icons/fa'
 import useCountry from '../../hooks/useCountry'
+import useLiveUpdates from '../../hooks/useLiveUpdates'
 
 const ErrandAcceptedJobs = () => {
   const { format, country: userCountry, distanceUnitLabel } = useCountry()
-  const { data: errands, isLoading, refetch } = useGetErrandsQuery()
+  const navigate = useNavigate()
+  const [params, setParams] = useSearchParams()
+  const { data: errands, isLoading, refetch } = useGetErrandsQuery(undefined, { pollingInterval: 30000, refetchOnFocus: true })
   const [updateStatus, { isLoading: isUpdating }] = useUpdateErrandStatusMutation()
-  const [filter, setFilter] = useState('all')
-  const [showCancelled, setShowCancelled] = useState(false)
+  const filter = params.get('filter') || 'all'
+  const setFilter = (f) => setParams(f === 'all' ? {} : { filter: f }, { replace: true })
+  const [showCancelled, setShowCancelled] = useState(filter === 'cancelled')
+
+  // The customer confirming delivery (and the payout) shows up straight away
+  useLiveUpdates(['errand-status-updated', 'errand-completed', 'funds-released'], () => refetch())
 
   // ✅ Filter for accepted, en_route, collected, and completed
   const activeJobs = errands?.filter(j => 
@@ -82,7 +89,7 @@ const ErrandAcceptedJobs = () => {
       'accepted': { label: 'Start Journey', value: 'en_route', icon: FaPlay },
       'en_route': { label: 'Mark Collected', value: 'collected', icon: FaCheck },
       'collected': { label: 'Mark Delivered', value: 'delivered', icon: FaCheck },
-      'delivered': { label: 'Mark Completed', value: 'completed', icon: FaFlagCheckered },
+      // delivered → completed is the customer's step (it releases your pay)
     }
     return map[status]
   }
@@ -200,7 +207,14 @@ const ErrandAcceptedJobs = () => {
             const StatusIcon = getStatusIcon(job.status)
             
             return (
-              <div key={job._id} className={`card hover:shadow-medium transition-shadow p-4 md:p-6 ${
+              <div
+                key={job._id}
+                data-testid="runner-job-card"
+                role="link"
+                tabIndex={0}
+                onClick={() => navigate(`/errand-runner/job/${job._id}`)}
+                onKeyDown={(e) => e.key === 'Enter' && navigate(`/errand-runner/job/${job._id}`)}
+                className={`card hover:shadow-medium transition-shadow p-4 md:p-6 cursor-pointer ${
                 isCancelled ? 'opacity-75 border-l-4 border-red-500' : 
                 isCompleted ? 'border-l-4 border-primary bg-primary/5' : ''
               }`}>
@@ -229,10 +243,13 @@ const ErrandAcceptedJobs = () => {
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                       <span className="text-sm font-semibold text-primary whitespace-nowrap">
-                        {format(job.total)}
+                        {format(job.providerAmount ?? job.total)}
                       </span>
+                      {job.status === 'delivered' && (
+                        <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full whitespace-nowrap">Waiting for customer</span>
+                      )}
                       {nextStep && !isCancelled && !isCompleted && (
                         <button
                           onClick={() => handleStatusUpdate(job._id, nextStep.value)}
@@ -294,7 +311,7 @@ const ErrandAcceptedJobs = () => {
                   </div>
 
                   {/* Bottom Section: Actions */}
-                  <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-gray-100">
+                  <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-gray-100" onClick={(e) => e.stopPropagation()}>
                     {!isCancelled && !isCompleted ? (
                       <>
                         <Link
@@ -304,21 +321,12 @@ const ErrandAcceptedJobs = () => {
                           Details
                           <FaArrowRight className="text-xs" />
                         </Link>
-                        {job.status === 'collected' && (
-                          <Link
-                            to={`/errand-runner/scan-qr/${job._id}`}
-                            className="btn-secondary text-xs md:text-sm py-1.5 px-3 md:py-2 md:px-4 flex items-center gap-1"
-                          >
-                            <FaQrcode className="text-xs" />
-                            Scan QR
-                          </Link>
-                        )}
                         {job.status === 'accepted' && (
                           <button
-                            onClick={() => handleStatusUpdate(job._id, 'cancelled')}
+                            onClick={() => window.confirm('Withdraw from this errand? It goes back to other runners.') && handleStatusUpdate(job._id, 'cancelled')}
                             className="text-red-600 hover:text-red-700 text-xs md:text-sm py-1.5 px-2"
                           >
-                            Cancel
+                            Withdraw
                           </button>
                         )}
                       </>

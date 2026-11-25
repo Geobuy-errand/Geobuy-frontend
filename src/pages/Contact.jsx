@@ -4,7 +4,7 @@ import { FaPhone, FaEnvelope, FaMapMarkerAlt, FaClock } from 'react-icons/fa'
 import usePublicPricing from '../hooks/usePublicPricing'
 
 const Contact = () => {
-  const { contactPhone, contactEmail, isNigeria } = usePublicPricing()
+  const { contactPhone, contactEmail, isNigeria, operations } = usePublicPricing()
   const telHref = `tel:${String(contactPhone || '').replace(/[^+\d]/g, '')}`
   const [formData, setFormData] = useState({
     name: '',
@@ -44,7 +44,7 @@ const Contact = () => {
       icon: FaEnvelope,
       label: 'Email',
       value: contactEmail,
-      description: 'We reply within 24 hours',
+      description: `We reply within ${operations.supportResponseHours ?? '…'} hours`,
     },
     {
       icon: FaMapMarkerAlt,

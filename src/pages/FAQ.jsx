@@ -1,7 +1,10 @@
 import React, { useState } from 'react'
 import { FaChevronDown, FaChevronUp } from 'react-icons/fa'
+import usePublicPricing from '../hooks/usePublicPricing'
 
 const FAQ = () => {
+  // Policy hours come from Admin → Settings → Operations
+  const cancelHours = usePublicPricing().operations.cancellationNoticeHours ?? '…'
   const [openIndex, setOpenIndex] = useState(null)
 
   const faqs = [
@@ -23,7 +26,7 @@ const FAQ = () => {
     },
     {
       question: 'Can I cancel a booking?',
-      answer: 'Yes, you can cancel a booking up to 24 hours before the scheduled time for a full refund. Cancellations within 24 hours may be subject to a cancellation fee.',
+      answer: `Yes, you can cancel a booking up to ${cancelHours} hours before the scheduled time for a full refund. Cancellations within ${cancelHours} hours may be subject to a cancellation fee.`,
     },
     {
       question: 'How do I become a provider?',

@@ -42,3 +42,15 @@ export function formatDistance(value, unitOrCountry = 'mi') {
   const unit = unitOrCountry === 'NG' || unitOrCountry === 'km' ? 'km' : 'miles'
   return `${(Number(value) || 0).toFixed(1)} ${unit}`
 }
+
+/**
+ * Percentage one amount is of another, for labels such as "Platform Fee (20%)".
+ * Uses the amounts actually charged, so old bookings keep their original rates
+ * after an admin changes the settings.
+ */
+export function percentOf(part, whole) {
+  const p = Number(part)
+  const w = Number(whole)
+  if (!(w > 0) || !Number.isFinite(p)) return null
+  return Math.round((p / w) * 100)
+}

@@ -1,136 +1,135 @@
-import React, { useState, useEffect } from 'react'
+import React from 'react'
 import { Link } from 'react-router-dom'
 import { useSelector } from 'react-redux'
-import { useGetBookingsQuery } from '../../redux/services/bookingApi'
+import { toast } from 'react-hot-toast'
 import { useGetErrandsQuery } from '../../redux/services/errandApi'
-import socketService from '../../redux/services/socketService'
-import { FaPlus, FaClock } from 'react-icons/fa'
+import { useGetServiceRequestsQuery } from '../../redux/services/serviceApi'
+import { FaPlus, FaClock, FaRunning, FaTools, FaBell, FaCheckCircle } from 'react-icons/fa'
 import useCountry from '../../hooks/useCountry'
+import useLiveUpdates from '../../hooks/useLiveUpdates'
+import { StatLink, JobList } from '../../components/dashboard/DashboardCards'
+import {
+  ERRAND_VIEWS,
+  SERVICE_VIEWS,
+  customerErrandAction,
+  customerErrandPath,
+  customerServiceAction,
+  customerServicePath,
+} from '../../utils/jobStages'
+
+const label = (s = '') => s.replace(/_/g, ' ')
 
 const CustomerDashboard = () => {
-  const { format, country: userCountry, distanceUnitLabel } = useCountry()
+  const { format } = useCountry()
   const { user } = useSelector((state) => state.auth || { user: null })
-  const { data: bookings, isLoading, refetch } = useGetBookingsQuery()
-  const { data: errands, isLoading: errandsLoading } = useGetErrandsQuery()
-  const [liveUpdates, setLiveUpdates] = useState([])
-  const [socketConnected, setSocketConnected] = useState(false)
+  // Errands and service requests are separate lists (the old dashboard
+  // counted every errand twice and left service requests out).
+  const live = { pollingInterval: 30000, refetchOnFocus: true }
+  const { data: errands, isLoading: errandsLoading, refetch: refetchErrands } = useGetErrandsQuery(undefined, live)
+  const { data: services, isLoading: servicesLoading, refetch: refetchServices } = useGetServiceRequestsQuery(undefined, live)
 
-  useEffect(() => {
-    // Connect to socket
-    socketService.connect()
-    setSocketConnected(socketService.getConnectionStatus())
-
-    // Listen for errand status updates
-    const handleErrandUpdate = (data) => {
-      setLiveUpdates(prev => [
-        { 
-          type: 'errand_update', 
-          message: `Errand #${data.errandId} is now ${data.status}`,
-          timestamp: new Date(),
-        },
-        ...prev.slice(0, 4),
-      ])
-      refetch()
+  useLiveUpdates(
+    ['errand-status-updated', 'errand-accepted', 'payment-succeeded', 'new-quote', 'negotiation-update', 'quote-accepted', 'service-started', 'service-marked-done'],
+    (name, data) => {
+      if (name === 'new-quote') toast('💰 New quote received')
+      if (name === 'service-marked-done') toast('Your provider has finished — please confirm')
+      if (name === 'errand-status-updated' && data?.status === 'delivered') toast('📦 Your errand was delivered — please confirm')
+      refetchErrands()
+      refetchServices()
     }
-    socketService.on('errand-status-updated', handleErrandUpdate)
+  )
 
-    return () => {
-      socketService.off('errand-status-updated', handleErrandUpdate)
-    }
-  }, [refetch])
-
-  // Combine bookings and errands for stats
-  const allBookings = bookings || []
   const allErrands = errands || []
-  const totalActive = allBookings.filter(b => b.status === 'pending' || b.status === 'accepted').length +
-                      allErrands.filter(e => e.status === 'pending' || e.status === 'accepted' || e.status === 'en_route').length
+  const allServices = services || []
 
-  const stats = {
-    total: allBookings.length + allErrands.length,
-    pending: allBookings.filter(b => b.status === 'pending').length + allErrands.filter(e => e.status === 'pending').length,
-    active: totalActive,
-    completed: allBookings.filter(b => b.status === 'completed').length + allErrands.filter(e => e.status === 'delivered' || e.status === 'completed').length,
-  }
+  const errandItem = (e) => ({
+    key: `e-${e._id}`,
+    to: customerErrandAction(e)?.to || customerErrandPath(e),
+    title: `Errand #${e.errandId || ''} ${e.serviceType ? `· ${label(e.serviceType)}` : ''}`,
+    subtitle: [e.pickup?.address, e.dropoff?.address].filter(Boolean).join(' → '),
+    amount: e.total != null ? format(e.total) : null,
+    action: customerErrandAction(e),
+    status: label(e.status),
+  })
+  const serviceItem = (r) => ({
+    key: `s-${r._id}`,
+    to: customerServiceAction(r)?.to || customerServicePath(r),
+    title: r.serviceType || r.category || 'Service request',
+    subtitle: r.selectedProviderId?.fullName ? `with ${r.selectedProviderId.fullName}` : r.location?.address,
+    amount: r.finalPrice != null ? format(r.finalPrice) : r.budget != null ? `Budget ${format(r.budget)}` : null,
+    action: customerServiceAction(r),
+    status: label(r.status),
+  })
 
-  const recentItems = [...allBookings.slice(0, 3), ...allErrands.slice(0, 3)]
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+  const needsAction = [
+    ...allErrands.filter((e) => customerErrandAction(e)).map(errandItem),
+    ...allServices.filter((r) => customerServiceAction(r)).map(serviceItem),
+  ]
+  const inProgress = [
+    ...allErrands.filter((e) => ERRAND_VIEWS.active(e) || ERRAND_VIEWS.finding(e)).map(errandItem),
+    ...allServices.filter((r) => SERVICE_VIEWS.booked(r) || SERVICE_VIEWS.in_progress(r) || SERVICE_VIEWS.awaiting_quotes(r)).map(serviceItem),
+  ]
+  const recent = [
+    ...allErrands.map((e) => ({ ...errandItem(e), at: e.updatedAt || e.createdAt })),
+    ...allServices.map((r) => ({ ...serviceItem(r), at: r.updatedAt || r.createdAt })),
+  ]
+    .sort((a, b) => new Date(b.at) - new Date(a.at))
     .slice(0, 5)
+    .map(({ action, ...rest }) => rest) // recent shows status only
 
-  const getStatusColor = (status) => {
-    const map = {
-      'pending': 'bg-yellow-100 text-yellow-700',
-      'accepted': 'bg-blue-100 text-blue-700',
-      'en_route': 'bg-purple-100 text-purple-700',
-      'collected': 'bg-indigo-100 text-indigo-700',
-      'delivered': 'bg-green-100 text-green-700',
-      'completed': 'bg-green-100 text-green-700',
-      'cancelled': 'bg-red-100 text-red-700',
-      'in_progress': 'bg-blue-100 text-blue-700',
-    }
-    return map[status] || 'bg-gray-100 text-gray-700'
-  }
+  const openErrands = allErrands.filter(ERRAND_VIEWS.open).length
+  const activeErrands = allErrands.filter((e) => ERRAND_VIEWS.active(e) || ERRAND_VIEWS.finding(e)).length
+  const openServices = allServices.filter(SERVICE_VIEWS.open).length
+  const completed = allErrands.filter(ERRAND_VIEWS.completed).length + allServices.filter(SERVICE_VIEWS.completed).length
 
-  if (isLoading || errandsLoading) {
+  if (errandsLoading || servicesLoading) {
     return (
       <div className="p-6">
-        <div className="mb-8">
-          <div className="skeleton h-8 w-48 rounded-xl"></div>
-          <div className="skeleton h-4 w-64 rounded-xl mt-2"></div>
-        </div>
+        <div className="skeleton h-8 w-48 rounded-xl mb-8" />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="card">
-              <div className="skeleton h-12 rounded-xl"></div>
-            </div>
-          ))}
+          {[1, 2, 3, 4].map((i) => <div key={i} className="card"><div className="skeleton h-12 rounded-xl" /></div>)}
         </div>
-        <div className="card">
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="skeleton h-16 rounded-xl"></div>
-            ))}
-          </div>
-        </div>
+        <div className="card"><div className="skeleton h-40 rounded-xl" /></div>
       </div>
     )
   }
 
   return (
     <div>
-      <div className="mb-8">
+      <div className="mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-text">
-          Welcome back, {user?.fullName?.split(' ')[0] || 'User'}! 👋
+          Welcome back, {user?.fullName?.split(' ')[0] || 'there'}! 👋
         </h1>
-        <p className="text-text-light mt-1">
-          Here's what's happening with your errands and bookings.
-        </p>
-        {socketConnected && (
-          <span className="text-xs text-green-600 mt-1 inline-block">🟢 Live updates</span>
-        )}
+        <p className="text-text-light mt-1">Here's what's happening with your errands and services.</p>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <div className="card">
-          <p className="text-sm text-text-light">Total</p>
-          <p className="text-2xl font-bold text-primary">{stats.total}</p>
-        </div>
-        <div className="card">
-          <p className="text-sm text-text-light">Pending</p>
-          <p className="text-2xl font-bold text-secondary">{stats.pending}</p>
-        </div>
-        <div className="card">
-          <p className="text-sm text-text-light">Active</p>
-          <p className="text-2xl font-bold text-blue-600">{stats.active}</p>
-        </div>
-        <div className="card">
-          <p className="text-sm text-text-light">Completed</p>
-          <p className="text-2xl font-bold text-green-600">{stats.completed}</p>
-        </div>
+      {/* Stats — each opens the matching list */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+        <StatLink to="#needs-action" label="Needs your action" value={needsAction.length} icon={FaBell} tone={needsAction.length ? 'yellow' : 'green'} hint={needsAction.length ? 'Tap to see' : 'All caught up'} testId="stat-needs-action" />
+        <StatLink to="/customer/bookings?view=active" label="Errands in progress" value={activeErrands} icon={FaRunning} tone="blue" hint={`${openErrands} open`} testId="stat-errands-active" />
+        <StatLink to="/customer/service-history?view=open" label="Service requests" value={openServices} icon={FaTools} tone="purple" hint="open" testId="stat-services-open" />
+        <StatLink to="/customer/bookings?view=completed" label="Completed" value={completed} icon={FaCheckCircle} tone="green" testId="stat-completed" />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <JobList
+          id="needs-action"
+          testId="needs-action-list"
+          title="Needs your action"
+          items={needsAction}
+          empty="Nothing needs you right now."
+        />
+        <JobList
+          testId="in-progress-list"
+          title="In progress"
+          items={inProgress.slice(0, 6)}
+          empty="No errands or jobs in progress."
+          viewAllTo="/customer/bookings?view=active"
+        />
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         <Link to="/customer/create-errand" className="card hover:shadow-large transition-shadow flex items-center justify-between group">
           <div>
             <h3 className="text-lg font-semibold text-text">Create New Errand</h3>
@@ -140,11 +139,10 @@ const CustomerDashboard = () => {
             <FaPlus className="text-primary text-xl" />
           </div>
         </Link>
-
-        <Link to="/customer/bookings" className="card hover:shadow-large transition-shadow flex items-center justify-between group">
+        <Link to="/services" className="card hover:shadow-large transition-shadow flex items-center justify-between group">
           <div>
-            <h3 className="text-lg font-semibold text-text">View History</h3>
-            <p className="text-text-light text-sm">Track all your errands</p>
+            <h3 className="text-lg font-semibold text-text">Book a Service</h3>
+            <p className="text-text-light text-sm">Get quotes from local providers</p>
           </div>
           <div className="w-12 h-12 rounded-full bg-secondary/10 flex items-center justify-center group-hover:bg-secondary/20 transition-colors">
             <FaClock className="text-secondary text-xl" />
@@ -152,41 +150,7 @@ const CustomerDashboard = () => {
         </Link>
       </div>
 
-      {/* Recent Activity */}
-      <div className="card">
-        <h3 className="text-lg font-semibold text-text mb-4">Recent Activity</h3>
-        {recentItems.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-text-light">No activity yet.</p>
-            <Link to="/customer/create-errand" className="text-primary hover:underline mt-2 inline-block">
-              Create your first errand
-            </Link>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {recentItems.map((item) => (
-              <Link
-                key={item._id}
-                to={`/customer/${item.errandId ? 'errand' : 'booking'}/${item._id}`}
-                className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
-              >
-                <div>
-                  <p className="font-medium text-text">{item.serviceType || item.serviceType}</p>
-                  <p className="text-sm text-text-light">{item.pickup?.address || item.pickup?.address}</p>
-                </div>
-                <div className="flex items-center space-x-4">
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(item.status)}`}>
-                    {item.status?.replace('_', ' ')}
-                  </span>
-                  <span className="text-sm font-semibold text-text">
-                    {format(item.total)}
-                  </span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
-      </div>
+      <JobList testId="recent-list" title="Recent activity" items={recent} empty="No activity yet — create your first errand." viewAllTo="/customer/bookings" />
     </div>
   )
 }

@@ -37,7 +37,7 @@ const Login = () => {
       const result = await loginMutation({ email, password }).unwrap();
 
       if (result.user) {
-        dispatch(setUser({ user: result.user, providerProfile: null }));
+        dispatch(setUser({ token: result.token, user: result.user, providerProfile: null }));
         toast.success("Login successful!");
 
         const redirectPath =

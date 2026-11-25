@@ -174,6 +174,16 @@ export const serviceApi = baseApi.injectEndpoints({
       invalidatesTags: ['Service'],
     }),
 
+    // Provider accepts the customer's counter-offer — the job is booked at that price
+    acceptCounterOffer: builder.mutation({
+      query: ({ quoteId }) => ({
+        url: '/services/quote/accept-counter',
+        method: 'POST',
+        body: { quoteId },
+      }),
+      invalidatesTags: ['Service'],
+    }),
+
     // ========== PROVIDER ACTIONS ==========
     startServiceRequest: builder.mutation({
       query: (id) => ({
@@ -234,6 +244,7 @@ export const {
   useAcceptQuoteMutation,
   useRejectQuoteMutation,
   useNegotiateQuoteMutation,
+  useAcceptCounterOfferMutation,
 
   // Provider Actions
   useStartServiceRequestMutation,

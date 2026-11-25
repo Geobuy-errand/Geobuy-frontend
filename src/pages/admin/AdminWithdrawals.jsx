@@ -24,6 +24,11 @@ const AdminWithdrawals = () => {
   const [processWithdrawal] = useProcessWithdrawalMutation()
   const [busyId, setBusyId] = useState(null)
 
+  // Modal state
+  const [approveModal, setApproveModal] = useState(null) // withdrawal object
+  const [rejectModal, setRejectModal] = useState(null) // withdrawal object
+  const [rejectReason, setRejectReason] = useState('Bank details could not be verified')
+
   const totals = useMemo(() => {
     const t = {}
     withdrawals.forEach((w) => {
@@ -33,22 +38,31 @@ const AdminWithdrawals = () => {
     return t
   }, [withdrawals])
 
-  const act = async (w, action) => {
-    let failureReason
-    if (action === 'rejected') {
-      failureReason = window.prompt('Reason for rejecting this withdrawal (shown to the user):', 'Bank details could not be verified')
-      if (failureReason === null) return
-    } else {
-      const isNG = (w.country || 'GB') === 'NG'
-      const msg = isNG
-        ? `Send ${formatMoney(w.amount, w.currency)} to ${w.bankDetails?.accountName || w.userId?.fullName} via Paystack?`
-        : `Confirm you have paid ${formatMoney(w.amount, w.currency)} to ${w.userId?.fullName} by bank transfer?`
-      if (!window.confirm(msg)) return
+  const closeModals = () => {
+    if (busyId) return
+    setApproveModal(null)
+    setRejectModal(null)
+  }
+
+  // Esc closes whichever modal is open
+  React.useEffect(() => {
+    const anyOpen = approveModal || rejectModal
+    if (!anyOpen) return
+    const onKey = (e) => {
+      if (e.key === 'Escape') closeModals()
     }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [approveModal, rejectModal, busyId])
+
+  const runAction = async (w, action, failureReason) => {
     setBusyId(w._id)
     try {
       const res = await processWithdrawal({ id: w._id, data: { status: action, failureReason } }).unwrap()
       toast.success(res.message || 'Done')
+      setApproveModal(null)
+      setRejectModal(null)
       refetch()
     } catch (e) {
       toast.error(e.data?.message || 'Failed to process withdrawal')
@@ -57,6 +71,31 @@ const AdminWithdrawals = () => {
       setBusyId(null)
     }
   }
+
+  const confirmApprove = () => {
+    const w = approveModal
+    if (!w) return
+    const isNG = (w.country || 'GB') === 'NG'
+    runAction(w, isNG ? 'approved' : 'completed')
+  }
+
+  const confirmReject = () => {
+    const w = rejectModal
+    if (!w) return
+    runAction(w, 'rejected', rejectReason.trim())
+  }
+
+  // Helpers to open modals from the table
+  const act = (w, action) => {
+    if (action === 'rejected') {
+      setRejectReason('Bank details could not be verified')
+      setRejectModal(w)
+    } else {
+      setApproveModal(w)
+    }
+  }
+
+  const approveIsNG = approveModal ? (approveModal.country || 'GB') === 'NG' : false
 
   return (
     <div>
@@ -163,6 +202,102 @@ const AdminWithdrawals = () => {
           </table>
         )}
       </div>
+
+      {/* Approve / mark-as-paid modal */}
+      {approveModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={closeModals}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="approve-withdrawal-title"
+        >
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
+            <h3 id="approve-withdrawal-title" className="text-lg font-semibold text-text mb-2">
+              {approveIsNG ? 'Approve & pay withdrawal?' : 'Mark as paid?'}
+            </h3>
+            <p className="text-sm text-text-light mb-4">
+              {approveIsNG ? 'This will send a Paystack transfer to:' : 'Confirm you have paid by bank transfer to:'}
+            </p>
+            <div className="rounded-lg bg-gray-50 p-4 mb-5 text-sm space-y-1">
+              <p className="font-medium text-text">{approveModal.userId?.fullName}</p>
+              <p className="text-text-light">{approveModal.bankDetails?.bankName}</p>
+              <p className="text-text-light">
+                {approveIsNG ? '' : `${approveModal.bankDetails?.sortCode || ''} • `}
+                {approveModal.bankDetails?.accountNumber}
+                {approveModal.bankDetails?.accountName ? ` • ${approveModal.bankDetails.accountName}` : ''}
+              </p>
+              <p className="text-primary font-bold pt-1">{formatMoney(approveModal.amount, approveModal.currency)}</p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={closeModals}
+                disabled={busyId === approveModal._id}
+                className="flex-1 py-2 px-4 rounded-lg border border-gray-300 text-text font-medium hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmApprove}
+                disabled={busyId === approveModal._id}
+                className="flex-1 py-2 px-4 rounded-lg bg-primary text-white font-medium hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {busyId === approveModal._id ? <FaSpinner className="animate-spin" /> : null}
+                {busyId === approveModal._id ? 'Processing…' : approveIsNG ? 'Approve & pay' : 'Mark as paid'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reject modal */}
+      {rejectModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={closeModals}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="reject-withdrawal-title"
+        >
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
+            <h3 id="reject-withdrawal-title" className="text-lg font-semibold text-text mb-2">
+              Reject withdrawal
+            </h3>
+            <p className="text-sm text-text-light mb-4">
+              {formatMoney(rejectModal.amount, rejectModal.currency)} requested by {rejectModal.userId?.fullName}. This reason will be
+              shown to the user.
+            </p>
+            <label htmlFor="reject-reason" className="block text-sm font-medium text-text mb-1">
+              Reason
+            </label>
+            <textarea
+              id="reject-reason"
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              rows={3}
+              className="input-field w-full mb-5"
+              placeholder="Explain why this withdrawal is being rejected"
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={closeModals}
+                disabled={busyId === rejectModal._id}
+                className="flex-1 py-2 px-4 rounded-lg border border-gray-300 text-text font-medium hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmReject}
+                disabled={busyId === rejectModal._id || !rejectReason.trim()}
+                className="flex-1 py-2 px-4 rounded-lg bg-red-600 text-white font-medium hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {busyId === rejectModal._id ? <FaSpinner className="animate-spin" /> : null}
+                {busyId === rejectModal._id ? 'Rejecting…' : 'Reject withdrawal'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

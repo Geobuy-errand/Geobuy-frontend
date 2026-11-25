@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { useSelector } from 'react-redux'
+import IdentityBanner from '../../components/verification/IdentityBanner'
+import { useGetIdentityStatusQuery } from '../../redux/services/identityApi'
 import { useGetAvailableErrandsQuery, useAcceptErrandMutation } from '../../redux/services/errandApi'
 import { useGetErrandRunnerProfileQuery } from '../../redux/services/errandRunnerApi'
 import { toast } from 'react-hot-toast'
@@ -12,7 +15,8 @@ import useCountry from '../../hooks/useCountry'
 
 const ErrandAvailableJobs = () => {
   const { format, country: userCountry, distanceUnitLabel } = useCountry()
-  const { data: jobs, isLoading, refetch } = useGetAvailableErrandsQuery()
+  const navigate = useNavigate()
+  const { data: jobs, isLoading, refetch } = useGetAvailableErrandsQuery(undefined, { pollingInterval: 30000, refetchOnFocus: true })
   const { data: profile } = useGetErrandRunnerProfileQuery()
   const [acceptErrand, { isLoading: isAccepting }] = useAcceptErrandMutation()
   const [searchTerm, setSearchTerm] = useState('')
@@ -34,20 +38,29 @@ const ErrandAvailableJobs = () => {
     }
   }, [refetch])
 
-  const isVerified = profile?.verificationStatus === 'approved'
+  const { data: identity } = useGetIdentityStatusQuery()
+  const needsIdentity = identity?.required && !identity?.verified
+  // The account's own status (the runner-profile record may not exist,
+  // e.g. for seeded accounts, which left approved runners unable to accept)
+  const { user } = useSelector((state) => state.auth)
+  const accountStatus = identity?.accountStatus ?? user?.verificationStatus ?? profile?.verificationStatus
+  const isVerified = accountStatus === 'approved' && !needsIdentity
 
   const handleAccept = async (jobId) => {
     if (!isVerified) {
-      toast.error('Please complete verification before accepting errands')
+      toast.error(needsIdentity ? 'Please verify your identity before accepting errands' : 'Please complete verification before accepting errands')
+      navigate('/errand-runner/verification')
       return
     }
 
     try {
       await acceptErrand(jobId).unwrap()
-      toast.success('Errand accepted successfully!')
-      refetch()
+      toast.success('Errand accepted! Opening the job…')
+      navigate(`/errand-runner/job/${jobId}`)
     } catch (error) {
       toast.error(error.data?.message || 'Failed to accept errand')
+      if (error.data?.code === 'IDENTITY_VERIFICATION_REQUIRED') navigate('/errand-runner/verification')
+      refetch()
     }
   }
 
@@ -82,12 +95,14 @@ const ErrandAvailableJobs = () => {
             {socketConnected && <span className="ml-2 text-xs text-green-600">🟢 Live</span>}
           </p>
         </div>
-        {!isVerified && (
+        {!isVerified && !needsIdentity && (
           <Link to="/errand-runner/verification" className="btn-secondary text-sm py-1.5 px-3 md:py-2 md:px-4 whitespace-nowrap w-full md:w-auto text-center">
             Complete Verification
           </Link>
         )}
       </div>
+
+      {needsIdentity && <IdentityBanner status={identity} />}
 
       {/* Filters - Stack on mobile */}
       <div className="flex flex-col md:flex-row gap-3 md:gap-4 mb-4 md:mb-6">

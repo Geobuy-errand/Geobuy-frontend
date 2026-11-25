@@ -167,9 +167,9 @@ const DashboardSidebar = ({ open, onClose }) => {
           to: '/admin/connection-posts',
         },
         
-        { to: '/admin/business-settings', icon: FaCog, label: 'Business Settings' },
         { to: "/admin/analytics", icon: FaChartBar, label: "Analytics" },
         { to: "/admin/support", icon: FaQuestionCircle, label: "Support" },
+        // Prices, fees, time limits and feature switches (UK + Nigeria)
         { to: "/admin/settings", icon: FaCog, label: "Settings" },
       ];
     }

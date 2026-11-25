@@ -1,20 +1,30 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useGetProviderServiceRequestsQuery, useSubmitQuoteMutation } from '../../redux/services/serviceApi'
 import { toast } from 'react-hot-toast'
-import { FaMapMarkerAlt, FaDollarSign, FaClock, FaCheck, FaSearch, FaRuler, FaUser, FaStar } from 'react-icons/fa'
-import { useSelector } from 'react-redux'
-import { io } from 'socket.io-client'
-import http, { SOCKET_URL } from '../../services/http'
+import { FaMapMarkerAlt, FaClock, FaSearch, FaUser, FaArrowRight } from 'react-icons/fa'
 import useCountry from '../../hooks/useCountry'
+import useLiveUpdates from '../../hooks/useLiveUpdates'
+import IdentityBanner from '../../components/verification/IdentityBanner'
+import { useGetIdentityStatusQuery } from '../../redux/services/identityApi'
+import { PROVIDER_VIEWS, providerAction } from '../../utils/jobStages'
 
 const ServiceProviderAvailableJobs = () => {
-  // `user` was used below but never defined, which crashed this page
-  const { user } = useSelector((state) => state.auth)
-  const myId = String(user?._id || user?.id || '')
-  const { format, country: userCountry, distanceUnitLabel } = useCountry()
-  const [socket, setSocket] = useState(null)
-  const { data: requests, isLoading, refetch } = useGetProviderServiceRequestsQuery()
-  const { data: invitedRequests } = useGetProviderServiceRequestsQuery()
+  const { format, country: userCountry } = useCountry()
+  const navigate = useNavigate()
+  const [params, setParams] = useSearchParams()
+  const tab = params.get('tab') === 'quoted' ? 'quoted' : 'new'
+  const setTab = (t) => setParams(t === 'new' ? {} : { tab: t }, { replace: true })
+
+  // Polling is a fallback for phones (e.g. iPhone Safari) that pause the
+  // live connection when the app is in the background.
+  const { data: requests, isLoading, isError, error, refetch } = useGetProviderServiceRequestsQuery(undefined, {
+    pollingInterval: 30000,
+    refetchOnFocus: true,
+    refetchOnReconnect: true,
+  })
+  const { data: identity } = useGetIdentityStatusQuery()
+  const needsIdentity = identity?.required && !identity?.verified
 
   const [submitQuote, { isLoading: isSubmitting }] = useSubmitQuoteMutation()
   const [searchTerm, setSearchTerm] = useState('')
@@ -25,44 +35,26 @@ const ServiceProviderAvailableJobs = () => {
   const [quoteMessage, setQuoteMessage] = useState('')
   const [estimatedDuration, setEstimatedDuration] = useState('')
 
-  useEffect(() => {
-    const newSocket = io(SOCKET_URL, {
-      withCredentials: true,
-    })
+  useLiveUpdates(['new-service-invite', 'new-service-request', 'negotiation-update', 'quote-accepted'], (name, data) => {
+    if (name === 'new-service-invite' || name === 'new-service-request') toast.success(`📋 New service request${data?.serviceType ? `: ${data.serviceType}` : ''}`)
+    if (name === 'negotiation-update' && data?.from === 'customer') toast(data.declined ? 'A customer declined your quote' : 'A customer sent you a counter-offer', { icon: '🔄' })
+    refetch()
+  })
 
-    newSocket.on('connect', () => {
-      console.log('✅ Socket connected')
-    })
+  const all = requests || []
+  const newRequests = all.filter(PROVIDER_VIEWS.new)
+  const quoted = all.filter(PROVIDER_VIEWS.quoted)
+  const respondCount = all.filter(PROVIDER_VIEWS.respond).length
+  const list = tab === 'quoted' ? quoted : newRequests
 
-    newSocket.on('new-service-request', (data) => {
-      toast.success(`📋 New service request: ${data.serviceType}`)
-      refetch()
-    })
-
-    setSocket(newSocket)
-
-    return () => {
-      newSocket.disconnect()
-    }
-  }, [refetch])
-
-  // Filter pending requests (not yet quoted or accepted)
-  const pendingRequests = requests?.filter(r => 
-    r.status === 'pending' || r.status === 'quotes_received'
-  ) || []
-
-  const filteredRequests = pendingRequests?.filter(request => {
-    const matchesSearch = request.serviceType?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          request.description?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredRequests = list.filter((request) => {
+    const q = searchTerm.toLowerCase()
+    const matchesSearch = !q || request.serviceType?.toLowerCase().includes(q) || request.description?.toLowerCase().includes(q)
     const matchesCategory = filterCategory === 'all' || request.category === filterCategory
     return matchesSearch && matchesCategory
   })
 
-  const categories = [...new Set(requests?.map(r => r.category) || [])]
-
-  const invitedRequestsList = requests?.filter(r => 
-    r.invitedProviders?.some(p => String(p.providerId?._id || p.providerId) === myId && p.status === 'invited')
-  ) || []
+  const categories = [...new Set(all.map((r) => r.category).filter(Boolean))]
 
   const handleOpenQuoteModal = (request) => {
     setSelectedRequest(request)
@@ -93,6 +85,7 @@ const ServiceProviderAvailableJobs = () => {
       toast.success('Quote submitted successfully!')
       setShowQuoteModal(false)
       refetch()
+      setTab('quoted')
     } catch (error) {
       toast.error(error.data?.message || 'Failed to submit quote')
     }
@@ -100,7 +93,28 @@ const ServiceProviderAvailableJobs = () => {
 
   return (
     <div>
-      <h1 className="text-2xl md:text-3xl font-bold text-text mb-6">Available Service Requests</h1>
+      <h1 className="text-2xl md:text-3xl font-bold text-text mb-4">Service Requests</h1>
+
+      {needsIdentity && <IdentityBanner status={identity} />}
+
+      <div className="flex gap-2 mb-4" role="tablist">
+        <button role="tab" aria-selected={tab === 'new'} onClick={() => setTab('new')} data-testid="tab-new"
+          className={`px-4 py-2 rounded-full text-sm font-medium ${tab === 'new' ? 'bg-primary text-white' : 'bg-gray-100 text-text-light hover:bg-gray-200'}`}>
+          New requests ({newRequests.length})
+        </button>
+        <button role="tab" aria-selected={tab === 'quoted'} onClick={() => setTab('quoted')} data-testid="tab-quoted"
+          className={`px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2 ${tab === 'quoted' ? 'bg-primary text-white' : 'bg-gray-100 text-text-light hover:bg-gray-200'}`}>
+          My quotes ({quoted.length})
+          {respondCount > 0 && <span className="bg-yellow-400 text-yellow-900 text-xs rounded-full px-1.5">{respondCount}</span>}
+        </button>
+      </div>
+
+      {isError && (
+        <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-700 text-sm flex items-center justify-between gap-2">
+          <span>{error?.status === 401 ? 'Your session has expired — please log in again.' : "We couldn't load your requests."}</span>
+          <button onClick={refetch} className="underline">Try again</button>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-col md:flex-row gap-4 mb-6">
@@ -137,12 +151,25 @@ const ServiceProviderAvailableJobs = () => {
         </div>
       ) : filteredRequests?.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-text-light">No available service requests at the moment</p>
+          <p className="text-text-light">{tab === 'quoted' ? "You haven't got any open quotes" : 'No new service requests at the moment'}</p>
+          {tab === 'new' && quoted.length > 0 && (
+            <button onClick={() => setTab('quoted')} className="text-primary hover:underline text-sm mt-2">See your quotes →</button>
+          )}
         </div>
       ) : (
         <div className="space-y-4">
-          {filteredRequests?.map((request) => (
-            <div key={request._id} className="card hover:shadow-medium transition-shadow">
+          {filteredRequests?.map((request) => {
+            const action = providerAction(request)
+            return (
+            <div
+              key={request._id}
+              data-testid="request-card"
+              role="link"
+              tabIndex={0}
+              onClick={() => navigate(`/provider/job/${request._id}`)}
+              onKeyDown={(e) => e.key === 'Enter' && navigate(`/provider/job/${request._id}`)}
+              className="card hover:shadow-medium transition-shadow cursor-pointer"
+            >
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
@@ -184,17 +211,36 @@ const ServiceProviderAvailableJobs = () => {
                     {request.customerId?.fullName}
                   </div>
                 </div>
-                <div className="flex flex-col items-end gap-2 w-full md:w-auto">
-                  <button
-                    onClick={() => handleOpenQuoteModal(request)}
-                    className="btn-primary text-sm py-2 px-6 w-full md:w-auto"
-                  >
-                    Submit Quote
-                  </button>
+                <div className="flex flex-col items-stretch md:items-end gap-2 w-full md:w-auto" onClick={(e) => e.stopPropagation()}>
+                  {request.myQuote && (
+                    <p className="text-sm text-text md:text-right">
+                      {request.myQuote.lastOfferBy === 'customer' ? 'Customer offered ' : 'Your offer '}
+                      <strong>{format(request.myQuote.amount)}</strong>
+                    </p>
+                  )}
+                  {request.providerStage === 'pending_quote' ? (
+                    <button
+                      onClick={() => handleOpenQuoteModal(request)}
+                      disabled={needsIdentity}
+                      title={needsIdentity ? 'Verify your identity first' : undefined}
+                      className="btn-primary text-sm py-2 px-6 w-full md:w-auto disabled:opacity-50"
+                      data-testid="open-quote"
+                    >
+                      Submit Quote
+                    </button>
+                  ) : (
+                    <Link
+                      to={`/provider/job/${request._id}`}
+                      className={`text-sm py-2 px-4 rounded-lg text-center flex items-center justify-center gap-1 ${action?.tone === 'warning' ? 'bg-yellow-100 text-yellow-900 font-medium' : 'btn-outline'}`}
+                    >
+                      {action?.label || 'Open'} <FaArrowRight className="text-xs" />
+                    </Link>
+                  )}
                 </div>
               </div>
             </div>
-          ))}
+            )
+          })}
         </div>
       )}
 

@@ -1,24 +1,30 @@
 import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { useGetProviderServiceRequestsQuery, useStartServiceRequestMutation, useMarkServiceDoneMutation } from '../../redux/services/serviceApi'
 import { toast } from 'react-hot-toast'
 import { FaMapMarkerAlt, FaDollarSign, FaClock, FaPlay, FaCheck, FaUser, FaStar } from 'react-icons/fa'
 import useCountry from '../../hooks/useCountry'
+import useLiveUpdates from '../../hooks/useLiveUpdates'
 
 const ServiceProviderAcceptedJobs = () => {
   const { format, country: userCountry, distanceUnitLabel } = useCountry()
-  const { data: requests, isLoading, refetch } = useGetProviderServiceRequestsQuery()
+  const navigate = useNavigate()
+  const [params, setParams] = useSearchParams()
+  const { data: requests, isLoading, refetch } = useGetProviderServiceRequestsQuery(undefined, { pollingInterval: 30000, refetchOnFocus: true })
   const [startService] = useStartServiceRequestMutation()
   const [markDone] = useMarkServiceDoneMutation()
-  const [filter, setFilter] = useState('all')
+  const filter = params.get('filter') || 'all'
+  const setFilter = (f) => setParams(f === 'all' ? {} : { filter: f }, { replace: true })
   const { user } = useSelector((state) => state.auth)
+
+  useLiveUpdates(['quote-accepted', 'service-paid', 'funds-released', 'negotiation-update'], () => refetch())
 
   // Only jobs awarded to THIS provider (the list also contains requests
   // they were invited to that went to someone else).
-  const isMine = (r) => String(r.selectedProviderId?._id || r.selectedProviderId || '') === String(user?._id || '')
+  const isMine = (r) => r.isMine ?? String(r.selectedProviderId?._id || r.selectedProviderId || '') === String(user?._id || user?.id || '')
   const acceptedRequests = requests?.filter(r =>
-    isMine(r) && ['provider_selected', 'in_progress', 'awaiting_confirmation'].includes(r.status)
+    isMine(r) && ['provider_selected', 'in_progress', 'awaiting_confirmation', ...(filter === 'completed' ? ['completed'] : [])].includes(r.status)
   ) || []
 
   const filteredJobs = acceptedRequests.filter(job => {
@@ -62,7 +68,7 @@ const ServiceProviderAcceptedJobs = () => {
       <h1 className="text-2xl md:text-3xl font-bold text-text mb-6">My Active Jobs</h1>
 
       {/* Filters */}
-      <div className="flex gap-4 mb-6">
+      <div className="flex flex-wrap gap-2 mb-6">
         <button
           onClick={() => setFilter('all')}
           className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
@@ -87,6 +93,22 @@ const ServiceProviderAcceptedJobs = () => {
         >
           In Progress
         </button>
+        <button
+          onClick={() => setFilter('awaiting_confirmation')}
+          className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+            filter === 'awaiting_confirmation' ? 'bg-primary text-white' : 'bg-gray-100 text-text-light hover:bg-gray-200'
+          }`}
+        >
+          Done
+        </button>
+        <button
+          onClick={() => setFilter('completed')}
+          className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+            filter === 'completed' ? 'bg-primary text-white' : 'bg-gray-100 text-text-light hover:bg-gray-200'
+          }`}
+        >
+          Completed
+        </button>
       </div>
 
       {isLoading ? (
@@ -107,7 +129,15 @@ const ServiceProviderAcceptedJobs = () => {
       ) : (
         <div className="space-y-4">
           {filteredJobs.map((job) => (
-            <div key={job._id} className="card hover:shadow-medium transition-shadow">
+            <div
+              key={job._id}
+              data-testid="active-job-card"
+              role="link"
+              tabIndex={0}
+              onClick={() => navigate(`/provider/job/${job._id}`)}
+              onKeyDown={(e) => e.key === 'Enter' && navigate(`/provider/job/${job._id}`)}
+              className="card hover:shadow-medium transition-shadow cursor-pointer"
+            >
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-3">
@@ -137,7 +167,7 @@ const ServiceProviderAcceptedJobs = () => {
                     {job.providerAmount != null && <span className="ml-2 text-green-700">(you receive {format(job.providerAmount)})</span>}
                   </div>
                 </div>
-                <div className="flex flex-col items-end gap-2 w-full md:w-auto">
+                <div className="flex flex-col items-end gap-2 w-full md:w-auto" onClick={(e) => e.stopPropagation()}>
                   {job.status === 'provider_selected' && (
                     <button
                       onClick={() => handleStart(job._id)}

@@ -136,7 +136,7 @@ const RegisterCustomer = () => {
       const result = await registerMutation(submitData).unwrap()
       
       if (result.user) {
-        dispatch(setUser({ user: result.user, providerProfile: null }))
+        dispatch(setUser({ token: result.token, user: result.user, providerProfile: null }))
         toast.success('Registration successful! Welcome to GEOBUY.')
         navigate('/customer/dashboard')
       }

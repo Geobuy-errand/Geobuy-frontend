@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import useLiveUpdates from '../../hooks/useLiveUpdates'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useGetServiceRequestByIdQuery, useInviteProvidersMutation } from '../../redux/services/serviceApi'
 import { useSelector } from 'react-redux'
@@ -31,7 +32,12 @@ const ServiceRequestDetail = () => {
   const { id } = useParams()
   const navigate = useNavigate()
   const { user } = useSelector((state) => state.auth)
-  const { data: request, isLoading, refetch } = useGetServiceRequestByIdQuery(id)
+  const { data: request, isLoading, refetch } = useGetServiceRequestByIdQuery(id, { pollingInterval: 30000 })
+  // Quotes, offers, start / done updates appear without reloading
+  useLiveUpdates(['new-quote', 'negotiation-update', 'quote-accepted', 'service-started', 'service-marked-done', 'payment-succeeded'], (name, data) => {
+    if (data?.serviceRequestId && String(data.serviceRequestId) !== String(id)) return
+    refetch()
+  }, { rooms: [{ type: 'booking', id }] })
   const [inviteProviders, { isLoading: isInviting }] = useInviteProvidersMutation()
   const [selectedProviders, setSelectedProviders] = useState([])
   const [showInviteModal, setShowInviteModal] = useState(false)

@@ -6,6 +6,7 @@ import { FaComments, FaHeadset, FaBox, FaFilter } from 'react-icons/fa'
 import { toast } from 'react-hot-toast'
 import { io } from 'socket.io-client'
 import http, { SOCKET_URL } from '../../services/http'
+import { socketAuthOptions } from '../../services/authToken'
 
 const ChatSupport = () => {
   const { user } = useSelector((state) => state.auth)
@@ -17,9 +18,7 @@ const ChatSupport = () => {
 
   // Socket connection for real-time updates
   useEffect(() => {
-    const newSocket = io(SOCKET_URL, {
-      withCredentials: true,
-    })
+    const newSocket = io(SOCKET_URL, socketAuthOptions())
 
     newSocket.on('connect', () => {
       console.log('Chat socket connected')

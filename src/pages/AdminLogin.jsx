@@ -32,7 +32,7 @@ const AdminLogin = () => {
           return
         }
 
-        dispatch(setUser({ user: result.user, providerProfile: null }))
+        dispatch(setUser({ token: result.token, user: result.user, providerProfile: null }))
         toast.success('Admin login successful!')
         navigate('/admin/dashboard')
       }

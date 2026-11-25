@@ -17,6 +17,7 @@ import {
   useGetSubscriptionStatusQuery,
 } from '../redux/services/subscriptionApi'
 import useCountry from '../hooks/useCountry'
+import { planSavings, bestSavings } from '../utils/planSavings'
 
 const Subscription = () => {
   const { format, country: userCountry, distanceUnitLabel } = useCountry()
@@ -159,21 +160,7 @@ const Subscription = () => {
     return plan.interval
   }
 
-  const getSavings = (plan) => {
-    if (plan.metadata?.savings) {
-      return plan.metadata.savings
-    }
-
-    if (plan.interval === 'year') {
-      return '38%'
-    }
-
-    if (plan.name?.toLowerCase().includes('6 month')) {
-      return '23%'
-    }
-
-    return null
-  }
+  const getSavings = (plan) => planSavings(plans, plan)
 
   if (plansLoading) {
     return (
@@ -427,8 +414,9 @@ const Subscription = () => {
               </p>
 
               <p className="text-sm text-text-light">
-                Yes, yearly subscribers save up to 38%
-                compared to monthly billing.
+                {bestSavings(plans)
+                  ? `Yes, longer plans save up to ${bestSavings(plans)} compared to monthly billing.`
+                  : 'Plan prices are shown above for each billing period.'}
               </p>
             </div>
           </div>

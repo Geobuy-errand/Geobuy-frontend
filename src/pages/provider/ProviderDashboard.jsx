@@ -1,199 +1,106 @@
-import React, { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import React from 'react'
 import { useSelector } from 'react-redux'
-import { 
-  useGetServiceRequestsQuery,
-  useGetProviderServiceRequestsQuery 
-} from '../../redux/services/serviceApi'
+import { toast } from 'react-hot-toast'
+import { useGetProviderServiceRequestsQuery } from '../../redux/services/serviceApi'
 import { useGetWalletQuery } from '../../redux/services/walletApi'
-import socketService from '../../redux/services/socketService'
-import { FaBriefcase, FaCheckCircle, FaWallet, FaStar, FaClock, FaArrowRight } from 'react-icons/fa'
+import { FaBriefcase, FaCheckCircle, FaWallet, FaStar, FaExchangeAlt, FaBell } from 'react-icons/fa'
 import useCountry from '../../hooks/useCountry'
+import useLiveUpdates from '../../hooks/useLiveUpdates'
+import { StatLink, JobList } from '../../components/dashboard/DashboardCards'
+import IdentityBanner from '../../components/verification/IdentityBanner'
+import { PROVIDER_VIEWS, providerAction, providerPath } from '../../utils/jobStages'
 
 const ProviderDashboard = () => {
-  const { format, country: userCountry, distanceUnitLabel } = useCountry()
+  const { format } = useCountry()
   const { user } = useSelector((state) => state.auth)
-  
-  // ✅ Correct hooks for provider
-  const { data: providerRequests, isLoading: requestsLoading, refetch } = useGetProviderServiceRequestsQuery()
-  const { data: wallet, isLoading: walletLoading, refetch: refetchWallet } = useGetWalletQuery()
-  const [socketConnected, setSocketConnected] = useState(false)
 
-  useEffect(() => {
-    socketService.connect()
-    setSocketConnected(socketService.getConnectionStatus())
+  // Polling backs up the live connection (iPhone Safari pauses sockets in the background)
+  const live = { pollingInterval: 30000, refetchOnFocus: true, refetchOnReconnect: true }
+  const { data: providerRequests, isLoading: requestsLoading, refetch } = useGetProviderServiceRequestsQuery(undefined, live)
+  const { data: wallet, isLoading: walletLoading, refetch: refetchWallet } = useGetWalletQuery(undefined, live)
 
-    if (user?._id) {
-      socketService.joinRoom(user._id)
-    }
+  useLiveUpdates(['new-service-invite', 'new-service-request', 'negotiation-update', 'quote-accepted', 'service-paid', 'funds-released'], (name, data) => {
+    if (name === 'new-service-invite' || name === 'new-service-request') toast.success('📋 New service request')
+    if (name === 'negotiation-update' && data?.from === 'customer') toast(data.declined ? 'A customer declined your quote' : 'A customer sent you a counter-offer', { icon: '🔄' })
+    if (name === 'service-paid') toast.success('💷 A customer has paid — you can start the job')
+    if (name === 'funds-released') toast.success('Earnings added to your wallet')
+    refetch()
+    refetchWallet()
+  })
 
-    const handleNewRequest = () => {
-      refetch()
-    }
-    socketService.on('new-service-request', handleNewRequest)
+  const all = providerRequests || []
+  const by = (fn) => all.filter(fn)
+  const newRequests = by(PROVIDER_VIEWS.new)
+  const respond = by(PROVIDER_VIEWS.respond)
+  const quoted = by(PROVIDER_VIEWS.quoted)
+  const active = by(PROVIDER_VIEWS.active)
+  const completed = by(PROVIDER_VIEWS.completed)
 
-    return () => {
-      socketService.off('new-service-request', handleNewRequest)
-    }
-  }, [user, refetch])
+  const item = (r) => ({
+    key: r._id,
+    to: providerPath(r),
+    title: r.serviceType || r.category,
+    subtitle: [r.customerId?.fullName, r.location?.address].filter(Boolean).join(' · '),
+    amount: r.finalPrice != null ? format(r.finalPrice) : r.myQuote ? format(r.myQuote.amount) : r.budget != null ? `Budget ${format(r.budget)}` : null,
+    action: providerAction(r),
+    status: (r.status || '').replace(/_/g, ' '),
+  })
 
-  // Provider sees requests they've been matched with or have submitted quotes for
-  const pendingRequests = providerRequests?.filter(r => 
-    r.status === 'pending' || r.status === 'quotes_received'
-  ) || []
-  
-  const activeRequests = providerRequests?.filter(r => 
-    r.status === 'provider_selected' || r.status === 'in_progress'
-  ) || []
-  
-  const completedRequests = providerRequests?.filter(r => 
-    r.status === 'completed'
-  ) || []
-
-  const stats = [
-    {
-      icon: FaBriefcase,
-      label: 'Pending Requests',
-      value: pendingRequests.length,
-      color: 'text-yellow-600',
-      bg: 'bg-yellow-100',
-    },
-    {
-      icon: FaCheckCircle,
-      label: 'Active Jobs',
-      value: activeRequests.length,
-      color: 'text-blue-600',
-      bg: 'bg-blue-100',
-    },
-    {
-      icon: FaWallet,
-      label: 'Balance',
-      value: `${format(wallet?.balance)}`,
-      color: 'text-primary',
-      bg: 'bg-primary/10',
-    },
-    {
-      icon: FaStar,
-      label: 'Rating',
-      value: user?.averageRating?.toFixed(1) || 'New',
-      color: 'text-yellow-600',
-      bg: 'bg-yellow-100',
-    },
-  ]
+  // What the provider should do next, most urgent first
+  const needsAction = [
+    ...respond,
+    ...by(PROVIDER_VIEWS.ready),
+    ...by(PROVIDER_VIEWS.in_progress),
+    ...newRequests,
+  ].map(item)
 
   if (requestsLoading || walletLoading) {
     return (
       <div className="p-6">
-        <div className="mb-8">
-          <div className="skeleton h-8 w-48 rounded-xl"></div>
-          <div className="skeleton h-4 w-64 rounded-xl mt-2"></div>
+        <div className="skeleton h-8 w-48 rounded-xl mb-8" />
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+          {[1, 2, 3, 4, 5].map((i) => <div key={i} className="card"><div className="skeleton h-12 rounded-xl" /></div>)}
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="card">
-              <div className="skeleton h-12 rounded-xl"></div>
-            </div>
-          ))}
-        </div>
-        <div className="card">
-          <div className="skeleton h-48 rounded-xl"></div>
-        </div>
+        <div className="card"><div className="skeleton h-48 rounded-xl" /></div>
       </div>
     )
   }
 
   return (
     <div>
-      <div className="mb-8">
+      <div className="mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-text">
           Welcome back, {user?.fullName?.split(' ')[0] || 'Provider'}! 👋
         </h1>
-        <p className="text-text-light mt-1">
-          Here's your service provider overview.
-        </p>
-        {socketConnected && (
-          <span className="text-xs text-green-600 mt-1 inline-block">🟢 Live updates</span>
-        )}
+        <p className="text-text-light mt-1">Here's your service provider overview.</p>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        {stats.map((stat, index) => (
-          <div key={index} className="card">
-            <div className="flex items-center justify-between">
-              <div className={`w-10 h-10 rounded-full ${stat.bg} flex items-center justify-center`}>
-                <stat.icon className={stat.color} />
-              </div>
-              <span className="text-xl font-bold text-text">{stat.value}</span>
-            </div>
-            <p className="text-sm text-text-light mt-2">{stat.label}</p>
-          </div>
-        ))}
+      <IdentityBanner />
+
+      {/* Stats — each opens the matching section */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4 mb-6">
+        <StatLink to="/provider/available-jobs" label="New requests" value={newRequests.length} icon={FaBriefcase} tone="yellow" testId="stat-new-requests" />
+        <StatLink to="/provider/available-jobs?tab=quoted" label="Negotiations" value={quoted.length} icon={FaExchangeAlt} tone="purple" hint={respond.length ? `${respond.length} need your reply` : 'waiting on customers'} testId="stat-negotiations" />
+        <StatLink to="/provider/accepted-jobs" label="Active jobs" value={active.length} icon={FaCheckCircle} tone="blue" testId="stat-active-jobs" />
+        <StatLink to="/provider/wallet" label="Wallet" value={format(wallet?.balance || 0)} icon={FaWallet} tone="primary" hint={wallet?.pendingBalance ? `${format(wallet.pendingBalance)} pending` : 'withdrawable'} testId="stat-wallet" />
+        <StatLink to="/provider/reviews" label="Rating" value={user?.averageRating ? Number(user.averageRating).toFixed(1) : 'New'} icon={FaStar} tone="yellow" hint={`${completed.length} completed`} testId="stat-rating" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Pending Requests */}
-        <div className="card">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-text">Pending Requests</h2>
-            <Link to="/provider/available-jobs" className="text-primary hover:underline text-sm flex items-center">
-              View all <FaArrowRight className="ml-1" />
-            </Link>
-          </div>
-          {pendingRequests.length === 0 ? (
-            <p className="text-text-light text-sm">No pending requests</p>
-          ) : (
-            <div className="space-y-3">
-              {pendingRequests.slice(0, 5).map((request) => (
-                <Link
-                  key={request._id}
-                  to={`/provider/job/${request._id}`}
-                  className="block p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                >
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="font-medium text-text">{request.serviceType}</p>
-                      <p className="text-sm text-text-light">{request.location?.address}</p>
-                    </div>
-                    <span className="text-sm font-semibold text-primary">
-                      {request.budget != null ? format(request.budget) : 'Negotiable'}
-                    </span>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Active Jobs */}
-        <div className="card">
-          <h2 className="text-lg font-semibold text-text mb-4">Active Jobs</h2>
-          {activeRequests.length === 0 ? (
-            <p className="text-text-light text-sm">No active jobs</p>
-          ) : (
-            <div className="space-y-3">
-              {activeRequests.slice(0, 5).map((request) => (
-                <div key={request._id} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                  <div>
-                    <p className="font-medium text-text">{request.serviceType}</p>
-                    <p className="text-sm text-text-light flex items-center">
-                      <FaClock className="mr-1 text-xs" />
-                      {request.status.replace('_', ' ')}
-                    </p>
-                  </div>
-                  <span className="text-sm font-semibold text-primary">
-                    {request.finalPrice != null ? format(request.finalPrice) : 'Negotiating'}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-          {activeRequests.length > 0 && (
-            <Link to="/provider/accepted-jobs" className="text-primary hover:underline text-sm mt-4 inline-block">
-              View all active jobs
-            </Link>
-          )}
-        </div>
+        <JobList
+          testId="provider-needs-action"
+          title={<span className="flex items-center gap-2"><FaBell className="text-yellow-600" /> Needs your action</span>}
+          items={needsAction.slice(0, 8)}
+          empty="Nothing needs you right now."
+          viewAllTo="/provider/available-jobs"
+        />
+        <JobList
+          testId="provider-active-jobs"
+          title="Active jobs"
+          items={active.map(item).slice(0, 8)}
+          empty="No active jobs yet. Send quotes to get booked."
+          viewAllTo="/provider/accepted-jobs"
+        />
       </div>
     </div>
   )

@@ -17,6 +17,7 @@ import {
   FaInfoCircle,
 } from 'react-icons/fa'
 import http, { SOCKET_URL } from '../../services/http'
+import { socketAuthOptions } from '../../services/authToken'
 
 const ChatWindow = ({ chatId, onClose, onBack }) => {
   const { user } = useSelector((state) => state.auth)
@@ -33,9 +34,7 @@ const ChatWindow = ({ chatId, onClose, onBack }) => {
 
   // Socket connection
   useEffect(() => {
-    const newSocket = io(SOCKET_URL, {
-      withCredentials: true,
-    })
+    const newSocket = io(SOCKET_URL, socketAuthOptions())
 
     newSocket.on('connect', () => {
       console.log('Chat socket connected')

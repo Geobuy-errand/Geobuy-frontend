@@ -4,8 +4,10 @@ import { toast } from 'react-hot-toast'
 import { FaPlus, FaEdit, FaTrash, FaTimes, FaSpinner, FaCheck, FaEye, FaImage, FaCalendar, FaMapMarkerAlt } from 'react-icons/fa'
 import UKStatesDropdown from '../../components/utils/UKStatesDropdown'
 import Pagination from '../../components/utils/Pagination'
+import usePublicPricing from '../../hooks/usePublicPricing'
 
 const AdminConnectionPosts = () => {
+  const postDays = usePublicPricing().operations.connectPostExpiryDays ?? '…'
   const [currentPage, setCurrentPage] = useState(1)
   const [stateFilter, setStateFilter] = useState('')
   const [typeFilter, setTypeFilter] = useState('')
@@ -522,7 +524,7 @@ const AdminConnectionPosts = () => {
                   className="input-field"
                 />
                 <p className="text-xs text-text-lighter mt-1">
-                  Posts expire after 30 days by default
+                  Posts expire after {postDays} days by default (Admin → Settings)
                 </p>
               </div>
 

@@ -144,9 +144,9 @@ const RegisterProvider = () => {
       const result = await registerMutation(submitData).unwrap()
       
       if (result.user) {
-        dispatch(setUser({ user: result.user }))
+        dispatch(setUser({ token: result.token, user: result.user }))
         toast.success('Registration successful! Your account is pending verification.')
-        navigate('/provider/dashboard')
+        navigate('/provider/verification') // verify identity straight after signing up
       }
     } catch (error) {
       console.error('Registration error:', error)

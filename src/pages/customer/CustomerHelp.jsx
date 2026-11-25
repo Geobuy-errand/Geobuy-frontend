@@ -3,7 +3,9 @@ import { FaQuestionCircle, FaPhone, FaEnvelope, FaBook, FaChevronDown, FaChevron
 import usePublicPricing from '../../hooks/usePublicPricing'
 
 const CustomerHelp = () => {
-  const { contactPhone, contactEmail } = usePublicPricing()
+  const { contactPhone, contactEmail, operations } = usePublicPricing()
+  const cancelHours = operations.cancellationNoticeHours ?? '…'
+  const replyHours = operations.supportResponseHours ?? '…'
   const [openFaq, setOpenFaq] = useState(null)
 
   const faqs = [
@@ -21,7 +23,7 @@ const CustomerHelp = () => {
     },
     {
       question: 'How do I cancel a booking?',
-      answer: 'You can cancel a booking from the booking details page. Cancellations within 24 hours may be subject to a fee.',
+      answer: `You can cancel a booking from the booking details page. Cancellations within ${cancelHours} hours may be subject to a fee.`,
     },
     {
       question: 'How do I leave a review?',
@@ -53,7 +55,7 @@ const CustomerHelp = () => {
           <FaEnvelope className="text-3xl text-primary mx-auto mb-3" />
           <h3 className="font-semibold text-text">Email Support</h3>
           <p className="text-sm text-text-light">{contactEmail}</p>
-          <p className="text-xs text-text-lighter">Reply within 24 hours</p>
+          <p className="text-xs text-text-lighter">Reply within {replyHours} hours</p>
         </div>
       </div>
 

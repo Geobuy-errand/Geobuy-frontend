@@ -6,6 +6,7 @@ import AddressAutocomplete from "../../components/AddressAutocomplete";
 import { toast } from "react-hot-toast";
 import http from "../../services/http";
 import useCountry from "../../hooks/useCountry";
+import usePublicPricing from "../../hooks/usePublicPricing";
 import {
   FaCalendar,
   FaClock,
@@ -50,20 +51,10 @@ const CreateBooking = () => {
   const { code: countryCode, country, format, distanceUnitLabel } = useCountry();
   const unitShort = country.distanceUnit === "mi" ? "mile" : "km";
 
-  // Public pricing for the customer's country (for option labels)
-  const [pricing, setPricing] = useState(null);
-  useEffect(() => {
-    http
-      .get(`/settings/public?country=${countryCode}`)
-      .then((r) => setPricing(r.data.pricing))
-      .catch(() => setPricing(null));
-  }, [countryCode]);
-
-  const HEAVY_ITEM_FEE = pricing?.heavyItemFee ?? 0;
-  const WAIT_TIME_FEE_PER_MIN = pricing?.waitTimeFeePerMin ?? 0;
-  const WAIT_TIME_FREE_MIN = pricing?.waitTimeFreeMin ?? 0;
-  const PEAK_URGENT_FEE = pricing?.peakUrgentFee ?? 0;
-  const EXTRA_STOP_FEE = pricing?.extraStopFee ?? 0;
+  // Option prices for the customer's country, from Admin → Settings.
+  // (The total is always calculated by the server — these are only labels.)
+  const { pricing, format: formatSetting } = usePublicPricing();
+  const { heavyItemFee, waitTimeFeePerMin, waitTimeFreeMin, peakUrgentFee, extraStopFee } = pricing;
 
   const [formData, setFormData] = useState({
     pickup: { address: "", street: "", area: "", town: "", state: "", postcode: "", instructions: "", coordinates: null },
@@ -139,6 +130,7 @@ const CreateBooking = () => {
         discountAmount: b.subscription?.discountAmount || 0,
         total: b.total,
         platformFee: b.revenueSplit.geobuyFee,
+        platformFeePercentage: b.revenueSplit.platformFeePercentage,
         providerAmount: b.revenueSplit.providerAmount,
       });
       // Don't copy the server's resolved points into the form: for a typed
@@ -481,7 +473,7 @@ const CreateBooking = () => {
                     Heavy Item (over 5kg/large)
                   </span>
                   <p className="text-xs text-text-lighter">
-                    +{format(HEAVY_ITEM_FEE)}
+                    +{formatSetting(heavyItemFee)}
                   </p>
                 </div>
               </label>
@@ -501,7 +493,7 @@ const CreateBooking = () => {
                 <div>
                   <span className="text-sm text-text-light">Peak/Urgent</span>
                   <p className="text-xs text-text-lighter">
-                    +{format(PEAK_URGENT_FEE)}
+                    +{formatSetting(peakUrgentFee)}
                   </p>
                 </div>
               </label>
@@ -523,7 +515,7 @@ const CreateBooking = () => {
                     className="w-20 px-3 py-1 rounded-lg border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
                   />
                   <span className="text-xs text-text-lighter">
-                    × {format(EXTRA_STOP_FEE)} each
+                    × {formatSetting(extraStopFee)} each
                   </span>
                 </label>
               </div>
@@ -547,7 +539,7 @@ const CreateBooking = () => {
                     className="w-20 px-3 py-1 rounded-lg border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
                   />
                   <span className="text-xs text-text-lighter">
-                    minutes (first {WAIT_TIME_FREE_MIN} free, then {format(WAIT_TIME_FEE_PER_MIN)}/min)
+                    minutes (first {waitTimeFreeMin ?? "…"} free, then {formatSetting(waitTimeFeePerMin)}/min)
                   </span>
                 </label>
               </div>
@@ -722,7 +714,7 @@ const CreateBooking = () => {
                       <div className="space-y-1 text-sm">
                         <div className="flex justify-between">
                           <span className="text-text-light">
-                            GEOBUY Fee (20%)
+                            GEOBUY Fee ({priceEstimate.platformFeePercentage ?? "…"}%)
                           </span>
                           <span className="font-medium text-blue-600">
                             {format(priceEstimate.platformFee)}
@@ -730,7 +722,7 @@ const CreateBooking = () => {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-text-light">
-                            Provider Amount (80%)
+                            Provider Amount ({priceEstimate.platformFeePercentage != null ? 100 - priceEstimate.platformFeePercentage : "…"}%)
                           </span>
                           <span className="font-medium text-primary">
                             {format(priceEstimate.providerAmount)}

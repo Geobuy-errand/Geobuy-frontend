@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import { toast } from 'react-hot-toast'
 import { FaQrcode, FaDownload, FaPrint, FaCopy, FaClock, FaCheckCircle } from 'react-icons/fa'
+import usePublicPricing from '../hooks/usePublicPricing'
 
 const QrCodeDisplay = ({ errandId }) => {
+  const qrHours = usePublicPricing().operations.qrCodeExpiryHours ?? '…'
   const [qrCode, setQrCode] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isGenerating, setIsGenerating] = useState(false)
@@ -172,7 +174,7 @@ const QrCodeDisplay = ({ errandId }) => {
             <li>Show this QR code to your errand runner for verification</li>
             <li>The runner will scan this code to confirm pickup and delivery</li>
             <li>Each scan updates the errand status</li>
-            <li>QR code expires in 24 hours</li>
+            <li>QR code expires in {qrHours} hours</li>
           </ul>
         </div>
       </div>

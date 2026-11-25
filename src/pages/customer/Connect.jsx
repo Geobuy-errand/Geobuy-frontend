@@ -20,6 +20,7 @@ import {
 import { useGetUserPostsQuery } from '../../redux/services/connectPostApi'
 import useCountry from '../../hooks/useCountry'
 import http from '../../services/http'
+import usePublicPricing from '../../hooks/usePublicPricing'
 
 const Connect = () => {
   const { format: money, country: userCountry } = useCountry()
@@ -32,6 +33,7 @@ const Connect = () => {
   const { data: statusData, isLoading: statusLoading, refetch: refetchStatus } = useGetConnectionStatusQuery()
   const { data: paymentStatus, refetch: refetchPaymentStatus } = useCheckPaymentStatusQuery()
   const { data: connectionFee } = useGetConnectionFeeQuery()
+  const publicPricing = usePublicPricing()
   const { data: postsData, isLoading: postsLoading, refetch: refetchPosts } = useGetUserPostsQuery()
   
   const [createCheckoutSession, { isLoading: isCreatingSession }] = useCreateCheckoutSessionMutation()
@@ -255,7 +257,9 @@ const Connect = () => {
     }
   }
 
-  const CONNECTION_FEE = connectionFee?.connectionFee ?? (userCountry.code === 'NG' ? 1000 : 1.99)
+  // Fee for the user's country from Admin → Settings (no built-in fallback price)
+  const CONNECTION_FEE = connectionFee?.connectionFee ?? publicPricing.connectionFee
+  const feeText = CONNECTION_FEE == null ? '…' : money(CONNECTION_FEE)
   const posts = postsData?.data || []
   const connection = postsData?.connection
 
@@ -528,7 +532,7 @@ const Connect = () => {
                 You've paid the fee — complete your profile to start connecting!
               </span>
             ) : (
-              <span>Pay a one-time fee of {money(CONNECTION_FEE)} to unlock weekly group dates and individual meetups</span>
+              <span>Pay a one-time fee of {feeText} to unlock weekly group dates and individual meetups</span>
             )}
           </p>
         </div>
@@ -563,7 +567,7 @@ const Connect = () => {
             <div>
               <p className="font-medium text-yellow-800">One-time Payment Required</p>
               <p className="text-sm text-yellow-700">
-                Pay {money(CONNECTION_FEE)} once to unlock unlimited connections
+                Pay {feeText} once to unlock unlimited connections
               </p>
             </div>
           </div>
@@ -776,7 +780,7 @@ const Connect = () => {
             <div>
               <h4 className="font-medium text-text">How GEOBUY Connect Works</h4>
               <p className="text-sm text-text-light mt-1">
-                1. Pay the one-time fee of {money(CONNECTION_FEE)}<br />
+                1. Pay the one-time fee of {feeText}<br />
                 2. Select your city and tell us what you're looking for<br />
                 3. Get weekly Sunday group meetup spots in your area<br />
                 4. Show up, mingle, and make meaningful connections!

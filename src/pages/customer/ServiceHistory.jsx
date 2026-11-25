@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
+import { SERVICE_VIEW_LABELS, matchesServiceView, customerServiceAction, customerServicePath } from '../../utils/jobStages'
 import { useGetServiceRequestsQuery } from '../../redux/services/serviceApi'
 import { FaSearch, FaClock, FaCheckCircle, FaTimesCircle, FaUser } from 'react-icons/fa'
 import useCountry from '../../hooks/useCountry'
@@ -7,13 +8,15 @@ import useCountry from '../../hooks/useCountry'
 const ServiceHistory = () => {
   const { format, country: userCountry, distanceUnitLabel } = useCountry()
   const [searchTerm, setSearchTerm] = useState('')
-  const [filter, setFilter] = useState('all')
-  const { data: requests, isLoading } = useGetServiceRequestsQuery()
+  const [params, setParams] = useSearchParams()
+  const filter = params.get('view') || 'all'
+  const setFilter = (v) => setParams(v === 'all' ? {} : { view: v }, { replace: true })
+  const { data: requests, isLoading } = useGetServiceRequestsQuery(undefined, { pollingInterval: 30000, refetchOnFocus: true })
 
   const filteredRequests = requests?.filter(req => {
     const matchesSearch = req.serviceType?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           req.requestId?.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesFilter = filter === 'all' || req.status === filter
+    const matchesFilter = matchesServiceView(req, filter)
     return matchesSearch && matchesFilter
   })
 
@@ -34,6 +37,7 @@ const ServiceHistory = () => {
       case 'quotes_received': return 'Quotes Received'
       case 'provider_selected': return 'Provider Selected'
       case 'in_progress': return 'In Progress'
+      case 'negotiating': return 'Negotiating'
       case 'awaiting_confirmation': return 'Confirm Completion'
       case 'completed': return 'Completed'
       case 'cancelled': return 'Cancelled'
@@ -62,12 +66,7 @@ const ServiceHistory = () => {
           className="input-field w-full md:w-40"
         >
           <option value="all">All Status</option>
-          <option value="pending">Pending</option>
-          <option value="quotes_received">Quotes Received</option>
-          <option value="provider_selected">Provider Selected</option>
-          <option value="in_progress">In Progress</option>
-          <option value="completed">Completed</option>
-          <option value="cancelled">Cancelled</option>
+          {Object.entries(SERVICE_VIEW_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
         <Link to="/find-services" className="btn-primary text-sm py-2 px-4 whitespace-nowrap">
           New Service Request
@@ -94,7 +93,7 @@ const ServiceHistory = () => {
           {filteredRequests?.map((request) => (
             <Link
               key={request._id}
-              to={`/customer/service-request/${request._id}`}
+              to={customerServiceAction(request)?.to || customerServicePath(request)}
               className="card hover:shadow-large transition-shadow block"
             >
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">

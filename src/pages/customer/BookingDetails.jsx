@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom'
 import http from '../../services/http'
 import { useGetBookingByIdQuery, useUpdateBookingStatusMutation } from '../../redux/services/bookingApi'
 import { useGetMessagesQuery, useSendMessageMutation } from '../../redux/services/messageApi'
@@ -11,6 +11,7 @@ import {
   FaFlagCheckered, FaDollarSign
 } from 'react-icons/fa'
 import useCountry from '../../hooks/useCountry'
+import { percentOf } from '../../utils/money'
 
 const BookingDetails = () => {
   const { format, country: userCountry, distanceUnitLabel } = useCountry()
@@ -176,6 +177,12 @@ const BookingDetails = () => {
             <span className="px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600">
               Payment Required
             </span>
+          )}
+
+          {['accepted', 'en_route', 'collected', 'delivered'].includes(booking?.status) && (
+            <Link to={`/customer/errand/${booking._id}`} className="btn-outline text-sm py-2 px-4" data-testid="track-errand">
+              Track errand
+            </Link>
           )}
 
           {canCancel && (
@@ -419,7 +426,7 @@ const BookingDetails = () => {
               )}
               {booking.isSubscribed && (
                 <div className="flex justify-between text-sm text-green-600">
-                  <span>Subscription Discount (20%)</span>
+                  <span>Subscription Discount ({booking.discountPercentage ?? percentOf(booking.discountAmount, booking.subtotal)}%)</span>
                   <span>-{format(booking.discountAmount, booking?.currency)}</span>
                 </div>
               )}
@@ -428,7 +435,7 @@ const BookingDetails = () => {
                 <span className="font-bold text-primary">{format(booking.total, booking?.currency)}</span>
               </div>
               <div className="flex justify-between text-xs text-text-lighter pt-1">
-                <span>Platform Fee (20%)</span>
+                <span>Platform Fee ({percentOf(booking.platformFee, booking.total)}%)</span>
                 <span>{format(booking.platformFee, booking?.currency)}</span>
               </div>
             </div>

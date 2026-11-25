@@ -9,6 +9,17 @@ import notificationReducer from './slices/notificationSlice';
 
 // Core API import - ONLY import baseApi
 import { baseApi } from './services/api';
+import { setAuthToken, clearAuthToken } from '../services/authToken';
+
+// Keep the saved login token in step with the auth state (see services/authToken.js)
+const authTokenMiddleware = () => (next) => (action) => {
+  if (action.type === 'auth/setUser') {
+    if (action.payload?.token) setAuthToken(action.payload.token);
+    else if (!action.payload?.user) clearAuthToken();
+  }
+  if (action.type === 'auth/logout') clearAuthToken();
+  return next(action);
+};
 
 const createLocalStorage = () => {
   if (typeof window === 'undefined') {
@@ -52,7 +63,7 @@ export const store = configureStore({
         ignoredActions: ['persist/PERSIST', 'persist/REHYDRATE', 'persist/PAUSE', 'persist/FLUSH', 'persist/PURGE', 'persist/REGISTER'],
         ignoredPaths: ['ui'],
       },
-    }).concat(baseApi.middleware),
+    }).concat(baseApi.middleware, authTokenMiddleware),
 });
 
 export const persistor = persistStore(store);

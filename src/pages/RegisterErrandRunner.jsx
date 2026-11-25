@@ -148,9 +148,9 @@ const RegisterErrandRunner = () => {
       const result = await registerMutation(submitData).unwrap()
       
       if (result.user) {
-        dispatch(setUser({ user: result.user, providerProfile: null }))
+        dispatch(setUser({ token: result.token, user: result.user, providerProfile: null }))
         toast.success('Registration successful! Your account is pending verification.')
-        navigate('/errand-runner/dashboard')
+        navigate('/errand-runner/verification') // verify identity straight after signing up
       }
     } catch (error) {
       toast.error(error.data?.message || 'Registration failed. Please try again.')

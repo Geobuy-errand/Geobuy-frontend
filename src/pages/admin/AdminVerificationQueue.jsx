@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useGetPendingVerificationsQuery, useReviewVerificationMutation } from '../../redux/services/verificationApi'
 import { toast } from 'react-hot-toast'
+import AdminIdentityChecks from '../../components/verification/AdminIdentityChecks'
 import { 
   FaUser, 
   FaFileAlt, 
@@ -88,6 +89,8 @@ const AdminVerificationQueue = () => {
   return (
     <div>
       <h1 className="text-2xl md:text-3xl font-bold text-text mb-6">Verification Queue</h1>
+
+      <AdminIdentityChecks />
 
       {/* Filters */}
       <div className="flex flex-col md:flex-row gap-4 mb-6">

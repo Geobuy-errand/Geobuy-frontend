@@ -10,6 +10,7 @@ import {
 import UKStatesDropdown from '../../components/utils/UKStatesDropdown'
 import Pagination from '../../components/utils/Pagination'
 import { formatMoney } from '../../utils/money'
+import http from '../../services/http'
 
 const AdminConnections = () => {
   const [statusFilter, setStatusFilter] = useState('')
@@ -165,13 +166,10 @@ const AdminConnections = () => {
     setIsBulkScheduling(true)
     try {
       // First, get all connections for this state/city
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/connections/admin/all?state=${encodeURIComponent(bulkScheduleData.state)}&limit=1000`,
-        {
-          credentials: 'include',
-        }
+      // shared client: sends the login token (cookie-only fails on Safari/iOS)
+      const { data: result } = await http.get(
+        `/connections/admin/all?state=${encodeURIComponent(bulkScheduleData.state)}&limit=1000`
       )
-      const result = await response.json()
       const connectionsInCity = result.data || []
 
       if (connectionsInCity.length === 0) {

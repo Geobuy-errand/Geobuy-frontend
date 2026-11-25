@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { getAuthToken } from './authToken'
 
 // VITE_API_URL should include /api, e.g. https://api.geobuy.com/api
 export const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace(/\/$/, '')
@@ -21,6 +22,12 @@ const http = axios.create({
 http.interceptors.request.use((config) => {
   if (typeof config.url === 'string' && config.url.startsWith('/api/')) {
     config.url = config.url.slice(4)
+  }
+  // Send the login token as a header too (Safari/iOS block cross-site cookies)
+  const token = getAuthToken()
+  if (token && !config.headers?.Authorization) {
+    config.headers = config.headers || {}
+    config.headers.Authorization = `Bearer ${token}`
   }
   return config
 })

@@ -7,9 +7,12 @@ import { useCreateCheckoutSessionMutation, useGetSubscriptionStatusQuery } from 
 import { toast } from 'react-hot-toast'
 import SignupModal from '../components/modals/SignupModal'
 import useCountry from '../hooks/useCountry'
+import usePublicPricing from '../hooks/usePublicPricing'
+import { planSavings } from '../utils/planSavings'
 
 const Pricing = () => {
   const { code, format } = useCountry()
+  const { platformFeePercentage } = usePublicPricing()
   const { user } = useSelector((state) => state.auth)
   const [isSignupModalOpen, setIsSignupModalOpen] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
@@ -60,11 +63,7 @@ const Pricing = () => {
     return plan.interval
   }
 
-  const getSavings = (plan) => {
-    if (plan.metadata?.savings) return plan.metadata.savings
-    if (plan.interval === 'year') return '38%'
-    return null
-  }
+  const getSavings = (plan) => planSavings(plans || [], plan)
 
   const isActive = subscriptionStatus === 'active' || subscriptionStatus === 'trialing'
 
@@ -198,7 +197,7 @@ const Pricing = () => {
             All plans include a 7-day free trial. No questions asked.
           </p> */}
           <p className="text-text-light text-sm mt-2">
-            For errand runners: We take a 20% service fee on each completed errand.
+            For errand runners: We take a {platformFeePercentage ?? '…'}% service fee on each completed errand.
           </p>
         </div>
 

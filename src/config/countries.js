@@ -25,11 +25,7 @@ export const COUNTRIES = {
     geocodeCountryCode: 'gb',
     defaultCenter: { lat: 51.5074, lng: -0.1278 },
     bounds: { minLat: 49.8, maxLat: 60.95, minLng: -8.7, maxLng: 1.8 },
-    roadFactor: 1.25,
-    fallbackSpeedKmh: 30,
     radiusOptions: [1, 3, 5, 10, 25, 50],
-    supportEmail: 'support@geobuy.com',
-    supportPhone: '+44 20 1234 5678',
     bank: { accountLength: 8, needsSortCode: true },
   },
   NG: {
@@ -54,11 +50,7 @@ export const COUNTRIES = {
     geocodeCountryCode: 'ng',
     defaultCenter: { lat: 6.5244, lng: 3.3792 },
     bounds: { minLat: 4.0, maxLat: 14.0, minLng: 2.6, maxLng: 14.8 },
-    roadFactor: 1.35,
-    fallbackSpeedKmh: 20,
     radiusOptions: [2, 5, 10, 15, 25, 50],
-    supportEmail: 'support.ng@geobuy.com',
-    supportPhone: '+234 800 000 0000',
     bank: { accountLength: 10, needsSortCode: false },
   },
 }
