@@ -499,50 +499,46 @@ const CreateBooking = () => {
               </label>
 
               <div>
-                <label className="flex items-center space-x-3">
-                  <span className="text-sm text-text-light">Extra Stops</span>
-                  <input
-                    type="number"
-                    min="0"
-                    max="10"
-                    value={formData.extraStopsCount}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        extraStopsCount: parseInt(e.target.value) || 0,
-                      }))
-                    }
-                    className="w-20 px-3 py-1 rounded-lg border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
-                  />
-                  <span className="text-xs text-text-lighter">
-                    × {formatSetting(extraStopFee)} each
-                  </span>
-                </label>
-              </div>
+  <label className="flex items-center space-x-3">
+    <span className="text-sm text-text-light">Extra Stops</span>
+    <input
+      type="number"
+      min="0"
+      max="10"
+      defaultValue={formData.extraStopsCount}
+      onChange={(e) =>
+        setFormData((prev) => ({
+          ...prev,
+          extraStopsCount: e.target.value === '' ? 0 : Math.min(10, Math.max(0, parseInt(e.target.value, 10) || 0)),
+        }))
+      }
+      className="w-20 px-3 py-1 rounded-lg border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+    />
+    <span className="text-xs text-text-lighter">× {formatSetting(extraStopFee)} each</span>
+  </label>
+</div>
 
-              <div>
-                <label className="flex items-center space-x-3">
-                  <span className="text-sm text-text-light">
-                    Expected Wait Time
-                  </span>
-                  <input
-                    type="number"
-                    min="0"
-                    max="240"
-                    value={formData.waitTimeMinutes}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        waitTimeMinutes: parseInt(e.target.value) || 0,
-                      }))
-                    }
-                    className="w-20 px-3 py-1 rounded-lg border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
-                  />
-                  <span className="text-xs text-text-lighter">
-                    minutes (first {waitTimeFreeMin ?? "…"} free, then {formatSetting(waitTimeFeePerMin)}/min)
-                  </span>
-                </label>
-              </div>
+<div>
+  <label className="flex items-center space-x-3">
+    <span className="text-sm text-text-light">Expected Wait Time</span>
+    <input
+      type="number"
+      min="0"
+      max="240"
+      defaultValue={formData.waitTimeMinutes}
+      onChange={(e) =>
+        setFormData((prev) => ({
+          ...prev,
+          waitTimeMinutes: e.target.value === '' ? 0 : Math.min(240, Math.max(0, parseInt(e.target.value, 10) || 0)),
+        }))
+      }
+      className="w-20 px-3 py-1 rounded-lg border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+    />
+    <span className="text-xs text-text-lighter">
+      minutes (first {waitTimeFreeMin ?? "…"} free, then {formatSetting(waitTimeFeePerMin)}/min)
+    </span>
+  </label>
+</div>
             </div>
           )}
         </div>
