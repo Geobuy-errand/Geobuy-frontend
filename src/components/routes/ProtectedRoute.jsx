@@ -47,7 +47,7 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
     const dashboardPath = 
       user?.role === 'admin' ? '/admin/dashboard' :
       user?.role === 'provider' ? '/provider/dashboard' :
-      user?.role === 'errand_runner' ? '/runner/dashboard' :
+      user?.role === 'errand_runner' ? '/errand-runner/dashboard' :
       '/customer/dashboard'
       return <Navigate to={dashboardPath} replace />
 

@@ -3,7 +3,7 @@ import { baseApi } from './api'
 export const connectionApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     // Create payment intent
-    createPaymentIntent: builder.mutation({
+    createConnectionPaymentIntent: builder.mutation({
       query: () => ({
         url: '/connections/create-payment-intent',
         method: 'POST',
@@ -26,7 +26,7 @@ export const connectionApi = baseApi.injectEndpoints({
     }),
     
     // Create Stripe Checkout Session (No frontend Stripe.js needed)
-    createCheckoutSession: builder.mutation({
+    createConnectionCheckoutSession: builder.mutation({
       query: () => ({
         url: '/connections/create-checkout-session',
         method: 'POST',
@@ -47,7 +47,7 @@ export const connectionApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['Connection'],
     }),
-    getConnectionStatus: builder.query({
+    getConnectionFeeStatus: builder.query({
       query: () => '/connections/status',
       providesTags: ['Connection'],
     }),
@@ -110,10 +110,10 @@ export const connectionApi = baseApi.injectEndpoints({
 })
 
 export const {
-  useCreateCheckoutSessionMutation,
+  useCreateConnectionCheckoutSessionMutation,
   useVerifyPaymentQuery,
   useCheckPaymentStatusQuery,
-  useCreatePaymentIntentMutation,
+  useCreateConnectionPaymentIntentMutation,
   useConfirmPaymentMutation,
   useCreateConnectionMutation,
   useGetMyConnectionsQuery,
@@ -123,6 +123,6 @@ export const {
   useRateConnectionMutation,
   useAdminGetConnectionsQuery,
   useAdminUpdateConnectionMutation,
-  useGetConnectionStatusQuery,
+  useGetConnectionFeeStatusQuery,
   useGetConnectionFeeQuery
 } = connectionApi

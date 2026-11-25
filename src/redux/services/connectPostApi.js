@@ -9,7 +9,7 @@ export const postApi = baseApi.injectEndpoints({
     }),
     
     // Get connection status
-    getConnectionStatus: builder.query({
+    getConnectPostStatus: builder.query({
       query: () => '/connect-posts/status',
       providesTags: ['Connection'],
     }),
@@ -54,7 +54,7 @@ export const postApi = baseApi.injectEndpoints({
 
 export const {
   useGetUserPostsQuery,
-  useGetConnectionStatusQuery,
+  useGetConnectPostStatusQuery,
   useCreatePostMutation,
   useAdminGetAllPostsQuery,
   useAdminUpdatePostMutation,

@@ -1,5 +1,6 @@
 import React from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import SessionRestore from "./components/routes/SessionRestore";
 import { Toaster } from "react-hot-toast";
 import Layout from "./components/layout/Layout";
 import DashboardLayout from "./components/layout/DashboardLayout";
@@ -103,6 +104,7 @@ import ServiceHistory from "./pages/customer/ServiceHistory";
 function App() {
   return (
     <BrowserRouter>
+      <SessionRestore />
       <Toaster
         position="top-right"
         toastOptions={{

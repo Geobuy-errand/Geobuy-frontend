@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { 
   useCreateConnectionMutation,
-  useCreateCheckoutSessionMutation,
+  useCreateConnectionCheckoutSessionMutation,
   useCheckPaymentStatusQuery,
-  useGetConnectionStatusQuery,
+  useGetConnectionFeeStatusQuery,
   useGetConnectionFeeQuery,
 } from '../../redux/services/connectionApi'
 import { format, formatDistanceToNow } from 'date-fns'
@@ -30,13 +30,13 @@ const Connect = () => {
   const formRef = useRef(null)
   
   // API HOOKS
-  const { data: statusData, isLoading: statusLoading, refetch: refetchStatus } = useGetConnectionStatusQuery()
+  const { data: statusData, isLoading: statusLoading, refetch: refetchStatus } = useGetConnectionFeeStatusQuery()
   const { data: paymentStatus, refetch: refetchPaymentStatus } = useCheckPaymentStatusQuery()
   const { data: connectionFee } = useGetConnectionFeeQuery()
   const publicPricing = usePublicPricing()
   const { data: postsData, isLoading: postsLoading, refetch: refetchPosts } = useGetUserPostsQuery()
   
-  const [createCheckoutSession, { isLoading: isCreatingSession }] = useCreateCheckoutSessionMutation()
+  const [createCheckoutSession, { isLoading: isCreatingSession }] = useCreateConnectionCheckoutSessionMutation()
   const [createConnection, { isLoading: isCreating }] = useCreateConnectionMutation()
   
 

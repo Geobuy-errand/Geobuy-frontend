@@ -121,7 +121,7 @@ export const adminApi = baseApi.injectEndpoints({
     }),
 
     // ========== SERVICE PROVIDERS ==========
-    getServiceProviders: builder.query({
+    getAdminServiceProviders: builder.query({
       query: () => '/admin/service-providers',
       providesTags: ['Admin'],
     }),
@@ -171,6 +171,6 @@ export const {
   useToggleErrandRunnerStatusMutation,
   
   // Service Providers
-  useGetServiceProvidersQuery,
+  useGetAdminServiceProvidersQuery,
   useUpdateUserMutation
 } = adminApi;

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSelector } from 'react-redux'
-import { useGetUserPostsQuery, useGetConnectionStatusQuery } from '../../redux/services/connectPostApi'
+import { useGetUserPostsQuery, useGetConnectPostStatusQuery } from '../../redux/services/connectPostApi'
 import { format, formatDistanceToNow } from 'date-fns'
 import { 
   FaMapMarkerAlt, FaCalendar, FaClock, FaUser, 
@@ -14,7 +14,7 @@ const ConnectDashboard = () => {
   const navigate = useNavigate()
   const { user } = useSelector((state) => state.auth)
   
-  const { data: statusData, isLoading: statusLoading } = useGetConnectionStatusQuery()
+  const { data: statusData, isLoading: statusLoading } = useGetConnectPostStatusQuery()
   const { data: postsData, isLoading: postsLoading, refetch } = useGetUserPostsQuery()
   
   const [selectedPost, setSelectedPost] = useState(null)
