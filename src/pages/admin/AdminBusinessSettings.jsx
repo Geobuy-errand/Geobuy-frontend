@@ -446,7 +446,7 @@ const AdminBusinessSetting = () => {
         <div className="card" data-testid="verification-settings">
           <h2 className="text-lg font-semibold text-text mb-1">Identity verification</h2>
           <p className="text-sm text-text-lighter mb-4">
-            Nigeria: NIN check with Dojah. UK: photo ID + selfie with Didit. Set <code>VERIFICATION_MOCK=true</code> in the backend .env to pass checks automatically until the keys are in.
+            Checks run on Didit — Nigeria: NIN checked against NIMC. UK: photo ID + selfie. Set <code>VERIFICATION_MOCK=true</code> in the backend .env to pass checks automatically until the keys are in.
           </p>
           <div className="space-y-4">
             <label className="flex items-center justify-between gap-4">
@@ -463,7 +463,7 @@ const AdminBusinessSetting = () => {
               <p className="text-sm font-medium text-text-light mb-2">Who pays for each check?</p>
               <div className="flex flex-col sm:flex-row gap-2">
                 {[
-                  ['platform', 'Geobuy pays', 'Free for providers and runners — you are billed by Dojah / Didit'],
+                  ['platform', 'Geobuy pays', 'Free for providers and runners — you are billed by Didit'],
                   ['worker', 'Provider / runner pays', 'They pay the fee below by card before the check runs'],
                 ].map(([value, title, hint]) => (
                   <label key={value} className={`flex-1 p-3 rounded-lg border cursor-pointer ${(settings.verification?.paidBy || 'platform') === value ? 'border-primary bg-primary/5' : 'border-gray-200'}`}>

@@ -13,10 +13,10 @@ const STATUS_STYLES = {
   error: 'bg-red-50 text-red-600',
   cancelled: 'bg-gray-100 text-text-light',
 }
-const VENDOR = { dojah: 'Dojah (NIN)', didit: 'Didit (ID + selfie)', mock: 'Test mode', manual: 'Admin' }
+const VENDOR = { didit: 'Didit', mock: 'Test mode', manual: 'Admin' }
 const roleLabel = (r) => (r === 'errand_runner' ? 'Runner' : 'Provider')
 
-/** Admin → Verification: automated identity checks (Dojah / Didit). */
+/** Admin → Verification: automated identity checks (Didit). */
 export default function AdminIdentityChecks() {
   const [status, setStatus] = useState('in_review')
   const { data, isLoading, refetch } = useGetIdentityChecksQuery({ status })

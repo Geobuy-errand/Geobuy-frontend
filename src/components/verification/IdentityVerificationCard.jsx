@@ -12,7 +12,7 @@ import useCountry from '../../hooks/useCountry'
 
 /**
  * Step 1 of verification: an automated identity check.
- *   Nigeria → NIN check (Dojah), instant.
+ *   Nigeria → NIN checked against NIMC (Didit), instant.
  *   UK      → photo ID + selfie (Didit); the person is sent to Didit and back.
  * If the admin has set "worker pays", the fee is taken first (Stripe / Paystack).
  */

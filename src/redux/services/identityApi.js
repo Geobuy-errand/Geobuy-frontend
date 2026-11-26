@@ -1,6 +1,6 @@
 import { baseApi } from './api'
 
-// Identity checks (Dojah NIN for Nigeria, Didit ID + selfie for the UK)
+// Identity checks with Didit (NIN for Nigeria, ID + selfie for the UK)
 export const identityApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getIdentityStatus: builder.query({
